@@ -64,6 +64,8 @@ PRODUCT.md와 DESIGN.md의 요구사항이 충돌하는 경우 제품 요구사�
 
 Hierarchy는 Color나 Decoration이 아니라 Layout, Spacing, Typography, Contrast로 표현하며, 실시간 협업이라는 제품 특성상 "지금 무슨 일이 일어나고 있는가"를 사용자가 항상 신뢰할 수 있어야 한다.
 
+Primary Accent Color는 채도 있는 Brand Hue 대신 검은색 기반의 단색을 사용해, 절제됨 안에서도 또렷하고 Confident한 인상을 준다. Calm은 흐릿함이 아니라 명확한 존재감에서 오는 차분함이며, 검은색 Primary는 이를 시각적으로 뒷받침하는 요즘 느낌의 인터랙티브한 톤을 만든다.
+
 ---
 
 ## 4. Reference Interpretation
@@ -102,6 +104,7 @@ Reference에서 우리 제품에도 적합하여 유지할 요소:
 - Marketing/Dashboard용 12·8 컬럼 그리드 → 마케팅 표면이 없는 내부 도구이므로 단순한 App Shell + List/Detail 구조로 축소
 - List Cell 패턴 → 잡 마켓플레이스 리스트가 아니라 워크스페이스/프로젝트/화이트보드 문서/멤버 목록의 기본 행 컴포넌트로 재사용
 - Breadcrumb → 원티드보다 훨씬 자주 등장하는 핵심 내비게이션으로 격상(워크스페이스 > 프로젝트 > 문서 경로 상시 노출)
+- Primary Accent Color(원티드 Blue `#0066FF`) → 브랜드 Hue를 그대로 가져오지 않고 검은색 기반의 무채색(Near-black Neutral)으로 대체. "화면당 단일 강조색" 정책(§5.5)은 유지하되, 색상 자체는 우리 제품의 절제되고 Confident한 톤에 맞게 교체한다.
 
 ---
 
@@ -264,6 +267,8 @@ presence/1 ~ presence/8   # §6.7 참조
 ```
 
 Component에서는 가능한 한 Raw Palette보다 Semantic Token을 사용한다. Text 위계는 별도 Gray Hex를 늘리는 대신 하나의 베이스 색에 Alpha를 곱하는 방식(예: strong=100%, default=88%, secondary=61%, tertiary=43%, disabled=28%)으로 Light/Dark 양쪽에서 일관되게 표현한다.
+
+`action/primary`는 채도가 있는 Brand Hue가 아니라 채도 없는 짙은 Neutral(거의 검정) 단색을 사용한다. Hover/Active 같은 Interaction State는 Hue Shift가 아니라 명도(밝기) 또는 Alpha 단계로 표현한다 — 예를 들어 `action/primary-hover`는 순수 검정보다 한 단계 밝은 톤을 사용해 클릭 가능함을 드러낸다. Presence Color(§6.7)를 포함한 나머지 팔레트(Semantic Color, Neutral 팔레트)는 이 변경과 무관하게 그대로 유지되며, `action/primary`가 무채색이므로 다른 색상들과 자연스럽게 구분된다.
 
 ---
 
@@ -477,6 +482,7 @@ Rules:
 
 - 한 Viewport에 Visually Dominant한 Primary Action을 과도하게 만들지 않는다.
 - 목록 화면당 Primary Button은 원칙적으로 하나다.
+- 배경은 검은색 기반 `action/primary`, 텍스트는 흰색을 사용해 충분한 Contrast를 확보한다.
 
 Do Not Use For:
 
