@@ -62,7 +62,7 @@ backend/
 │   ├── lib/
 │   │   └── jwt.ts                 # jose sign/verify 헬퍼 함수
 │   ├── utils/
-│   │   ├── logger.ts              # pino 인스턴스
+│   │   ├── logger.ts              # pino 인스턴스 (NODE_ENV=development면 pino-pretty transport 사용)
 │   │   └── async-handler.ts       # async 컨트롤러 에러 위임 헬퍼
 │   └── types/
 │       └── express.d.ts           # Express Request 확장 (req.user)
@@ -91,12 +91,13 @@ backend/
 | 인증 | jose |
 | 검증 | zod, drizzle-zod (drizzle 스키마 → zod 스키마 생성) |
 | 환경변수 로딩 | dotenv |
-| 로깅 | pino, pino-http |
+| 로깅 | pino, pino-http, pino-pretty (dev 전용 사람이 읽기 좋은 포맷) |
 | 개발 서버 | tsx |
-| 타입 | typescript, @types/express 등 |
-| 린트/포맷 | eslint, prettier, typescript-eslint |
+| 타입 | typescript, @types/node, @types/express, @types/cors, @types/compression, @types/supertest |
+| 린트/포맷 | eslint, prettier, typescript-eslint, eslint-plugin-import, eslint-import-resolver-typescript |
 | 커밋 훅 | husky, lint-staged |
 | 경로 alias | tsc-alias (빌드 산출물의 alias를 상대경로로 재작성) |
+| 빌드 유틸 | rimraf (prebuild 시 dist/ 클린업) |
 | 테스트 | vitest, supertest |
 
 패키지 매니저는 pnpm을 사용한다.
@@ -111,10 +112,12 @@ backend/
 
 - 개발(`tsx`)은 esbuild 기반이라 tsconfig의 `paths`를 자동으로 인식해 별도 설정 없이 동작한다.
 - 프로덕션 빌드(`tsc`)는 타입 체크만 하고 alias를 실제 경로로 바꿔주지 않으므로, 빌드 직후 `tsc-alias`로 `dist/` 산출물의 import 경로를 상대경로로 재작성한다.
+- ESLint가 `@/*` alias import를 인식하도록 `eslint-plugin-import` + `eslint-import-resolver-typescript`를 `eslint.config.js`에 설정해 잘못된/미사용 import를 검증한다.
 
 스크립트:
 
 - `dev`: `tsx watch src/server.ts`
+- `prebuild`: `rimraf dist`
 - `build`: `tsc && tsc-alias`
 - `start`: `node dist/server.js`
 - `lint`: `eslint .`
