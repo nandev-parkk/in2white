@@ -103,7 +103,7 @@ Reference에서 우리 제품에도 적합하여 유지할 요소:
 - Avatar의 Brand Gradient → 이미지가 없는 사용자의 기본 아바타에 한해 제한적으로 사용. Presence(실시간 참여자) 표시에는 Gradient 대신 참여자별로 구분되는 단일 Solid Color(Presence Color)를 사용
 - Marketing/Dashboard용 12·8 컬럼 그리드 → 마케팅 표면이 없는 내부 도구이므로 단순한 App Shell + List/Detail 구조로 축소
 - List Cell 패턴 → 잡 마켓플레이스 리스트가 아니라 워크스페이스/프로젝트/화이트보드 문서/멤버 목록의 기본 행 컴포넌트로 재사용
-- Breadcrumb → 원티드보다 훨씬 자주 등장하는 핵심 내비게이션으로 격상(워크스페이스 > 프로젝트 > 문서 경로 상시 노출)
+- Breadcrumb → 원티드보다 훨씬 자주 등장하는 핵심 내비게이션으로 격상하되, 워크스페이스 표시는 Sidebar Workspace Switcher(§8.21)가 전담하므로 Breadcrumb은 프로젝트 > 문서 경로만 노출한다
 - Primary Accent Color(원티드 Blue `#0066FF`) → 브랜드 Hue를 그대로 가져오지 않고 검은색 기반의 무채색(Near-black Neutral)으로 대체. "화면당 단일 강조색" 정책(§5.5)은 유지하되, 색상 자체는 우리 제품의 절제되고 Confident한 톤에 맞게 교체한다.
 
 ---
@@ -142,12 +142,19 @@ Color와 Font Size만으로 중요도를 과도하게 표현하지 않는다.
 
 Page Type에 따라 Density를 다르게 설정한다.
 
-- 워크스페이스 / 프로젝트 / 화이트보드 문서 / 멤버 목록: Medium-high (List Cell 기반, 빠른 Scanning)
+- 워크스페이스 / 프로젝트 / 화이트보드 문서 / 멤버 목록: High (List Cell 기반, 한 화면에 최대한 많은 행을 담아 빠르게 Scanning)
 - 화이트보드 편집 화면 Chrome: Low (Excalidraw 캔버스가 주인공이므로 주변 Chrome은 최소한의 정보만 노출)
-- 계정 설정 / 폼 화면: Low-medium
-- 멤버 추가 / 삭제 확인 등 Modal: Low
+- 계정 설정 / 폼 화면: Medium
+- 멤버 추가 / 삭제 확인 등 Modal: Medium
 
 제품의 실제 사용 환경(장시간 캔버스 세션, 빈번한 목록 탐색)에 적합한 Density를 우선한다.
+
+**Compact-first 원칙**: in2white는 마케팅 표면이 없는 업무용 도구이고, 사용자는 하루에 여러 번 같은 목록을 훑는다. 따라서 Reference(원티드)의 마케팅 지향 스케일을 그대로 쓰지 않고, Control Height · Font Size · Padding을 한 단계 낮춘 Compact 스케일을 기본값으로 사용한다.
+
+- Reference에서 값을 가져올 때는 그대로 이식하지 않고 Compact 단계로 환산해 적용한다.
+- 넓은 여백은 "고급스러움"이 아니라 Scanning 비용으로 취급한다 — 여백을 늘리려면 §5.3의 Grouping 근거가 있어야 한다.
+- Density를 낮추고 싶을 땐 Padding을 키우기 전에 표시할 정보량 자체를 줄이는 쪽을 먼저 검토한다.
+- 단, Accessibility(§11)의 최소 Interaction Target Size는 Compact 스케일보다 우선한다 — Target이 작아지는 경우 Padding 대신 Hit Area를 확장한다.
 
 ---
 
@@ -239,7 +246,7 @@ Exact Value가 안정되면 `tokens.json`으로 분리한다.
 Recommended Semantic Tokens:
 
 ```text
-background/canvas       # Excalidraw 캔버스 표면 (Chrome과 명확히 구분)
+background/canvas       # Excalidraw 캔버스 표면 전용 (Chrome과 명확히 구분). Auth Shell/App Shell 등 다른 화면의 페이지 배경에는 사용하지 않는다 — 페이지 프레임 배경은 항상 background/default(흰색)를 사용한다.
 background/default
 background/subtle
 background/elevated
@@ -280,7 +287,8 @@ Recommended Roles:
 
 - Heading 1 (페이지 타이틀 — 워크스페이스명, 프로젝트명 등)
 - Heading 2 (섹션 타이틀)
-- Heading 3 (리스트 항목/카드 타이틀)
+- Card Title (Card 컴포넌트 §8.7 전용 타이틀)
+- Heading 3 (리스트 항목 타이틀)
 - Body (기본 본문)
 - Body Small (보조 정보)
 - Caption (메타 정보 — 생성일, 수정일 등)
@@ -295,6 +303,13 @@ Recommended Roles:
 - Letter Spacing
 
 Page마다 임의의 Font Size를 추가하지 않는다. 17px 이상 Heading에는 일관된 Negative Tracking을 적용해 타이트한 인상을 유지한다.
+
+**Compact Type Scale**(§5.2): Role의 크기 차이는 Font Size를 키워서 만들지 않고 Weight와 Color(Alpha 위계)로 우선 표현한다.
+
+- Heading 1(페이지 타이틀)은 Reference의 마케팅급 크기를 쓰지 않고 Body보다 한두 단계 위에서 멈춘다 — App Shell의 Page Header는 페이지를 식별하는 라벨이지 Hero Heading이 아니다.
+- Heading 3(List Cell Title)은 Body와 같은 크기에서 Weight만 올려 구분한다.
+- Caption/Body Small은 목록의 메타 정보 밀도를 위해 Body보다 확실히 작게 유지한다.
+- Font Size는 정보 위계를 만드는 마지막 수단이다(§5.1).
 
 ---
 
@@ -315,16 +330,25 @@ Page마다 임의의 Font Size를 추가하지 않는다. 17px 이상 Heading에
 
 기본은 4의 배수이며, 시각 보정이 필요할 때만 2px 단위로 조정한다. 임의의 Spacing Value를 가능한 한 추가하지 않는다.
 
+Compact-first(§5.2)에 따라 Scale의 사용 구간을 다음과 같이 제한한다.
+
+- Component 내부 Padding과 인접 요소 Gap: 4 ~ 16 구간에서 선택한다.
+- Section 간 분리: 16 ~ 32 구간에서 선택한다.
+- 48 · 64는 Auth Shell의 중앙 정렬 블록, Empty State의 상하 여백처럼 "의도적으로 비어 있어야 하는 표면"에만 사용한다.
+- 목록 화면의 어떤 인접 요소도 32를 넘는 Gap으로 분리하지 않는다.
+
 ---
 
 ### 6.4 Radius
 
 Radius 종류를 최소화한다.
 
-- radius-sm (4)
+- radius-sm (4) — Badge 등 작은 요소
 - radius-md (8) — Button, Input, Card 기본값
 - radius-lg (12) — Modal, Dropdown 등 Elevated Surface
-- radius-full — Chip, Badge, Avatar, Pill Button
+- radius-full — Chip, Avatar, Pill Button(검색 필드 등)
+
+Control이 Compact해질수록 Radius도 함께 낮춘다 — 높이가 작은 Control에 큰 Radius를 유지하면 Pill에 가까워져 형태 위계가 무너진다.
 
 모든 Component에 Rounded Style을 적용하지 않는다. 화이트보드 편집 화면의 Canvas Top Bar처럼 캔버스와 맞닿는 요소는 과한 Radius로 캔버스와 시각적으로 경쟁하지 않도록 절제한다.
 
@@ -368,6 +392,16 @@ Shadow는 실제 Elevation이 필요한 경우에만 사용한다.
 
 ---
 
+### 6.8 Iconography
+
+Icon Library로 Lucide Icons를 사용한다(Stroke 기반).
+
+- Icon은 `currentColor`를 상속하고 외부 컬러를 직접 주입하지 않는다(§4 Preserve).
+- Stroke Width는 Icon 전체에서 통일한다.
+- Decorative Icon을 추가하지 않는다 — 모든 Icon은 실제 의미(Action, Category, Navigation)를 가져야 한다(§12).
+
+---
+
 ## 7. Layout
 
 ### 7.1 Page Structure
@@ -385,16 +419,20 @@ Auth Shell
 
 인증 전 화면이므로 Top Navigation, Breadcrumb, 계정 메뉴 등 로그인된 사용자 전용 요소를 전혀 노출하지 않는다. 회원가입 기능이 없으므로 로그인 ↔ 회원가입 모드 전환 UI도 두지 않는다. 화면에는 Logo와 Login Form 하나만 존재하는 최소 구조를 유지한다.
 
-**App Shell** (워크스페이스/프로젝트/문서 목록, 멤버 목록, 계정 설정 등 탐색·관리 화면):
+**App Shell** (워크스페이스 내부 화면 — 프로젝트/화이트보드 문서 목록, 멤버 목록, 계정 설정 등 탐색·관리 화면):
 
 ```text
 App Shell
-├── Top Navigation (로고, 워크스페이스 전환, 계정 메뉴)
+├── Sidebar (§8.21 — Workspace Switcher, Projects/Members 내비게이션, 계정/로그아웃)
 └── Main
     ├── Page Header (타이틀 + Breadcrumb + Primary Action)
     ├── Search / Filter
     └── List Content
 ```
+
+로그인 성공 시 사용자는 곧바로 자신의 (마지막 접속) 워크스페이스로 진입하므로(PRODUCT.md §7), App Shell은 항상 하나의 워크스페이스 컨텍스트 안에서 렌더링된다. Sidebar가 이 컨텍스트(어떤 워크스페이스에 있는지, Projects/Members 중 어디에 있는지)를 상시 고정해서 보여주고, 다른 워크스페이스로의 전환·생성·설정은 Sidebar 상단의 Workspace Switcher가 담당한다(§8.21).
+
+**예외 — 워크스페이스 목록 페이지**: 아직 워크스페이스 컨텍스트가 없는 유일한 인증 후 화면이므로 Sidebar 없이 렌더링된다. 로고와 계정 메뉴만 있는 최소 Top Bar를 사용한다 — Sidebar를 쓰는 다른 App Shell 화면들과의 유일한 예외다.
 
 **Canvas Shell** (화이트보드 실시간 편집 화면 전용):
 
@@ -410,27 +448,29 @@ Auth Shell과 Canvas Shell 모두 App Shell의 Top Navigation·Sidebar를 두지
 
 ### 7.2 Container
 
-- App Shell Main Content: Max Width 1200px, 좌우 Padding 24px
+- App Shell Main Content: Max Width 1200px, 좌우 Padding 20px
+- App Shell Main Content 상하 Padding: 상단 24px / 하단 48px (하단은 Scroll 종료 여유)
 - Canvas Shell: Full-width / Full-height (Container 제약 없음), Top Bar만 내부 Padding 16px 적용
 - Content Alignment: 목록/폼 화면은 Center Alignment, Canvas는 Full-bleed
+- Auth Shell 중앙 블록: Max Width 336px (한 줄 입력 폼에 필요한 최소 너비)
 
 ---
 
 ### 7.3 Grid
 
 - 목록 화면(프로젝트/화이트보드 문서/멤버)은 기본적으로 단일 컬럼 List를 사용한다.
-- 워크스페이스 목록은 필요 시 2~4열 Card Grid로 표시할 수 있다 (Gap 16~24px).
+- 워크스페이스 목록은 필요 시 2~4열 Card Grid로 표시할 수 있다 (Gap 12px, Tile 최소 너비 232px — Compact 스케일 §5.2).
 - 별도의 12컬럼 마케팅 그리드는 사용하지 않는다 — 이 제품에는 마케팅 표면이 없다.
 
 ---
 
 ### 7.4 Navigation
 
-- **Primary Navigation**: Top Bar — 로고/워크스페이스 전환, 검색, 계정 메뉴
-- **Secondary Navigation**: Breadcrumb — 워크스페이스 > 프로젝트 > 화이트보드 문서 경로를 항상 노출한다. 계층이 3단으로 얕기 때문에 별도의 상시 Sidebar는 두지 않는다.
-- **Active State**: 현재 위치는 Breadcrumb의 마지막 항목 또는 Tab의 Active Underline으로 표현한다.
-- **Collapsed State**: Tablet 이하에서는 Top Bar의 검색이 Icon Button으로 축약된다.
-- **Mobile Behavior**: Breadcrumb은 이전 단계로 가는 뒤로가기 버튼 하나로 축약될 수 있다.
+- **Primary Navigation**: Sidebar(§8.21) — Workspace Switcher, Projects/Members, 계정/로그아웃. 워크스페이스 컨텍스트가 없는 워크스페이스 목록 페이지만 예외적으로 로고+계정 메뉴만 있는 최소 Top Bar를 사용한다(§7.1).
+- **Secondary Navigation**: Breadcrumb — 프로젝트 > 화이트보드 문서 경로를 노출한다. 워크스페이스는 Sidebar Workspace Switcher가 상시 표시하므로 Breadcrumb에서 반복하지 않는다.
+- **Active State**: 현재 위치는 Sidebar Nav Item의 Active 상태(§8.21) 또는 Breadcrumb의 마지막 항목, Tab의 Active Underline으로 표현한다.
+- **Collapsed State**: Sidebar는 Icon-only Collapsed 상태를 지원한다(§8.21). Tablet 이하에서는 Search도 Icon Button으로 축약될 수 있다. Collapse/Expand Toggle은 Sidebar 우측 상단에 고정되어 Expanded/Collapsed 두 상태에서 동일한 위치를 유지한다(§8.21) — 콘텐츠 행 안에 두면 상태마다 위치를 다시 정의해야 하므로, 어느 행에도 속하지 않는 독립된 요소로 둔다.
+- **Mobile Behavior**: Sidebar는 Drawer로 전환되고, Breadcrumb은 이전 단계로 가는 뒤로가기 버튼 하나로 축약될 수 있다.
 
 Auth Shell(§7.1)에는 Primary/Secondary Navigation이 전혀 없다 — 인증 전 화면이므로 탐색 요소를 두지 않는다.
 
@@ -450,7 +490,7 @@ Responsive에서는 단순히 Width만 줄이지 않는다. 필요하면 구조�
 
 예:
 
-- App Shell Top Navigation → Mobile에서 Hamburger/Drawer
+- App Shell Sidebar → Tablet에서 Collapsed(Icon-only), Mobile에서 Drawer로 전환
 - 워크스페이스 Card Grid → Mobile에서 단일 컬럼 List
 - Canvas Shell Top Bar의 Presence Avatar Stack → Mobile에서 개수 축약(+N 표시)
 - Modal → Mobile에서 Full-screen Sheet 또는 Bottom Sheet
@@ -515,6 +555,15 @@ Required States:
 - Disabled
 - Loading
 
+#### Size
+
+Compact-first(§5.2)에 따라 Button은 두 단계만 둔다.
+
+- **Default** — 목록 화면의 Page Header Action, 검색 영역의 보조 Action 등 App Shell 안에서 쓰는 기본 크기. 화면 밀도에 맞춰 Compact하게 유지한다.
+- **Large** — Auth Shell의 로그인 Submit, Modal의 확정 Action처럼 화면에 Action이 하나뿐이고 그것이 곧 화면의 목적인 경우에만 사용한다.
+
+목록 화면 안에서 Large를 사용하지 않는다 — Primary Action은 위치(Page Header 우측)와 색으로 이미 구분되므로 크기까지 키우면 목록보다 무거워진다. 정확한 Control Height 값은 `tokens.json`(§15)에서 관리한다.
+
 ---
 
 ### 8.2 Input
@@ -534,6 +583,14 @@ Required States:
 - Disabled
 - Error
 - Success
+
+#### Size
+
+Button(§8.1)과 같은 두 단계를 사용하고, 같은 폼 안에서는 Input과 Submit Button의 높이를 일치시킨다. 목록 화면의 인라인 검색 필드는 Default 단계를 사용해 Page Header와 목록 사이에서 시각적으로 튀지 않게 한다.
+
+#### Textarea
+
+프로젝트 설명처럼 여러 줄 입력이 필요한 선택적 필드에 사용한다(예: 프로젝트 생성 Modal §8.8의 "설명"). Input과 동일한 배경·테두리·Radius·폰트를 사용하되, 높이만 여러 줄에 맞게 확장하고 텍스트를 상단 정렬한다. 별도 State 매트릭스를 새로 정의하지 않고 Input의 Default/Focus/Disabled/Error 규칙을 그대로 따른다.
 
 ---
 
@@ -557,7 +614,11 @@ Required States:
 
 ### 8.6 Table
 
-숫자 비교·다단 정렬처럼 진짜 표 형태가 필요한 화면에서만 사용한다. in2white의 워크스페이스/프로젝트/화이트보드 문서/멤버 목록은 모두 List Cell(§8.13)을 기본 행 Component로 사용하며, 현재는 Table을 실제로 사용하는 화면이 없다 — 향후 다단 데이터 비교가 필요한 화면이 생기면 사용한다.
+숫자 비교·다단 정렬처럼 진짜 표 형태가 필요한 화면에서만 사용한다. in2white의 워크스페이스/프로젝트/화이트보드 문서/멤버 목록은 기본적으로 List Cell(§8.13)을 행 Component로 사용한다.
+
+**예외 — 프로젝트 목록**: 워크스페이스 홈(프로젝트 목록) 페이지는 Card Grid(§7.3, 기본값)와 Table 두 View를 모두 제공한다. 사용자가 Toolbar의 View Toggle(Card/Table Icon Button)로 전환하며, 마지막 선택은 유지된다. Table View의 컬럼은 PRODUCT.md의 Required Information(이름/생성자/생성일/수정일)에 컨텍스트 메뉴 Icon Button(⋮) 열을 맨 끝에 추가한 구성이다 — 항목은 Card(§8.7)와 동일하게 이름 변경 · 설명 변경 · 프로젝트 삭제(§8.9 "프로젝트 카드 컨텍스트 메뉴" Example 참고)이며, 권한 없는 사용자에게는 열 자체가 표시되지 않는다.
+
+**예외 — 화이트보드 문서 목록**: 프로젝트 상세(화이트보드 문서 목록) 페이지도 동일하게 Card Grid(기본값)와 Table 두 View를 제공한다. Table View 컬럼은 이름/생성자/생성일/수정일 + 컨텍스트 메뉴 Icon Button(⋮) 열이며, Whiteboard Card(§8.7)와 동일한 메뉴(§8.9 "화이트보드 문서 컨텍스트 메뉴" Example)를 연다.
 
 Rules:
 
@@ -581,9 +642,15 @@ Rules:
 
 ### 8.7 Card
 
-독립적인 Surface에만 사용한다. 워크스페이스 목록을 Grid Tile로 보여줄 때, 또는 Empty State/Presence Widget처럼 명확히 분리되어야 하는 Surface에 한정한다.
+독립적인 Surface에만 사용한다. 워크스페이스/프로젝트 목록을 Grid Tile로 보여줄 때, 또는 Empty State/Presence Widget처럼 명확히 분리되어야 하는 Surface에 한정한다.
 
 기본 Section Container로 사용하지 않는다.
+
+Slots: Header(Leading Icon(선택) + 우측 정렬 컨텍스트 메뉴 Icon Button(⋮)) · Title · Description(선택) · Meta(생성일·수정일 등 보조 정보) · Divider · Footer(생성자 Avatar + 이름).
+
+컨텍스트 메뉴 Icon Button은 클릭 시 Dropdown Menu(§8.9)를 연다 — 항목 구성은 §8.9의 "프로젝트 카드 컨텍스트 메뉴" Example 참고. 현재 사용자에게 가능한 Action이 하나도 없으면 아이콘 자체를 표시하지 않는다(§8.13 Trailing Action 규칙과 동일).
+
+**Whiteboard Card**: 화이트보드 문서 목록(§9.3)의 Grid Tile 전용 변형. Project Card와 같은 Surface 스타일(Radius/Border/Shadow 없음)을 공유하지만 구성은 다르다 — 상단에 문서 내용을 암시하는 캔버스 미리보기 영역(dot grid, Excalidraw 캔버스의 기본 그리드를 그대로 차용)을 두고, 그 아래에 Title · Meta(생성일·수정일) · Divider · Footer(생성자 Avatar + 이름)만 둔다. Whiteboard Document는 설명 속성이 없으므로(PRODUCT.md §5) Description Slot이 없다 — 이 차이가 곧 "카드만 봐도 프로젝트가 아니라 문서라는 것"을 드러내는 시각적 구분선이 된다. 컨텍스트 메뉴 Icon Button(⋮)은 Project Card처럼 별도 Header 행을 두지 않고 캔버스 미리보기 위에 겹쳐진 작은 Chip(28px, background/default 배경)으로 표시한다 — 항목 구성은 §8.9의 "화이트보드 문서 컨텍스트 메뉴" Example 참고.
 
 ---
 
@@ -597,6 +664,16 @@ Rules:
 
 이름 변경(Rename)에는 사용하지 않는다 — 프로젝트/화이트보드 문서 이름 변경은 Modal이 아니라 인라인 편집(§8.13, §8.16 참고)을 사용한다.
 
+**Example — 프로젝트 생성**: 필드는 이름(필수)·설명(선택, Textarea) 두 개뿐이다. 확정 Action은 Primary Button("만들기")을 사용한다 — 파괴적 Action이 아니므로 Destructive를 쓰지 않는다. Cancel은 Tertiary Button("취소")을 사용한다.
+
+**Example — 워크스페이스 생성**: PRODUCT.md §5 Workspace의 Key Attributes(이름/소유자/생성일/기본 워크스페이스 여부)에 설명이 없으므로 필드는 이름 하나뿐이다 — 프로젝트 생성과 달리 Textarea를 두지 않는다. 나머지 구성(Primary "만들기" / Tertiary "취소")은 동일하다.
+
+**Example — 화이트보드 생성**: Whiteboard Document의 Key Attributes(PRODUCT.md §5 — 이름/생성자/캔버스 콘텐츠/생성일/최종 수정일)에서 사용자가 생성 시점에 직접 입력하는 값은 이름뿐이므로, 워크스페이스 생성과 동일하게 필드는 이름 하나뿐이다. 나머지 구성(Primary "만들기" / Tertiary "취소")도 동일하다.
+
+**Example — 워크스페이스 삭제 확인**: 기존 "Modal / Example — 삭제 확인"과 동일한 구조를 재사용한다 — 제목 "{워크스페이스명}을(를) 삭제할까요?", 본문에 하위 프로젝트·화이트보드 문서가 함께 삭제되고 되돌릴 수 없다는 점을 명시, 확정 Action은 Destructive Button("워크스페이스 삭제"). 워크스페이스 설정 페이지(§9.5)의 위험 구역에서 연다.
+
+**Example — 멤버 내보내기 확인**: "삭제 확인" 패턴(워크스페이스/프로젝트/화이트보드 문서 삭제)과 동일한 구조를 멤버 내보내기에도 재사용한다 — 제목 "{이름}님을 내보낼까요?", 본문에 접근 권한을 잃는다는 결과를 명시, 확정 Action은 Destructive Button("내보내기"). 삭제와 달리 하위 리소스가 함께 제거되는 것은 아니지만(멤버 본인의 워크스페이스 접근 권한만 제거됨), 되돌리기 어려운 Action이므로 동일하게 확인 Modal을 거친다.
+
 ---
 
 ### 8.9 Dropdown Menu
@@ -609,7 +686,11 @@ Rules:
 
 **권한 없는 항목은 표시하지 않는다.** Owner 또는 생성자에게만 허용된 Action(삭제 등)은 권한이 없는 사용자에게 Disabled 상태로 보여주지 않고, 메뉴 항목 자체를 렌더링하지 않는다. 예를 들어 본인이 만들지 않은 프로젝트의 컨텍스트 메뉴에는 "삭제" 항목이 처음부터 존재하지 않는다.
 
-"이름 변경"은 별도 메뉴 항목으로 두지 않는다 — Title을 더블클릭하거나 편집 아이콘을 눌러 바로 인라인 편집 모드로 전환한다(§8.13, §8.16 참고).
+"이름 변경"을 메뉴 항목으로 둘 수 있다 — 단, 별도 Modal이나 입력창을 열지 않고 Title을 인라인 편집 모드로 전환하는 진입점으로만 동작한다(§8.13, §8.16 참고). List Cell처럼 더블클릭으로도 같은 편집 모드에 진입할 수 있는 화면에서는 더블클릭과 메뉴 항목이 동일한 인라인 편집을 여는 두 가지 진입 경로가 된다.
+
+**Example — 프로젝트 카드 컨텍스트 메뉴**: 이름 변경 · 설명 변경 · (Separator) · 프로젝트 삭제(Danger). "이름 변경"/"설명 변경"은 각각 Card(§8.7)의 Title/Description을 인라인 편집 모드로 전환하는 진입점이고, "프로젝트 삭제"는 삭제 확인 Modal(§8.8)을 연다. Owner 또는 생성자가 아니면 "이름 변경"·"설명 변경"·"프로젝트 삭제" 항목 자체가 렌더링되지 않는다.
+
+**Example — 화이트보드 문서 컨텍스트 메뉴**: 이름 변경 · (Separator) · 화이트보드 문서 삭제(Danger). Whiteboard Document는 설명 속성이 없으므로(PRODUCT.md §5) "설명 변경" 항목이 없다는 점만 프로젝트 카드 메뉴와 다르다. "이름 변경"은 Whiteboard Card(§8.7)/Table Row의 Title을 인라인 편집 모드로 전환하는 진입점이고, "화이트보드 문서 삭제"는 삭제 확인 Modal(§8.8)을 연다. Owner 또는 생성자가 아니면 두 항목 모두 렌더링되지 않는다.
 
 ---
 
@@ -651,10 +732,15 @@ Slots: Leading(아이콘/아바타) · Body(Title + Sub) · Trailing(메타 정�
 
 Rules:
 
-- Title은 가장 강한 Typography Weight를 사용하고, Sub(생성자/최종 수정일 등)는 Secondary Color로 표현한다.
+- Title은 가장 강한 Typography Weight를 사용하고, Sub(생성자/최종 수정일 등)는 Secondary Color로 표현한다. Title과 Sub의 크기 차이보다 Weight/Color 차이로 위계를 만든다(§6.2).
+- Row의 Vertical Padding은 Compact 단계를 기본값으로 한다(§5.2) — 목록은 한 화면에 최대한 많은 행이 보이는 것이 우선이다.
+- Leading Slot의 아이콘/아바타 크기는 Row 높이를 결정하는 요인이 되지 않도록 Title + Sub 두 줄 높이 안에 들어오는 크기로 제한한다.
+- Row가 Compact해져 Interaction Target이 부족해지면 Padding을 키우지 않고 클릭 영역을 Row 전체로 확장한다(§11).
 - Interactive Row(클릭 시 상세로 이동)는 Hover 시 Subtle Background로 눌리는 느낌을 준다.
 - 목록 전체를 Card로 감싸지 않는다 — Divider 또는 Background Difference로 구분한다.
 - Trailing Action(⋮ 메뉴 등)은 현재 사용자가 수행 가능한 Action이 하나도 없으면 아이콘 자체를 표시하지 않는다. 일부만 가능하면 가능한 Action만 메뉴에 노출한다(§8.9 참고).
+
+**예외 — 멤버 목록**: 워크스페이스 소유자가 보는 멤버 목록의 Trailing은 예외적으로 메타 정보(역할 Badge, §8.11 · 합류일)와 Action(내보내기 Icon Button)을 함께 표시한다 — 소유자 본인의 Row에는 Action을 표시하지 않는다(자기 자신은 내보낼 수 없음, PRODUCT.md §7). Owner가 아닌 사용자에게는 이 페이지 자체가 읽기 전용이므로 Action이 렌더링되지 않는다.
 
 **Rename Variant** (프로젝트/화이트보드 문서 목록에서 사용):
 
@@ -675,6 +761,10 @@ Rules:
 - 접속 인원이 많을 경우 일정 개수 이후 "+N"으로 축약한다.
 - Canvas Shell Top Bar의 우측에 고정 위치로 배치한다.
 - 본인은 이 Stack에 포함하지 않는다 — 현재 접속 중인 다른 사용자만 표시한다.
+
+**Member Avatar Group과의 구분**: Sidebar의 Workspace Switcher(§8.21)에 쓰이는 "워크스페이스 멤버 미리보기" 아바타 묶음은 이 Component가 아니다 — 실시간 접속 여부와 무관한 정적 멤버 목록이므로 Presence Color Ring을 사용하지 않는다. Avatar(Initials)를 겹쳐 배치하고 `background/default`(흰색) Ring으로만 구분하며, 본인도 포함한다.
+
+이전에는 각 페이지 Page Header 우측에 개별 배치했으나, 프로젝트에는 별도 멤버 개념이 없어(PRODUCT.md §5 — 워크스페이스 소속 시 그 안의 모든 프로젝트에 동일하게 접근) 프로젝트 상세 등의 페이지에 두면 "이 프로젝트만의 멤버"처럼 스코프가 잘못 읽히는 문제가 있었다. Sidebar Workspace Switcher는 페이지와 무관하게 항상 "지금 어느 워크스페이스에 있는지"를 표현하는 유일한 자리이므로, 멤버 미리보기도 그 옆으로 옮겨 스코프를 명확히 했다 — Page Header에는 더 이상 두지 않는다.
 
 ---
 
@@ -700,9 +790,12 @@ Rules:
 
 - 높이를 최소화해 캔버스 영역을 최대한 확보한다.
 - 배경은 `background/default`를 사용하고, 캔버스(`background/canvas`)와 명확히 구분되는 하단 Hairline Border를 둔다.
-- 저장 상태는 Icon + Label로 표현하고, Color만으로 표현하지 않는다.
+- 저장 상태는 Icon + Label로 표현하고, Color만으로 표현하지 않는다 — 저장됨(`circle-check`, `status/success`) · 저장 중(Spinner) · 동기화 끊김(`circle-alert`, `status/danger`) 세 상태를 Toast(§8.18)와 동일한 아이콘 언어로 표현한다.
 - 문서명은 Owner 또는 생성자에게만 인라인 편집이 가능하다(§8.13 Rename Variant와 동일한 방식 — 더블클릭 시 즉시 편집, Modal 없음). 그 외 사용자에게는 읽기 전용 텍스트로 보인다.
 - 문서 메뉴의 "삭제" 항목은 Owner 또는 생성자가 아니면 메뉴 자체에 렌더링하지 않는다(§8.9 참고) — Disabled로 보여주지 않는다.
+- 동기화가 끊긴 상태에서는 다른 참여자의 Presence Avatar Stack과 Live Cursor를 표시하지 않는다 — 연결이 끊겼으므로 그 시점 이후의 참여자 상태를 신뢰할 수 없기 때문이다.
+
+**Example — Canvas Shell 전체 화면**: Top Bar 아래는 Full-bleed Canvas(Excalidraw 렌더링 영역)이며, 캔버스 내부 콘텐츠(도형·스티커노트 등)는 Excalidraw 라이브러리가 그리므로 디자인 목업에서 직접 그리지 않는다 — Excalidraw 자체의 시각 언어(자체 폰트, 선택 핸들, 툴바)와 다르게 그리면 오히려 잘못된 지시로 읽힐 수 있다. 대신 `background/canvas` 톤의 빈 영역 + "Excalidraw 렌더링 영역" Label로만 표시해 Top Bar가 캔버스를 침범하지 않는 경계(전체 폭 Full-bleed, 좌우 Padding 없음)만 명확히 한다. 네 가지 State를 제공한다 — 기본(저장됨 + Live Cursor 2개), 저장 중, 동기화 끊김(Live Cursor 없음), 초기 로딩(Top Bar의 저장 상태·Presence·문서 메뉴는 아직 렌더링하지 않고, 캔버스 자리에 Spinner Large를 중앙 배치).
 
 ---
 
@@ -714,9 +807,13 @@ Rules:
 - 비어 있는 이유
 - 다음 Action (Primary Button)
 
-단순히 "No data"만 표시하지 않는다. 이모지 대신 Monochrome Icon을 사용한다.
+단순히 "No data"만 표시하지 않는다. 이모지 대신 Monochrome Icon을 사용하며, 기본 Example(§8.7 참고 컴포넌트 문서)의 Icon은 `folder`다. 새 Variant를 만들 때 이 Example을 복제해서 아이콘만 바꾸는 경우, 기존 Icon Instance를 먼저 지우고 나서 새 Icon을 넣어야 한다 — 지우지 않고 겹쳐 넣으면 두 아이콘이 겹쳐 보여 깨진 것처럼 보인다(과거 실제로 발생했던 실수).
 
-**Permission Denied Variant**: 워크스페이스 홈/프로젝트 상세/화이트보드 문서/멤버 목록 페이지에 접근 권한이 없을 때도 동일한 구조(아이콘 + 메시지 + Action)를 재사용한다. 메시지는 "이 워크스페이스에 접근할 권한이 없어요"처럼 상황을 명확히 설명하고, Action은 "워크스페이스 목록으로 돌아가기"처럼 사용자가 이동할 곳을 제공한다. 다른 페이지로 자동 리다이렉트하지 않고, 요청한 페이지 자리에 그대로 표시한다.
+**Example — 검색 결과 없음**: 목록 자체가 비어 있는 경우(예: "아직 프로젝트가 없어요")와 구분한다 — Icon은 Search(§8.20)로, 확정 Action은 Primary Button이 아니라 Secondary Button("검색 결과 초기화", §8.1)을 사용한다. 목록 화면 안의 부분 상태이므로 Large가 아닌 Default Size를 사용한다(§8.1 Size 규칙). Search 필드에는 입력한 검색어를 그대로 유지해 사용자가 무엇을 검색했는지 알 수 있게 한다.
+
+Empty State는 Compact-first(§5.2)의 예외로, 목록보다 넉넉한 상하 여백(§6.3의 48 구간)을 사용할 수 있다 — 비어 있음 자체가 전달해야 하는 정보이기 때문이다. 단, 좌우는 Container 규칙(§7.2)을 따른다.
+
+**Permission Denied Variant**: 워크스페이스 홈/프로젝트 상세/화이트보드 문서/멤버 목록 페이지에 접근 권한이 없을 때도 동일한 구조(아이콘 + 메시지 + Action)를 재사용한다. 메시지는 "이 워크스페이스에 접근할 권한이 없어요"처럼 상황을 명확히 설명하고, Action은 "My Workspace로 돌아가기"처럼 사용자가 이동할 곳을 제공한다(Icon은 `users`, Button은 Secondary — Error Variant와 동일하게 화면의 주 Action처럼 강조하지 않는다). App Shell(Sidebar 포함)을 그대로 두지 않고 화면 전체를 이 메시지로 채운다 — 접근 권한이 없는 워크스페이스의 Sidebar(Workspace Switcher, Primary Nav 등)를 보여주는 것 자체가 그 워크스페이스에 대한 정보 노출이기 때문이다. 대신 Action 하나로 본인의 기본 워크스페이스로 즉시 돌아갈 수 있게 한다. Example — "Workspace Home — 접근 권한 없음 (전체 화면)" 참고.
 
 ---
 
@@ -727,6 +824,12 @@ Rules:
 사용처: 저장 완료, 저장 오류, 멤버 추가 완료, 멤버 내보내기 완료.
 
 Dismiss 없이 자동으로 사라지며, 중요한 확인이 필요한 정보(예: 삭제 여부)에는 사용하지 않는다 — 그 경우 Modal(§8.8)을 사용한다.
+
+**배치**: Main Content 우측 상단(위 24px, 오른쪽 24px 여백)에 고정한다 — Sidebar를 가리지 않고, 화면 중앙의 작업 콘텐츠와도 겹치지 않는 위치다. 여러 개가 동시에 뜨면 이 지점에서 아래로 쌓인다.
+
+Semantic(Success/Danger/Warning/Info)마다 배경을 해당 색의 Subtle Background(§6.1 `-subtle-bg` 토큰)로 채우고, 좌측에 그 색과 동일한 Semantic Icon을 둔다 — 색상 하나에만 의존하지 않고 아이콘 형태로도 상태를 구분한다(§11 Accessibility). 흰 배경에 작은 색상 Dot만 두던 이전 방식보다 Scanning 시 상태를 더 빠르게 인지할 수 있다.
+
+아이콘은 Lucide 원본 형태를 따른다 — Success/Danger/Info는 원 안에 글리프(circle-check/circle-alert/info)를 둬 셋이 같은 틀을 공유하고, Warning만 예외적으로 원이 아닌 triangle-alert를 사용한다(Lucide 자체가 Warning에 삼각형을 쓰는 관례를 그대로 따름 — 인위적으로 원에 끼워 넣지 않는다).
 
 ---
 
@@ -756,6 +859,61 @@ Rules:
 - 검색어를 지우면 즉시 전체 목록으로 돌아간다.
 
 States: Default, Focus, Empty(검색 결과 없음 — §8.17 Empty State의 구조를 재사용).
+
+---
+
+### 8.21 Sidebar
+
+워크스페이스 내부(App Shell)의 Primary Navigation(§7.4). 지금 어떤 워크스페이스에 있는지, 그 안에서 어느 섹션(Projects/Members)에 있는지를 상시 고정해서 보여주고, 다른 워크스페이스로의 이동을 담당한다.
+
+Structure (위에서 아래로):
+
+1. **Brand Row** — in2white 로고 마크(28px)만 둔다. 제품 자체의 정체성을 표현하는 행으로, 워크스페이스 정체성(Workspace Switcher)과는 분리한다 — 하나의 작은 아이콘이 "제품 로고"와 "워크스페이스 아이콘"을 동시에 맡으면 둘 다 존재감이 약해지기 때문이다. 워드마크 텍스트는 두지 않는다(로고 마크 자체로 충분히 식별 가능하고, Sidebar 폭이 좁아 텍스트를 더하면 다른 요소와 경쟁한다).
+2. **Workspace Switcher** — 현재 워크스페이스 이름 + 내 역할(소유자/멤버) 2줄 + Chevron만 둔다(별도 아이콘 없음 — 워크스페이스 식별은 이름 텍스트로 충분하고, 아이콘은 위 Brand Row와 중복된다). 그 아래 두 번째 행에 현재 워크스페이스에 소속된 멤버 미리보기를 배치한다. 클릭하면 멤버 목록 페이지로 이동한다 — "지금 어디에 있는지"(워크스페이스)와 "누가 있는지"(멤버)를 같은 정보 블록에 묶어 모호함을 없앤다. 멤버 미리보기는 Avatar 2~3개를 겹쳐 표시하고, 그 뒤에 남은 인원 수를 "+N" Chip(Avatar와 같은 크기의 원, `background/subtle` 배경)으로 붙인다 — Avatar 개수와 별도로 "멤버 N명" 텍스트를 병기하면 "아바타는 3개인데 왜 5명이라 적혀 있지"처럼 숫자가 어긋나 보이므로, 전체 인원을 Avatar 자체로만(보이는 것 + "+N") 정확히 표현한다. 이 표현은 §8.14의 Member Avatar Group과 동일한 방식(정적 멤버 목록, `background/default` 흰색 Ring, 본인 포함)을 쓰되 더 작은 크기(20px)를 사용한다. Collapsed 상태에서는 공간이 부족하므로 이 행을 표시하지 않는다.
+
+   Workspace Switcher의 이름/역할/Chevron 부분을 클릭하면 Sidebar 바로 아래 Popover Panel이 열리며, 위에서 아래로 다음을 제공한다.
+   - **워크스페이스 검색** (Search, §8.20) — 소속 워크스페이스가 많아질 때를 대비해 최상단에 배치한다.
+   - **워크스페이스 목록** (List Cell, §8.13) — Leading에 워크스페이스 Avatar(Initials), Body에 이름 + 내 역할(Sub)을 표시하고, 선택 시 해당 워크스페이스로 전환한다. 현재 워크스페이스는 Row 배경(`background/subtle`)으로 구분한다 — Checkmark 같은 추가 아이콘을 쓰지 않는다.
+   - **Divider**
+   - **새 워크스페이스 생성** — 목록 맨 아래, 박스형 Button이 아니라 Plus Icon + Label로 구성된 가벼운 List 행이다. Search와 시각적으로 경쟁하지 않도록 Secondary Color를 사용한다. 클릭하면 워크스페이스 생성 Modal(§8.8 Example — 워크스페이스 생성 참고, 이름 한 필드만 입력)이 열린다.
+   - 모든 워크스페이스 보기, 워크스페이스 설정(소유자 전용 — 이름 변경 · 삭제)은 이 Panel이 아니라 각각 워크스페이스 목록 페이지, 워크스페이스 설정 화면(§9.5 Settings 패턴)에서 별도로 제공한다. 기본 워크스페이스(My Workspace)는 삭제할 수 없으므로 Destructive 영역 자체를 렌더링하지 않는다 — PRODUCT.md §5 Workspace.
+3. **Primary Nav** — 프로젝트, 멤버, 설정 세 항목. 각 항목은 Icon(§6.8) + Label로 구성하고 현재 위치는 Active 상태(§5.5)로 표현한다.
+   - 멤버 항목에는 소유자에게만 보이는 초대(Invite) Quick Action을 나란히 배치한다 — 항목 자체를 누르면 멤버 목록 페이지로 이동하고, Invite Action은 바로 User Picker(§8.19) Modal을 연다.
+   - **설정** 항목(Icon `sliders-horizontal`)은 워크스페이스 소유자에게만 보인다 — Member에게는 항목 자체가 렌더링되지 않는다(§8.9의 "권한 없는 항목은 표시하지 않는다"와 동일한 원칙, Disabled로 보여주지 않음). 클릭하면 워크스페이스 설정 페이지(§9.5)로 이동해 워크스페이스 이름 변경과 삭제를 수행한다. 멤버 목록과 별도 페이지로 두는 이유는 §9.5 참고.
+4. **로그아웃** — Primary Nav 아래, Divider 위에 위치한 별도 행.
+5. **Divider** — `border/subtle` Hairline로 로그아웃과 Account Footer를 분리한다.
+6. **Account Footer** — 내 정보(이름/이메일 + Avatar). 화면 높이와 무관하게 항상 Sidebar 맨 하단에 고정된다(Primary Nav와 로그아웃 사이의 Spacer가 남는 세로 공간을 모두 흡수). 클릭 시 계정 설정(§9.5)으로 이동한다.
+
+Variants:
+
+- **Expanded** — Icon + Label 모두 노출.
+- **Collapsed** — Icon만 노출, Label은 Tooltip(§8.12)으로 대체한다. Workspace Switcher는 Collapsed 상태에서도 워크스페이스를 식별할 수 있는 최소 표시(이니셜 등)를 유지한다. 모든 Row의 높이는 Expanded와 동일하게 고정해, Collapse/Expand 전환 시 각 메뉴 항목의 세로 위치가 흔들리지 않게 한다.
+
+Rules:
+
+- Collapse/Expand를 전환하는 Toggle Control(Icon Button, `panel-left`)은 Sidebar 우측 상단 안쪽 모서리에 고정된다 — Brand Row·Workspace Switcher·Primary Nav 등 어떤 콘텐츠 행에도 속하지 않는 독립 요소로, Expanded/Collapsed 두 상태에서 항상 같은 위치를 유지한다. 예전에는 각 페이지 Page Header의 Title 왼쪽에 뒀으나, 페이지마다 반복되는 데다 Collapsed 상태에서 위치를 다시 정의해야 하는 문제가 있어 Sidebar 쪽으로 옮겼다. Sidebar 컴포넌트 하나에만 정의하며 페이지마다 별도로 배치하지 않는다. (Sidebar/Main Content 경계선에 절반씩 걸치는 형태도 시도했으나 시각적으로 어색해 안쪽 모서리 배치로 되돌렸다.)
+- Collapsed 상태의 모든 Icon-only 항목은 Tooltip으로 Label을 제공한다(§11 — Icon-only Button에 Accessible Label 제공).
+- Active 상태는 Color만으로 표현하지 않고 배경(§5.5 Selected State) + Icon/Label Weight로 함께 표현한다.
+- Icon은 Lucide Icons를 사용한다(§6.8).
+
+When Not to Use:
+
+- Auth Shell, Canvas Shell에는 사용하지 않는다(§7.1) — 인증 전 화면이거나 캔버스 시야를 최우선해야 하는 화면이기 때문이다.
+- 워크스페이스 컨텍스트가 없는 워크스페이스 목록 페이지에도 사용하지 않는다(§7.1 예외).
+
+---
+
+### 8.22 Pagination
+
+긴 목록(프로젝트/화이트보드 문서/멤버 등)을 페이지 단위로 나눌 때 사용한다.
+
+Structure: 이전 Icon Button(`chevron-left`) · 페이지 번호 버튼들 · 다음 Icon Button(`chevron-right`).
+
+Rules:
+
+- 현재 페이지는 `action/secondary` 배경 + `foreground/strong` Semi Bold 텍스트로 표현한다.
+- 첫 페이지에서는 이전 버튼이, 마지막 페이지에서는 다음 버튼이 Disabled(40% Opacity) 상태가 된다.
+- List Content 하단, Main Content와 같은 좌측 정렬을 유지한다.
 
 ---
 
@@ -793,6 +951,15 @@ Rules:
 - 정보 관계를 기준으로 Section을 나눈다.
 - 모든 Section을 Card로 만들지 않는다.
 
+**Page Header 구조 — 프로젝트 상세**: 위에서 아래로 다음 4단으로 구성한다.
+
+1. **top-row**: Breadcrumb(§56:52, "프로젝트" 라벨 → 현재 프로젝트명) 한 줄만 둔다. Breadcrumb의 마지막 항목(현재 프로젝트명, strong)이 "지금 어떤 프로젝트에 들어와 있는지"를 드러낸다 — 별도 Badge를 새로 만들지 않는다. Sidebar Collapse Toggle과 워크스페이스 멤버 미리보기는 더 이상 Page Header에 두지 않는다 — 전자는 Sidebar 우측 상단에, 후자는 Sidebar Workspace Switcher(§8.21)에 고정된 위치를 갖는다.
+2. **title-row**: 뒤로가기 Icon Button(`arrow-left`, 프로젝트 목록으로 이동) + H1(프로젝트 이름, Heading 1 Role).
+3. **description**: 프로젝트 설명(있는 경우만 렌더링, foreground/secondary).
+4. **creator-row**: Avatar(24px) + "생성자 {이름}" 텍스트(foreground/secondary) — Card(§8.7) Footer와 동일한 시각 언어를 재사용한다.
+
+Toolbar(Search + View Toggle + Primary Action "화이트보드 생성")는 워크스페이스 홈과 동일하게 Page Header 아래 별도 행으로 유지한다 — Page Header 자체에는 Primary Action을 두지 않는다.
+
 ---
 
 ### 9.4 Form
@@ -814,6 +981,17 @@ Rules:
 
 위험한 설정(워크스페이스 삭제 등)은 일반 설정과 명확히 구분한다 — 별도 Section 또는 Destructive Button으로 시각적으로 분리한다.
 
+**계정 설정 페이지 구조**: App Shell(§7.1) 위에서 렌더링되며(Sidebar 유지, Primary Nav는 프로젝트/멤버 어느 쪽도 Active로 표시하지 않는다 — 계정 설정은 그 둘과 나란한 별개 영역), Page Header는 Breadcrumb 없이 타이틀 "계정 설정"만 사용한다(§8.13/§8.6 List·Table 페이지들과 달리 Toolbar·Primary Action이 없다). 본문은 List 화면과 달리 §7.2의 Center Alignment 규칙에 따라 480px 폭 Form Column을 Main Content 안에서 가운데 정렬하고, 세 Section을 위에서 아래로 배치한다(§9.4 Form Grouping) — 각 Section은 Heading 2 타이틀 + Section별 확정 Action(Primary Button, Default Size)을 갖는다.
+
+1. **기본 정보** — 아이디(이메일, Input Disabled 상태로 조회 전용 표현) + 이름(Input, 수정 가능) + "저장" 버튼.
+2. **비밀번호 변경** — 현재 비밀번호 · 새 비밀번호 · 새 비밀번호 확인 세 Input + "변경" 버튼.
+3. **참여 중인 워크스페이스** — 소속된 모든 워크스페이스를 List Cell(§8.13)로 나열한다(Card로 감싸지 않음, Divider로 구분). Leading은 워크스페이스 Avatar(Initials), Body는 이름 + 내 역할(Sub), Trailing은 Chevron — 클릭하면 Sidebar Workspace Switcher(§8.21)와 동일하게 해당 워크스페이스로 이동한다. 현재 보고 있는 워크스페이스는 Row 배경(`background/subtle`)으로 구분한다(Workspace Switcher Popover와 동일한 표현 방식).
+
+**워크스페이스 설정 페이지 구조**(Sidebar "설정" 항목의 목적지, Owner 전용, PRODUCT.md §9): 멤버 목록 페이지와는 별도 페이지다 — 멤버 목록은 Owner·Member 모두가 보는 조회 중심 화면이고, 워크스페이스 설정은 Owner만 접근하는 관리 전용 화면이라 목적이 다르며, 같은 페이지에 섞으면 "누가 이걸 볼 수 있는지"가 Section마다 달라져 오히려 헷갈린다. List 화면이 아니라 Form에 가까우므로 Account Settings(§9.5 계정 설정)와 동일하게 Center Alignment를 따르지 않고, 다른 List 페이지처럼 좌측 정렬을 유지한다(콘텐츠가 2개 Section뿐이라 원래 List 페이지들과 리듬이 비슷하기 때문). Page Header 타이틀은 "설정". 위에서 아래로 2개 Section을 배치한다.
+
+1. **일반** — 워크스페이스 이름 Input(400px 폭으로 제한) + "저장" 버튼.
+2. **위험 구역** — 현재 워크스페이스가 기본 워크스페이스(My Workspace)가 아닐 때만 렌더링한다. `status/danger-subtle-bg` 배경의 Card 형태로 일반 Section과 시각적으로 분리하고(§9.5), 안에는 "워크스페이스 삭제" 설명 텍스트 + Destructive Button을 한 행에 둔다. 기본 워크스페이스에서는 이 Section 자체를 렌더링하지 않는다(Disabled로 보여주지 않음 — §8.9와 동일한 원칙). 확정 시 §8.8의 "삭제 확인" Modal 패턴(Example — 워크스페이스 삭제 확인)을 연다.
+
 ---
 
 ### 9.6 Empty State
@@ -828,7 +1006,7 @@ Layout Shift를 최소화한다.
 
 상황에 따라 다음을 사용한다.
 
-- Skeleton (목록/Table 초기 로딩)
+- Skeleton (목록/Table 초기 로딩) — List Cell(§8.13)과 동일한 Padding/크기를 유지해 실제 데이터로 전환될 때 Layout Shift가 없어야 한다. Example — "Members — 로딩": 멤버 목록 영역만 Skeleton List Cell로 대체하고, 값이 이미 정해진 정적 영역(Page Header 등)은 그대로 유지한다 — 실제로 서버에서 오는(비동기) 부분만 Skeleton 처리한다.
 - Spinner (Canvas 초기 로딩)
 - Optimistic State (텍스트/이름 변경 등 즉시 반영 후 서버 확인)
 
@@ -840,6 +1018,8 @@ Error는 사용자가 다음을 이해할 수 있어야 한다.
 
 - 무엇이 실패했는가? (예: "동기화가 끊겼어요")
 - 사용자가 다음에 무엇을 할 수 있는가? (예: "다시 연결을 시도해 주세요")
+
+목록 전체를 불러오지 못한 경우 Empty State(§8.17)와 동일한 구조(Icon + 메시지 + Action)를 재사용한다 — Icon은 `circle-alert`을 `status/danger` 색으로, Action은 Secondary Button("다시 시도")을 사용한다(Primary가 아닌 이유는 §8.17 "검색 결과 없음"과 동일 — 목록 화면 안의 부분 상태이므로 화면의 주 Action처럼 강조하지 않는다). Example — "Workspace Home — 오류" 참고.
 
 ---
 
@@ -906,6 +1086,8 @@ AI-generated UI에서 다음 패턴을 기본적으로 피한다.
 - 거대한 Dashboard Hero Heading
 - Metric Card 4개 자동 생성
 - 과도한 Border Radius
+- 목록 화면에 마케팅급 큰 Heading·Control·여백을 사용해 한 화면에 보이는 행 수를 줄이기 (§5.2)
+- Reference의 Font Size / Control Height / Padding을 Compact 환산 없이 그대로 이식하기 (§5.2)
 - 임의의 Color 생성
 - 임의의 Spacing 생성
 - 임의의 Font Size 생성
@@ -986,7 +1168,8 @@ tokens.json으로 이동할 것:
 - Line Heights
 - Radius Values
 - Shadows
-- Control Heights
+- Control Heights (Default / Large 두 단계 — §8.1)
+- List Cell Row Padding
 - Breakpoints
 - 반복되는 Numeric Design Value
 
