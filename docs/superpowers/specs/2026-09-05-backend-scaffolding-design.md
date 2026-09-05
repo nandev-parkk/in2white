@@ -96,6 +96,7 @@ backend/
 | 타입 | typescript, @types/express 등 |
 | 린트/포맷 | eslint, prettier, typescript-eslint |
 | 커밋 훅 | husky, lint-staged |
+| 경로 alias | tsc-alias (빌드 산출물의 alias를 상대경로로 재작성) |
 | 테스트 | vitest, supertest |
 
 패키지 매니저는 pnpm을 사용한다.
@@ -104,10 +105,17 @@ backend/
 
 `package.json`에 `"type": "module"`을 지정해 ESM으로 구성한다 (jose, drizzle-kit, tsx 모두 ESM 친화적).
 
+### 경로 alias
+
+`tsconfig.json`에 `baseUrl: "."`, `paths: { "@/*": ["src/*"] }`를 설정해 `@/utils/logger`처럼 절대경로 스타일 import를 사용한다.
+
+- 개발(`tsx`)은 esbuild 기반이라 tsconfig의 `paths`를 자동으로 인식해 별도 설정 없이 동작한다.
+- 프로덕션 빌드(`tsc`)는 타입 체크만 하고 alias를 실제 경로로 바꿔주지 않으므로, 빌드 직후 `tsc-alias`로 `dist/` 산출물의 import 경로를 상대경로로 재작성한다.
+
 스크립트:
 
 - `dev`: `tsx watch src/server.ts`
-- `build`: `tsc`
+- `build`: `tsc && tsc-alias`
 - `start`: `node dist/server.js`
 - `lint`: `eslint .`
 - `format`: `prettier --write .`
@@ -170,7 +178,8 @@ backend/
 
 ## 11. 완료 기준 (Definition of Done)
 
-- `pnpm install` 후 `pnpm dev`로 서버가 기동되고 `GET /health`가 200을 반환한다.
+- `pnpm install` 후 `pnpm dev`로 서버가 기동되고 `GET /health`가 200을 반환한다(내부에서 `@/*` alias import 사용).
+- `pnpm build && pnpm start`로도 동일하게 `GET /health`가 200을 반환한다(빌드 산출물에서 alias가 정상적으로 상대경로로 재작성되었는지 확인).
 - `pnpm lint`, `pnpm test`가 통과한다.
 - `pnpm install` 시 `prepare` 스크립트로 `.husky/pre-commit` 훅이 설치되고, staged 파일에 대해 lint-staged가 동작한다.
 - `pnpm db:generate` 실행 시 5개 테이블에 대한 마이그레이션 SQL이 생성된다(로컬 DB 적용은 범위 밖).
