@@ -1,0 +1,45 @@
+import { describe, expect, it, vi } from "vitest";
+import type { Request, Response } from "express";
+import { notFoundMiddleware } from "@/middlewares/not-found.middleware";
+import { errorHandlerMiddleware } from "@/middlewares/error-handler.middleware";
+import { rateLimitMiddleware } from "@/middlewares/rate-limit.middleware";
+
+function createMockResponse() {
+  const res = {} as Response;
+  res.status = vi.fn().mockReturnValue(res);
+  res.json = vi.fn().mockReturnValue(res);
+  return res;
+}
+
+describe("notFoundMiddleware", () => {
+  it("responds with 404 and route info", () => {
+    const req = { method: "GET", originalUrl: "/unknown" } as Request;
+    const res = createMockResponse();
+
+    notFoundMiddleware(req, res, vi.fn());
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({
+      error: { message: "Route not found: GET /unknown", code: "NOT_FOUND" },
+    });
+  });
+});
+
+describe("errorHandlerMiddleware", () => {
+  it("responds with 500 and the error message", () => {
+    const res = createMockResponse();
+
+    errorHandlerMiddleware(new Error("boom"), {} as Request, res, vi.fn());
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      error: { message: "boom", code: "INTERNAL_SERVER_ERROR" },
+    });
+  });
+});
+
+describe("rateLimitMiddleware", () => {
+  it("is an express middleware function", () => {
+    expect(typeof rateLimitMiddleware).toBe("function");
+  });
+});
