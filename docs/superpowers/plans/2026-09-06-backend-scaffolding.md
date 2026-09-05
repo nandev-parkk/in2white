@@ -144,10 +144,12 @@ pnpm add -D typescript tsx tsc-alias rimraf drizzle-kit pino-pretty eslint @esli
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "prepare": "husky"
+    "prepare": "cd .. && husky backend/.husky"
   }
 }
 ```
+
+`prepare`가 `cd .. && husky backend/.husky`인 이유: `backend/`는 저장소 루트가 아닌 하위 폴더라, husky가 cwd 기준으로 `.git` 존재를 확인하는 방식상 저장소 루트로 이동한 뒤 훅 디렉터리 경로(`backend/.husky`)를 인자로 넘겨야 한다.
 
 - [ ] **Step 5: tsconfig.json 작성**
 
@@ -209,11 +211,21 @@ export default tseslint.config(
     rules: {
       "import/no-unresolved": "error",
       "import/no-duplicates": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+        },
+      ],
     },
   },
   eslintConfigPrettier,
 );
 ```
+
+`@typescript-eslint/no-unused-vars`에 `^_` ignore 패턴을 추가하는 이유: 이 계획 전반에서 `_req`, `_next`, `_drop`처럼 의도적으로 사용하지 않는 매개변수/구조분해 변수에 언더스코어 프리픽스 컨벤션을 쓰기 때문이다.
 
 - [ ] **Step 7: Prettier 설정 작성**
 
@@ -1437,16 +1449,15 @@ Create `backend/.lintstagedrc.json`:
 }
 ```
 
-- [ ] **Step 2: husky 초기화**
+- [ ] **Step 2: husky 초기화 확인**
 
-저장소 루트에서 실행(husky는 저장소 최상위 `.git`을 기준으로 훅을 등록한다):
+Task 1의 `pnpm install` 시점에 `prepare` 스크립트(`cd .. && husky backend/.husky`)가 이미 실행되어 `core.hooksPath`와 `backend/.husky/_` 내부 wrapper가 준비되어 있어야 한다. 확인:
 
 ```bash
-cd backend
-pnpm exec husky
+git config --get core.hooksPath
 ```
 
-Expected: `.git/config`의 `core.hooksPath`가 `backend/.husky`(또는 repo 루트 기준 상대 경로)로 설정됨. 이미 Task 1에서 `"prepare": "husky"`를 등록해뒀으므로 `pnpm install` 시에도 자동 실행된다.
+Expected: `backend/.husky/_` 출력. 출력이 없다면 `backend/`에서 `pnpm install`을 다시 실행한다.
 
 - [ ] **Step 3: pre-commit 훅 작성**
 
