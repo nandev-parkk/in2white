@@ -26,8 +26,11 @@ backend/
 ├── .gitignore
 ├── eslint.config.js
 ├── .prettierrc
+├── .lintstagedrc.json
 ├── drizzle.config.ts
 ├── vitest.config.ts
+├── .husky/
+│   └── pre-commit                 # lint-staged 실행
 ├── src/
 │   ├── app.ts                     # Express 앱 조립 (미들웨어 등록, 라우터 마운트)
 │   ├── server.ts                  # HTTP 서버 부트스트랩 + graceful shutdown
@@ -53,6 +56,7 @@ backend/
 │   │   └── health.service.ts
 │   ├── middlewares/
 │   │   ├── auth.middleware.ts     # jose 기반 Authorization 헤더 검증 스켈레톤
+│   │   ├── rate-limit.middleware.ts  # express-rate-limit 설정
 │   │   ├── error-handler.middleware.ts
 │   │   └── not-found.middleware.ts
 │   ├── lib/
@@ -80,16 +84,18 @@ backend/
 | 목적 | 라이브러리 |
 |---|---|
 | 웹 프레임워크 | express |
-| 보안/공통 미들웨어 | cors, helmet, compression |
+| 보안/공통 미들웨어 | cors, helmet, compression, express-rate-limit |
 | ORM / 마이그레이션 | drizzle-orm, drizzle-kit |
 | PostgreSQL 드라이버 | postgres (postgres.js) |
 | 캐시 클라이언트 | iovalkey |
 | 인증 | jose |
-| 검증 | zod |
+| 검증 | zod, drizzle-zod (drizzle 스키마 → zod 스키마 생성) |
+| 환경변수 로딩 | dotenv |
 | 로깅 | pino, pino-http |
 | 개발 서버 | tsx |
 | 타입 | typescript, @types/express 등 |
 | 린트/포맷 | eslint, prettier, typescript-eslint |
+| 커밋 훅 | husky, lint-staged |
 | 테스트 | vitest, supertest |
 
 패키지 매니저는 pnpm을 사용한다.
@@ -109,10 +115,15 @@ backend/
 - `db:generate`: `drizzle-kit generate`
 - `db:migrate`: `drizzle-kit migrate`
 - `db:studio`: `drizzle-kit studio`
+- `prepare`: `husky` (pnpm install 시 자동으로 git hook 설치)
+
+### 커밋 훅
+
+`husky`로 `.husky/pre-commit` 훅을 등록하고 `lint-staged`가 staged된 파일에 대해 `eslint --fix`, `prettier --write`를 실행한다. 설정은 `.lintstagedrc.json`에 정의한다.
 
 ## 5. 환경 변수
 
-`src/config/env.ts`에서 zod로 다음 값을 검증한다:
+`dotenv`로 `.env` 파일을 로드한 뒤, `src/config/env.ts`에서 zod로 다음 값을 검증한다:
 
 - `NODE_ENV` (development/test/production)
 - `PORT`
@@ -134,6 +145,8 @@ backend/
 
 관계는 모두 drizzle의 `relations()`로 명시한다. 이 단계에서는 실제 마이그레이션을 로컬 DB에 적용하지 않고, `drizzle-kit generate`로 마이그레이션 SQL만 생성해 커밋한다(실행/검증은 인프라 준비 후 기능 이슈에서 진행).
 
+각 테이블마다 `drizzle-zod`의 `createInsertSchema`/`createSelectSchema`로 대응하는 zod 스키마를 함께 export한다(`db/schema/*.ts` 내 정의). 이렇게 하면 다음 기능 이슈에서 컨트롤러 요청 검증 시 DB 스키마와 어긋나지 않는 zod 스키마를 바로 재사용할 수 있다.
+
 ## 7. 인증 유틸리티 (스켈레톤)
 
 - `lib/jwt.ts`: `signAccessToken(payload)`, `verifyAccessToken(token)` 형태로 jose(`SignJWT`, `jwtVerify`)를 감싼 헬퍼 제공.
@@ -144,6 +157,7 @@ backend/
 
 - `error-handler.middleware.ts`: 처리되지 않은 에러를 pino로 로깅 후 일관된 JSON 에러 응답(`{ error: { message, code } }`) 반환.
 - `not-found.middleware.ts`: 매칭되는 라우트가 없을 때 404 JSON 응답.
+- `rate-limit.middleware.ts`: `express-rate-limit`으로 기본 rate limit(예: 15분당 IP당 100회)을 적용하는 미들웨어. `app.ts`에서 전역으로 등록한다.
 - `utils/async-handler.ts`: 비동기 컨트롤러의 reject를 `next(err)`로 위임.
 
 ## 9. 검증용 예시 API
@@ -158,5 +172,6 @@ backend/
 
 - `pnpm install` 후 `pnpm dev`로 서버가 기동되고 `GET /health`가 200을 반환한다.
 - `pnpm lint`, `pnpm test`가 통과한다.
+- `pnpm install` 시 `prepare` 스크립트로 `.husky/pre-commit` 훅이 설치되고, staged 파일에 대해 lint-staged가 동작한다.
 - `pnpm db:generate` 실행 시 5개 테이블에 대한 마이그레이션 SQL이 생성된다(로컬 DB 적용은 범위 밖).
 - 실제 PostgreSQL/Valkey 인스턴스 없이도 위 항목이 모두 확인 가능해야 한다. `db/client.ts`와 `cache/valkey.ts`는 모듈 로드 시점에 연결을 강제하지 않는 지연 연결 방식(postgres.js, iovalkey 모두 기본적으로 지연 연결 지원)으로 구성하고, `GET /health`는 DB/캐시 상태를 확인하지 않고 프로세스 생존만 반환한다.
