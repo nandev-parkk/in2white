@@ -136,7 +136,7 @@ pnpm add -D typescript tsx tsc-alias rimraf drizzle-kit pino-pretty eslint @esli
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "prebuild": "rimraf dist",
-    "build": "tsc && tsc-alias",
+    "build": "tsc && tsc-alias --resolve-full-paths",
     "start": "node dist/server.js",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -151,6 +151,8 @@ pnpm add -D typescript tsx tsc-alias rimraf drizzle-kit pino-pretty eslint @esli
 
 `prepare`가 `cd .. && husky backend/.husky`인 이유: `backend/`는 저장소 루트가 아닌 하위 폴더라, husky가 cwd 기준으로 `.git` 존재를 확인하는 방식상 저장소 루트로 이동한 뒤 훅 디렉터리 경로(`backend/.husky`)를 인자로 넘겨야 한다.
 
+`build`에 `--resolve-full-paths`가 필요한 이유: `tsc-alias`는 `@/*` alias를 상대경로로만 바꿔줄 뿐 확장자를 붙여주지 않는다. `package.json`이 `"type": "module"`이라 Node ESM 런타임은 상대 import에 명시적 확장자(`.js`)가 없으면 `ERR_MODULE_NOT_FOUND`로 실패하므로, 이 플래그로 재작성된 경로에 `.js`를 강제로 붙인다.
+
 - [ ] **Step 5: tsconfig.json 작성**
 
 Create `backend/tsconfig.json`:
@@ -159,8 +161,8 @@ Create `backend/tsconfig.json`:
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "lib": ["ES2022"],
     "outDir": "dist",
     "rootDir": "src",
@@ -182,6 +184,8 @@ Create `backend/tsconfig.json`:
   "include": ["src/**/*.ts"]
 }
 ```
+
+`moduleResolution`을 `"bundler"`로 설정하는 이유: `"NodeNext"`는 Node ESM 런타임과 동일하게 확장자 없는 non-relative(alias) specifier에 대해 `.ts`/`.js` 확장자를 자동으로 시도하지 않아 `@/*` alias 전체가 "module not found"로 실패한다. `"bundler"`는 esbuild(tsx)/번들러처럼 확장자 없는 경로도 탐색하므로 타입 체크 단계에서 `@/*` import가 정상 해석되고, 실제 런타임 경로/확장자 문제는 빌드 시 `tsc-alias --resolve-full-paths`가 책임진다.
 
 - [ ] **Step 6: ESLint flat config 작성**
 

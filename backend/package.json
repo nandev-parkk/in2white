@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "prebuild": "rimraf dist",
-    "build": "tsc && tsc-alias",
+    "build": "tsc && tsc-alias --resolve-full-paths",
     "start": "node dist/server.js",
     "lint": "eslint .",
     "format": "prettier --write .",
