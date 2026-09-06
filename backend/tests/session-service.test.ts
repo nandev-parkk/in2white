@@ -83,6 +83,14 @@ describe("session service", () => {
 
     expect(rotated).toBe(true);
     expect(store.get("refresh:user-1:sid-1")).toBe(sha256("new-refresh-token"));
+    expect(valkey.eval).toHaveBeenCalledWith(
+      expect.any(String),
+      1,
+      "refresh:user-1:sid-1",
+      sha256("old-refresh-token"),
+      sha256("new-refresh-token"),
+      60 * 60 * 24 * 14,
+    );
   });
 
   it("fails to rotate when the presented token no longer matches (already rotated/stale)", async () => {
