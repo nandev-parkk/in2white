@@ -22,7 +22,7 @@ export function createApp() {
   app.use(
     pinoHttp({
       logger,
-      redact: ["req.headers.authorization", "req.headers.cookie"],
+      redact: ["req.headers.authorization", "req.headers.cookie", 'res.headers["set-cookie"]'],
     }),
   );
   app.use(rateLimitMiddleware);

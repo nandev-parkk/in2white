@@ -8,14 +8,15 @@ export function errorHandlerMiddleware(
   res: Response,
   _next: NextFunction,
 ) {
-  logger.error({ err }, "Unhandled error");
-
   if (err instanceof HttpError) {
+    logger.warn({ status: err.status, code: err.code }, "Request error");
     res.status(err.status).json({
       error: { message: err.message, code: err.code },
     });
     return;
   }
+
+  logger.error({ err }, "Unhandled error");
 
   const message = err instanceof Error ? err.message : "Internal server error";
 

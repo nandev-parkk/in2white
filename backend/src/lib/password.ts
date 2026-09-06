@@ -2,8 +2,8 @@ import bcrypt from "bcrypt";
 
 const SALT_ROUNDS = 10;
 
-// bcrypt.hash("dummy-password-for-timing-safety", 10)로 미리 생성한 유효한 해시.
-// 실제 어떤 계정과도 매칭되지 않으며, 계정이 없을 때도 compare 연산 시간을 맞추기 위해서만 사용한다.
+// 유효한 형식의 bcrypt 해시(cost=10). 어떤 실제 비밀번호와도 매칭되지 않으며,
+// 계정이 없을 때도 동일한 시간이 걸리는 compare를 수행하기 위한 용도로만 사용한다.
 const DUMMY_HASH = "$2b$10$CwTycUXWue0Thq9StjUM0uJ8y0i1FQrxKAvyDzcRHENpQzR6Bqjh.";
 
 export async function hashPassword(password: string): Promise<string> {

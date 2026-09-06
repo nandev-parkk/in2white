@@ -8,6 +8,7 @@ import {
   saveRefreshSession,
 } from "@/services/session.service";
 import { HttpError } from "@/utils/http-error";
+import { logger } from "@/utils/logger";
 
 const INVALID_CREDENTIALS_MESSAGE = "이메일 또는 비밀번호가 올바르지 않습니다";
 const INVALID_REFRESH_TOKEN_MESSAGE = "로그인이 만료되었습니다. 다시 로그인해주세요";
@@ -53,7 +54,8 @@ export async function refresh(refreshToken: string): Promise<AuthTokens> {
   let payload;
   try {
     payload = await verifyRefreshToken(refreshToken);
-  } catch {
+  } catch (err) {
+    logger.debug({ err }, "refresh token verification failed");
     throw new HttpError(401, "INVALID_REFRESH_TOKEN", INVALID_REFRESH_TOKEN_MESSAGE);
   }
 

@@ -62,10 +62,14 @@ export async function refreshHandler(req: Request, res: Response) {
     );
   }
 
-  const result = await refresh(refreshToken);
-
-  setRefreshTokenCookie(res, result.refreshToken);
-  res.status(200).json({ accessToken: result.accessToken });
+  try {
+    const result = await refresh(refreshToken);
+    setRefreshTokenCookie(res, result.refreshToken);
+    res.status(200).json({ accessToken: result.accessToken });
+  } catch (err) {
+    clearRefreshTokenCookie(res);
+    throw err;
+  }
 }
 
 export async function logoutHandler(req: Request, res: Response) {

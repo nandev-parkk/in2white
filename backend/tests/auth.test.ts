@@ -185,6 +185,34 @@ describe("POST /auth/login", () => {
       .set("Cookie", [`refreshToken=${deviceBCookie}`]);
     expect(deviceBRefresh.status).toBe(200);
   });
+
+  it("logging out one device does not affect another device's session", async () => {
+    const passwordHash = await hashPassword("correct-password");
+    vi.mocked(db.query.users.findFirst).mockResolvedValue({ ...seededUser, passwordHash });
+    wireValkeyMock(new Map());
+    const app = buildTestApp();
+
+    const deviceALogin = await request(app)
+      .post("/auth/login")
+      .send({ email: "user@example.com", password: "correct-password" });
+    const deviceBLogin = await request(app)
+      .post("/auth/login")
+      .send({ email: "user@example.com", password: "correct-password" });
+
+    const deviceAAccessToken = deviceALogin.body.accessToken as string;
+    const deviceBCookie = extractCookie(deviceBLogin, "refreshToken") as string;
+
+    const deviceALogout = await request(app)
+      .post("/auth/logout")
+      .set("Authorization", `Bearer ${deviceAAccessToken}`);
+    expect(deviceALogout.status).toBe(204);
+
+    // A 기기 로그아웃이 B 기기의 세션에는 영향을 주지 않아야 한다.
+    const deviceBRefresh = await request(app)
+      .post("/auth/refresh")
+      .set("Cookie", [`refreshToken=${deviceBCookie}`]);
+    expect(deviceBRefresh.status).toBe(200);
+  });
 });
 
 describe("POST /auth/refresh and /auth/logout", () => {
