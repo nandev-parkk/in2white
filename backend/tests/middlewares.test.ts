@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { notFoundMiddleware } from "@/middlewares/not-found.middleware";
 import { errorHandlerMiddleware } from "@/middlewares/error-handler.middleware";
 import { rateLimitMiddleware } from "@/middlewares/rate-limit.middleware";
+import { HttpError } from "@/utils/http-error";
 
 function createMockResponse() {
   const res = {} as Response;
@@ -34,6 +35,24 @@ describe("errorHandlerMiddleware", () => {
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({
       error: { message: "boom", code: "INTERNAL_SERVER_ERROR" },
+    });
+  });
+});
+
+describe("errorHandlerMiddleware with HttpError", () => {
+  it("responds with the HttpError's own status and code", () => {
+    const res = createMockResponse();
+
+    errorHandlerMiddleware(
+      new HttpError(401, "INVALID_CREDENTIALS", "이메일 또는 비밀번호가 올바르지 않습니다"),
+      {} as Request,
+      res,
+      vi.fn(),
+    );
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({
+      error: { message: "이메일 또는 비밀번호가 올바르지 않습니다", code: "INVALID_CREDENTIALS" },
     });
   });
 });
