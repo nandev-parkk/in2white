@@ -27,14 +27,17 @@ describe("notFoundMiddleware", () => {
 });
 
 describe("errorHandlerMiddleware", () => {
-  it("responds with 500 and the error message", () => {
+  it("responds with 500 and a generic message, not the internal error detail", () => {
     const res = createMockResponse();
 
     errorHandlerMiddleware(new Error("boom"), {} as Request, res, vi.fn());
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({
-      error: { message: "boom", code: "INTERNAL_SERVER_ERROR" },
+      error: {
+        message: "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요",
+        code: "INTERNAL_SERVER_ERROR",
+      },
     });
   });
 });

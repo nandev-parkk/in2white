@@ -33,7 +33,7 @@ export async function loginHandler(req: Request, res: Response) {
     throw new HttpError(
       400,
       "VALIDATION_ERROR",
-      parsed.error.issues[0]?.message ?? "Invalid request body",
+      parsed.error.issues[0]?.message ?? "잘못된 요청입니다",
     );
   }
 

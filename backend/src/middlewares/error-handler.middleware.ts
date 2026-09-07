@@ -18,11 +18,11 @@ export function errorHandlerMiddleware(
 
   logger.error({ err }, "Unhandled error");
 
-  const message = err instanceof Error ? err.message : "Internal server error";
-
+  // 예상하지 못한 에러의 실제 원인(err.message)은 서버 로그에만 남기고,
+  // 클라이언트에는 내부 구현이 드러나지 않는 고정 메시지만 응답한다.
   res.status(500).json({
     error: {
-      message,
+      message: "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요",
       code: "INTERNAL_SERVER_ERROR",
     },
   });
