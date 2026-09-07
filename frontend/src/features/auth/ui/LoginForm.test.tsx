@@ -144,11 +144,12 @@ describe('LoginForm', () => {
     await userEvent.type(screen.getByLabelText('비밀번호'), 'password123')
     await userEvent.click(screen.getByRole('button', { name: '로그인' }))
 
-    // 로딩 중에는 라벨이 "로그인 중..."으로 바뀌므로(§5 — 아이콘만 남기면 접근 가능한
-    // 이름이 사라진다) name 필터 없이 폼의 유일한 버튼을 조회한다.
-    const pendingButton = screen.getByRole('button')
+    // shared/ui Button의 loading prop은 라벨을 그대로 두고 스피너만 앞에 붙이며
+    // disabled를 자동으로 세팅하므로(aria-busy도 함께), 접근 가능한 이름이 항상
+    // "로그인"으로 유지된다.
+    const pendingButton = screen.getByRole('button', { name: '로그인' })
     expect(pendingButton).toBeDisabled()
-    expect(pendingButton).toHaveTextContent('로그인 중...')
+    expect(pendingButton).toHaveAttribute('aria-busy', 'true')
 
     resolveRequest({
       data: {

@@ -1,7 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
 import { isAxiosError } from 'axios'
-import { Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -65,7 +64,7 @@ export function LoginForm() {
       <div className="flex w-full flex-col items-start gap-1">
         <label
           htmlFor="login-email"
-          className="text-[14px] leading-[1.429] font-semibold tracking-[0.0145em] text-[var(--color-foreground-default)]"
+          className="text-foreground-default text-[14px] leading-[1.429] font-semibold tracking-[0.0145em]"
         >
           이메일
         </label>
@@ -80,10 +79,7 @@ export function LoginForm() {
           {...register('email')}
         />
         {errors.email && (
-          <p
-            id="login-email-error"
-            className="text-[12px] text-[var(--color-status-danger)]"
-          >
+          <p id="login-email-error" className="text-status-danger text-[12px]">
             {errors.email.message}
           </p>
         )}
@@ -92,7 +88,7 @@ export function LoginForm() {
       <div className="flex w-full flex-col items-start gap-1">
         <label
           htmlFor="login-password"
-          className="text-[14px] leading-[1.429] font-semibold tracking-[0.0145em] text-[var(--color-foreground-default)]"
+          className="text-foreground-default text-[14px] leading-[1.429] font-semibold tracking-[0.0145em]"
         >
           비밀번호
         </label>
@@ -111,7 +107,7 @@ export function LoginForm() {
         {errors.password && (
           <p
             id="login-password-error"
-            className="text-[12px] text-[var(--color-status-danger)]"
+            className="text-status-danger text-[12px]"
           >
             {errors.password.message}
           </p>
@@ -121,7 +117,7 @@ export function LoginForm() {
       {formError && (
         <p
           role="alert"
-          className="w-full text-center text-[12px] text-[var(--color-status-danger)]"
+          className="text-status-danger w-full text-center text-[12px]"
         >
           {formError}
         </p>
@@ -129,18 +125,11 @@ export function LoginForm() {
 
       <Button
         type="submit"
-        size="lg"
+        size="large"
         className="w-full"
-        disabled={login.isPending}
+        loading={login.isPending}
       >
-        {login.isPending ? (
-          <>
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            로그인 중...
-          </>
-        ) : (
-          '로그인'
-        )}
+        로그인
       </Button>
     </form>
   )
