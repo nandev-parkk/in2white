@@ -9,6 +9,3 @@ const workspaceNameSchema = z
 
 export const createWorkspaceSchema = z.object({ name: workspaceNameSchema });
 export const updateWorkspaceSchema = z.object({ name: workspaceNameSchema });
-
-export type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>;
-export type UpdateWorkspaceInput = z.infer<typeof updateWorkspaceSchema>;

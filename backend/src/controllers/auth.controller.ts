@@ -4,6 +4,7 @@ import { loginSchema } from "@/schemas/auth.schema";
 import { login, logout, refresh } from "@/services/auth.service";
 import { HttpError } from "@/utils/http-error";
 import { ERROR_MESSAGES } from "@/constants/messages";
+import { requireUser } from "@/utils/require-user";
 
 const REFRESH_TOKEN_COOKIE = "refreshToken";
 const REFRESH_TOKEN_COOKIE_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
@@ -70,11 +71,9 @@ export async function refreshHandler(req: Request, res: Response) {
 }
 
 export async function logoutHandler(req: Request, res: Response) {
-  if (!req.user) {
-    throw new HttpError(401, "UNAUTHORIZED", ERROR_MESSAGES.MISSING_BEARER_TOKEN);
-  }
+  const user = requireUser(req);
 
-  await logout(req.user.sub, req.user.sid);
+  await logout(user.sub, user.sid);
 
   clearRefreshTokenCookie(res);
   res.status(204).send();
