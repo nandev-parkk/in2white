@@ -9,4 +9,8 @@ export const ERROR_MESSAGES = {
   EMAIL_REQUIRED: "이메일을 입력해주세요",
   EMAIL_INVALID_FORMAT: "올바른 이메일 형식이 아닙니다",
   PASSWORD_REQUIRED: "비밀번호를 입력해주세요",
+  WORKSPACE_NAME_REQUIRED: "워크스페이스 이름을 입력해주세요",
+  WORKSPACE_NAME_TOO_LONG: "워크스페이스 이름은 255자 이내로 입력해주세요",
+  WORKSPACE_NOT_FOUND: "워크스페이스를 찾을 수 없습니다",
+  WORKSPACE_UPDATE_FORBIDDEN: "워크스페이스를 수정할 권한이 없습니다",
 } as const;
