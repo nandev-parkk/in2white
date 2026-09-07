@@ -439,3 +439,139 @@ describe("PATCH /workspaces/:workspaceId", () => {
     expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
   });
 });
+
+describe("DELETE /workspaces/:workspaceId", () => {
+  function mockWorkspaceDeleteTransaction({
+    membershipRows = [{ role: "owner" as const, isDefault: false }],
+    deleteRows = [{ id: "workspace-1" }],
+    deleteError,
+  }: {
+    membershipRows?: Array<{ role: "owner" | "member"; isDefault: boolean }>;
+    deleteRows?: unknown[];
+    deleteError?: Error;
+  } = {}) {
+    const membershipQuery = {
+      from: vi.fn().mockReturnThis(),
+      innerJoin: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue(membershipRows),
+    };
+    const workspaceDelete = {
+      where: vi.fn().mockReturnThis(),
+      returning: deleteError
+        ? vi.fn().mockRejectedValue(deleteError)
+        : vi.fn().mockResolvedValue(deleteRows),
+    };
+    const transaction = {
+      select: vi.fn().mockReturnValue(membershipQuery),
+      delete: vi.fn().mockReturnValue(workspaceDelete),
+    };
+
+    vi.mocked(db.transaction).mockImplementation(async (callback) =>
+      callback(transaction as never),
+    );
+
+    return { membershipQuery, transaction, workspaceDelete };
+  }
+
+  it("deletes an owned non-default workspace and returns 204", async () => {
+    const { membershipQuery, transaction, workspaceDelete } = mockWorkspaceDeleteTransaction();
+
+    const response = await request(createApp())
+      .delete("/workspaces/workspace-1")
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(204);
+    expect(response.body).toEqual({});
+    expect(db.transaction).toHaveBeenCalledOnce();
+    expect(transaction.select).toHaveBeenCalledWith({
+      role: workspaceMemberships.role,
+      isDefault: workspaces.isDefault,
+    });
+    expect(membershipQuery.from).toHaveBeenCalledWith(workspaceMemberships);
+    expect(membershipQuery.innerJoin).toHaveBeenCalledWith(
+      workspaces,
+      eq(workspaceMemberships.workspaceId, workspaces.id),
+    );
+    expect(membershipQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(workspaceMemberships.workspaceId, "workspace-1"),
+        eq(workspaceMemberships.userId, "user-1"),
+      ),
+    );
+    expect(transaction.delete).toHaveBeenCalledWith(workspaces);
+    expect(workspaceDelete.where).toHaveBeenCalledWith(
+      and(eq(workspaces.id, "workspace-1"), eq(workspaces.ownerId, "user-1")),
+    );
+  });
+
+  it("returns 401 when the request is not authenticated", async () => {
+    const response = await request(createApp()).delete("/workspaces/workspace-1");
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHORIZED");
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the user is not a workspace member", async () => {
+    const { transaction } = mockWorkspaceDeleteTransaction({ membershipRows: [] });
+
+    const response = await request(createApp())
+      .delete("/workspaces/workspace-1")
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("WORKSPACE_NOT_FOUND");
+    expect(transaction.delete).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when the user is a workspace member without owner role", async () => {
+    const { transaction } = mockWorkspaceDeleteTransaction({
+      membershipRows: [{ role: "member", isDefault: false }],
+    });
+
+    const response = await request(createApp())
+      .delete("/workspaces/workspace-1")
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("WORKSPACE_DELETE_FORBIDDEN");
+    expect(transaction.delete).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when the workspace is the default workspace", async () => {
+    const { transaction } = mockWorkspaceDeleteTransaction({
+      membershipRows: [{ role: "owner", isDefault: true }],
+    });
+
+    const response = await request(createApp())
+      .delete("/workspaces/workspace-1")
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("WORKSPACE_DEFAULT_DELETE_FORBIDDEN");
+    expect(transaction.delete).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the workspace delete returns no row", async () => {
+    const { workspaceDelete } = mockWorkspaceDeleteTransaction({ deleteRows: [] });
+
+    const response = await request(createApp())
+      .delete("/workspaces/workspace-1")
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("WORKSPACE_NOT_FOUND");
+    expect(workspaceDelete.returning).toHaveBeenCalledOnce();
+  });
+
+  it("returns 500 when deleting the workspace fails", async () => {
+    mockWorkspaceDeleteTransaction({ deleteError: new Error("workspace delete failed") });
+
+    const response = await request(createApp())
+      .delete("/workspaces/workspace-1")
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+  });
+});
