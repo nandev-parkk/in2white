@@ -3,6 +3,7 @@ import { getEnv } from "@/config/env";
 import { loginSchema } from "@/schemas/auth.schema";
 import { login, logout, refresh } from "@/services/auth.service";
 import { HttpError } from "@/utils/http-error";
+import { ERROR_MESSAGES } from "@/constants/messages";
 
 const REFRESH_TOKEN_COOKIE = "refreshToken";
 const REFRESH_TOKEN_COOKIE_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
@@ -33,7 +34,7 @@ export async function loginHandler(req: Request, res: Response) {
     throw new HttpError(
       400,
       "VALIDATION_ERROR",
-      parsed.error.issues[0]?.message ?? "잘못된 요청입니다",
+      parsed.error.issues[0]?.message ?? ERROR_MESSAGES.VALIDATION_ERROR,
     );
   }
 
@@ -50,16 +51,12 @@ export async function refreshHandler(req: Request, res: Response) {
   // 호출 등)은 통과시킨다 — 그 경우는 애초에 쿠키가 전달되지 않으므로 위험이 없다.
   const origin = req.headers.origin;
   if (typeof origin === "string" && origin !== getEnv().CORS_ORIGIN) {
-    throw new HttpError(403, "INVALID_ORIGIN", "허용되지 않은 요청 출처입니다");
+    throw new HttpError(403, "INVALID_ORIGIN", ERROR_MESSAGES.INVALID_ORIGIN);
   }
 
   const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE];
   if (typeof refreshToken !== "string") {
-    throw new HttpError(
-      401,
-      "INVALID_REFRESH_TOKEN",
-      "로그인이 만료되었습니다. 다시 로그인해주세요",
-    );
+    throw new HttpError(401, "INVALID_REFRESH_TOKEN", ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
   }
 
   try {
@@ -74,7 +71,7 @@ export async function refreshHandler(req: Request, res: Response) {
 
 export async function logoutHandler(req: Request, res: Response) {
   if (!req.user) {
-    throw new HttpError(401, "UNAUTHORIZED", "인증 토큰이 필요합니다");
+    throw new HttpError(401, "UNAUTHORIZED", ERROR_MESSAGES.MISSING_BEARER_TOKEN);
   }
 
   await logout(req.user.sub, req.user.sid);

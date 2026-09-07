@@ -9,9 +9,7 @@ import {
 } from "@/services/session.service";
 import { HttpError } from "@/utils/http-error";
 import { logger } from "@/utils/logger";
-
-const INVALID_CREDENTIALS_MESSAGE = "이메일 또는 비밀번호가 올바르지 않습니다";
-const INVALID_REFRESH_TOKEN_MESSAGE = "로그인이 만료되었습니다. 다시 로그인해주세요";
+import { ERROR_MESSAGES } from "@/constants/messages";
 
 export interface AuthTokens {
   accessToken: string;
@@ -27,12 +25,12 @@ export async function login(email: string, password: string): Promise<LoginResul
 
   if (!user) {
     await compareDummyPassword(password);
-    throw new HttpError(401, "INVALID_CREDENTIALS", INVALID_CREDENTIALS_MESSAGE);
+    throw new HttpError(401, "INVALID_CREDENTIALS", ERROR_MESSAGES.INVALID_CREDENTIALS);
   }
 
   const passwordMatches = await comparePassword(password, user.passwordHash);
   if (!passwordMatches) {
-    throw new HttpError(401, "INVALID_CREDENTIALS", INVALID_CREDENTIALS_MESSAGE);
+    throw new HttpError(401, "INVALID_CREDENTIALS", ERROR_MESSAGES.INVALID_CREDENTIALS);
   }
 
   const sid = randomUUID();
@@ -56,12 +54,12 @@ export async function refresh(refreshToken: string): Promise<AuthTokens> {
     payload = await verifyRefreshToken(refreshToken);
   } catch (err) {
     logger.debug({ err }, "refresh token verification failed");
-    throw new HttpError(401, "INVALID_REFRESH_TOKEN", INVALID_REFRESH_TOKEN_MESSAGE);
+    throw new HttpError(401, "INVALID_REFRESH_TOKEN", ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
   }
 
   const user = await getUserById(payload.sub);
   if (!user) {
-    throw new HttpError(401, "INVALID_REFRESH_TOKEN", INVALID_REFRESH_TOKEN_MESSAGE);
+    throw new HttpError(401, "INVALID_REFRESH_TOKEN", ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
   }
 
   const [accessToken, newRefreshToken] = await Promise.all([
@@ -75,7 +73,7 @@ export async function refresh(refreshToken: string): Promise<AuthTokens> {
     // 이 sid의 세션을 완전히 폐기한다(reuse detection). 프론트엔드는 이 401을 자동 재시도하면
     // 안 되고 재로그인으로 유도해야 한다 — 그렇지 않으면 정상적인 재시도조차 세션을 죽인다.
     await deleteRefreshSession(user.id, payload.sid);
-    throw new HttpError(401, "INVALID_REFRESH_TOKEN", INVALID_REFRESH_TOKEN_MESSAGE);
+    throw new HttpError(401, "INVALID_REFRESH_TOKEN", ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
   }
 
   return { accessToken, refreshToken: newRefreshToken };

@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { HttpError } from "@/utils/http-error";
 import { logger } from "@/utils/logger";
+import { ERROR_MESSAGES } from "@/constants/messages";
 
 export function errorHandlerMiddleware(
   err: unknown,
@@ -22,7 +23,7 @@ export function errorHandlerMiddleware(
   // 클라이언트에는 내부 구현이 드러나지 않는 고정 메시지만 응답한다.
   res.status(500).json({
     error: {
-      message: "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요",
+      message: ERROR_MESSAGES.INTERNAL_SERVER_ERROR,
       code: "INTERNAL_SERVER_ERROR",
     },
   });
