@@ -75,10 +75,15 @@ export function LoginForm() {
           size="large"
           placeholder="you@in2white.team"
           aria-invalid={!!errors.email}
+          aria-describedby={errors.email ? 'login-email-error' : undefined}
+          autoComplete="username"
           {...register('email')}
         />
         {errors.email && (
-          <p className="text-[12px] text-[var(--color-status-danger)]">
+          <p
+            id="login-email-error"
+            className="text-[12px] text-[var(--color-status-danger)]"
+          >
             {errors.email.message}
           </p>
         )}
@@ -97,10 +102,17 @@ export function LoginForm() {
           size="large"
           placeholder="••••••••"
           aria-invalid={!!errors.password}
+          aria-describedby={
+            errors.password ? 'login-password-error' : undefined
+          }
+          autoComplete="current-password"
           {...register('password')}
         />
         {errors.password && (
-          <p className="text-[12px] text-[var(--color-status-danger)]">
+          <p
+            id="login-password-error"
+            className="text-[12px] text-[var(--color-status-danger)]"
+          >
             {errors.password.message}
           </p>
         )}
