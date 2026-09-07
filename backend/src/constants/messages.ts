@@ -13,4 +13,6 @@ export const ERROR_MESSAGES = {
   WORKSPACE_NAME_TOO_LONG: "워크스페이스 이름은 255자 이내로 입력해주세요",
   WORKSPACE_NOT_FOUND: "워크스페이스를 찾을 수 없습니다",
   WORKSPACE_UPDATE_FORBIDDEN: "워크스페이스를 수정할 권한이 없습니다",
+  WORKSPACE_DELETE_FORBIDDEN: "워크스페이스를 삭제할 권한이 없습니다",
+  WORKSPACE_DEFAULT_DELETE_FORBIDDEN: "기본 워크스페이스는 삭제할 수 없습니다",
 } as const;

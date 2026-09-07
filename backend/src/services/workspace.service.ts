@@ -101,3 +101,55 @@ export async function updateWorkspace({
     return workspace;
   });
 }
+
+export interface DeleteWorkspaceInput {
+  workspaceId: string;
+  userId: string;
+}
+
+export async function deleteWorkspace({
+  workspaceId,
+  userId,
+}: DeleteWorkspaceInput): Promise<void> {
+  return db.transaction(async (tx) => {
+    const [membership] = await tx
+      .select({ role: workspaceMemberships.role, isDefault: workspaces.isDefault })
+      .from(workspaceMemberships)
+      .innerJoin(workspaces, eq(workspaceMemberships.workspaceId, workspaces.id))
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          eq(workspaceMemberships.userId, userId),
+        ),
+      );
+
+    if (!membership) {
+      throw new HttpError(404, "WORKSPACE_NOT_FOUND", ERROR_MESSAGES.WORKSPACE_NOT_FOUND);
+    }
+
+    if (membership.role !== "owner") {
+      throw new HttpError(
+        403,
+        "WORKSPACE_DELETE_FORBIDDEN",
+        ERROR_MESSAGES.WORKSPACE_DELETE_FORBIDDEN,
+      );
+    }
+
+    if (membership.isDefault) {
+      throw new HttpError(
+        400,
+        "WORKSPACE_DEFAULT_DELETE_FORBIDDEN",
+        ERROR_MESSAGES.WORKSPACE_DEFAULT_DELETE_FORBIDDEN,
+      );
+    }
+
+    const [deleted] = await tx
+      .delete(workspaces)
+      .where(and(eq(workspaces.id, workspaceId), eq(workspaces.ownerId, userId)))
+      .returning({ id: workspaces.id });
+
+    if (!deleted) {
+      throw new HttpError(404, "WORKSPACE_NOT_FOUND", ERROR_MESSAGES.WORKSPACE_NOT_FOUND);
+    }
+  });
+}

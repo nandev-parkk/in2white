@@ -1,6 +1,11 @@
 import type { Request, Response } from "express";
 import { createWorkspaceSchema, updateWorkspaceSchema } from "@/schemas/workspace.schema";
-import { createWorkspace, listWorkspaces, updateWorkspace } from "@/services/workspace.service";
+import {
+  createWorkspace,
+  deleteWorkspace,
+  listWorkspaces,
+  updateWorkspace,
+} from "@/services/workspace.service";
 import { ERROR_MESSAGES } from "@/constants/messages";
 import { HttpError } from "@/utils/http-error";
 
@@ -56,4 +61,17 @@ export async function updateWorkspaceHandler(req: Request, res: Response) {
   });
 
   res.status(200).json({ workspace });
+}
+
+export async function deleteWorkspaceHandler(req: Request, res: Response) {
+  if (!req.user) {
+    throw new HttpError(401, "UNAUTHORIZED", ERROR_MESSAGES.MISSING_BEARER_TOKEN);
+  }
+
+  await deleteWorkspace({
+    workspaceId: req.params.workspaceId,
+    userId: req.user.sub,
+  });
+
+  res.status(204).send();
 }
