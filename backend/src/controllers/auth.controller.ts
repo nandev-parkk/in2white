@@ -50,7 +50,7 @@ export async function refreshHandler(req: Request, res: Response) {
   // 호출 등)은 통과시킨다 — 그 경우는 애초에 쿠키가 전달되지 않으므로 위험이 없다.
   const origin = req.headers.origin;
   if (typeof origin === "string" && origin !== getEnv().CORS_ORIGIN) {
-    throw new HttpError(403, "INVALID_ORIGIN", "Invalid request origin");
+    throw new HttpError(403, "INVALID_ORIGIN", "허용되지 않은 요청 출처입니다");
   }
 
   const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE];
@@ -74,7 +74,7 @@ export async function refreshHandler(req: Request, res: Response) {
 
 export async function logoutHandler(req: Request, res: Response) {
   if (!req.user) {
-    throw new HttpError(401, "UNAUTHORIZED", "Missing bearer token");
+    throw new HttpError(401, "UNAUTHORIZED", "인증 토큰이 필요합니다");
   }
 
   await logout(req.user.sub, req.user.sid);

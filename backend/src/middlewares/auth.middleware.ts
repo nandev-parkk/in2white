@@ -6,7 +6,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
 
   if (!header?.startsWith("Bearer ")) {
     res.status(401).json({
-      error: { message: "Missing bearer token", code: "UNAUTHORIZED" },
+      error: { message: "인증 토큰이 필요합니다", code: "UNAUTHORIZED" },
     });
     return;
   }
@@ -18,7 +18,7 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     next();
   } catch {
     res.status(401).json({
-      error: { message: "Invalid or expired token", code: "UNAUTHORIZED" },
+      error: { message: "유효하지 않거나 만료된 토큰입니다", code: "UNAUTHORIZED" },
     });
   }
 }
