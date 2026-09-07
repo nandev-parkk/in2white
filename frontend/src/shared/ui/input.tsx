@@ -3,12 +3,12 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from 'cn'
 
 const inputVariants = cva(
-  'w-full bg-[var(--color-background-default)] text-[14px] font-medium leading-[1.429] tracking-[0.0145em] text-[var(--color-foreground-default)] placeholder:text-[var(--color-foreground-tertiary)] border border-solid border-[var(--color-border-default)] outline-none transition-colors focus:border-[var(--color-action-primary)] focus:shadow-[0_0_0_3px_var(--color-action-focus-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-background-subtle)] disabled:border-[var(--color-border-subtle)] disabled:text-[var(--color-foreground-disabled)] aria-invalid:border-[var(--color-status-danger)]',
+  'text-body flex w-full min-w-0 rounded-md border border-border bg-background-default px-4 text-foreground-default outline-none transition-colors placeholder:text-foreground-tertiary selection:bg-action-primary selection:text-action-primary-foreground focus:border-action-primary focus:ring-3 focus:ring-action-focus-ring disabled:cursor-not-allowed disabled:border-border-subtle disabled:bg-background-subtle disabled:text-foreground-disabled disabled:placeholder:text-foreground-disabled aria-invalid:border-status-danger',
   {
     variants: {
       size: {
-        default: 'h-9 rounded-md px-4',
-        large: 'h-11 rounded-lg px-4',
+        default: 'h-(--component-control-height-default) rounded-md',
+        large: 'h-(--component-control-height-large) rounded-lg',
       },
     },
     defaultVariants: {
@@ -17,16 +17,18 @@ const inputVariants = cva(
   },
 )
 
-export interface InputProps
-  extends
-    Omit<React.ComponentProps<'input'>, 'size'>,
-    VariantProps<typeof inputVariants> {}
-
-function Input({ className, size, type, ...props }: InputProps) {
+function Input({
+  className,
+  type,
+  size = 'default',
+  ...props
+}: Omit<React.ComponentProps<'input'>, 'size'> &
+  VariantProps<typeof inputVariants>) {
   return (
     <input
       type={type}
       data-slot="input"
+      data-size={size}
       className={cn(inputVariants({ size, className }))}
       {...props}
     />
