@@ -10,6 +10,7 @@ export default defineConfig({
       DATABASE_URL: "postgres://test:test@localhost:5432/test",
       VALKEY_URL: "redis://localhost:6379",
       JWT_SECRET: "test-secret-key-with-at-least-32-characters",
+      JWT_REFRESH_SECRET: "test-refresh-secret-key-with-at-least-32-chars",
     },
   },
   resolve: {
