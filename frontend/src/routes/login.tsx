@@ -1,13 +1,9 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
-import { useSessionStore } from '@/entities/session'
 import { LoginPage } from '@/pages/login'
+import { redirectIfAuthenticated } from '@/features/auth/model/route-guards'
 
-export function redirectIfAuthenticated() {
-  if (useSessionStore.getState().accessToken) {
-    throw redirect({ to: '/' })
-  }
-}
+export { redirectIfAuthenticated }
 
 export const Route = createFileRoute('/login')({
   beforeLoad: redirectIfAuthenticated,

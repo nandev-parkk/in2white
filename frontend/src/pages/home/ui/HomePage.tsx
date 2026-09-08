@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 
 import { useSessionStore } from '@/entities/session'
 import type { WorkspaceSummary } from '@/entities/workspace'
+import { logoutRequest } from '@/features/auth'
 import { useCreateWorkspace, useWorkspaces } from '@/features/workspace'
 import { WorkspaceCreateDialog } from '@/features/workspace/ui/WorkspaceCreateDialog'
 import { Button } from '@/shared/ui/button'
@@ -144,23 +146,31 @@ function AuthenticatedHomePage({
 }
 
 export function HomePage() {
+  const navigate = useNavigate()
   const accessToken = useSessionStore((state) => state.accessToken)
   const user = useSessionStore((state) => state.user)
   const clearSession = useSessionStore((state) => state.clearSession)
 
+  async function handleLogout() {
+    try {
+      await logoutRequest()
+    } catch {
+      // 클라이언트 세션 정리와 로그인 페이지 이동은 로그아웃 API 실패와 무관하게 보장한다.
+    } finally {
+      clearSession()
+      await navigate({ to: '/login', replace: true })
+    }
+  }
+
   if (!accessToken || !user) {
-    return (
-      <main className="flex min-h-svh items-center justify-center">
-        <p className="text-body text-foreground-secondary">로그인이 필요해요</p>
-      </main>
-    )
+    return null
   }
 
   return (
     <AuthenticatedHomePage
       accessToken={accessToken}
       user={user}
-      onLogout={clearSession}
+      onLogout={handleLogout}
     />
   )
 }
