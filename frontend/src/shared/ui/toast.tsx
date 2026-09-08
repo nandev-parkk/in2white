@@ -27,6 +27,7 @@ function Toaster({
         unstyled: true,
         ...toastOptions,
         classNames: {
+          ...toastOptions?.classNames,
           toast: cn(
             'text-body text-foreground-strong flex !w-fit items-center gap-2.5 rounded-md px-4 py-3 shadow-sm',
             toastOptions?.classNames?.toast,
@@ -44,7 +45,6 @@ function Toaster({
             'bg-status-warning-subtle-bg',
             toastOptions?.classNames?.warning,
           ),
-          ...toastOptions?.classNames,
         },
       }}
       className={className}
