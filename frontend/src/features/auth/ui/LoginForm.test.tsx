@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 
 import { axiosInstance } from '@/shared/api'
 import { useSessionStore } from '@/entities/session'
+import { toast } from '@/shared/ui/toast'
 
 import { LoginForm } from './LoginForm'
 
@@ -15,6 +16,10 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('@/shared/api', () => ({
   axiosInstance: { post: vi.fn() },
+}))
+
+vi.mock('@/shared/ui/toast', () => ({
+  toast: { error: vi.fn() },
 }))
 
 function renderLoginForm() {
@@ -32,6 +37,7 @@ function renderLoginForm() {
 describe('LoginForm', () => {
   beforeEach(() => {
     vi.mocked(axiosInstance.post).mockReset()
+    vi.mocked(toast.error).mockReset()
     navigateMock.mockReset()
     useSessionStore.getState().clearSession()
   })
@@ -104,9 +110,14 @@ describe('LoginForm', () => {
     await userEvent.type(screen.getByLabelText('비밀번호'), 'wrong-password')
     await userEvent.click(screen.getByRole('button', { name: '로그인' }))
 
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        '이메일 또는 비밀번호가 올바르지 않습니다',
+      ),
+    )
     expect(
-      await screen.findByText('이메일 또는 비밀번호가 올바르지 않습니다'),
-    ).toBeInTheDocument()
+      screen.queryByText('이메일 또는 비밀번호가 올바르지 않습니다'),
+    ).not.toBeInTheDocument()
     expect(navigateMock).not.toHaveBeenCalled()
     expect(useSessionStore.getState().accessToken).toBeNull()
   })
@@ -123,11 +134,16 @@ describe('LoginForm', () => {
     await userEvent.type(screen.getByLabelText('비밀번호'), 'password123')
     await userEvent.click(screen.getByRole('button', { name: '로그인' }))
 
-    expect(
-      await screen.findByText(
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
         '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요',
       ),
-    ).toBeInTheDocument()
+    )
+    expect(
+      screen.queryByText(
+        '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요',
+      ),
+    ).not.toBeInTheDocument()
   })
 
   it('disables the submit button while the request is pending', async () => {
