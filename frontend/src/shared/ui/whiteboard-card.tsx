@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { cn } from 'cn'
-import { CalendarPlus, CalendarClock, MoreVertical } from 'lucide-react'
+import { Calendar, Clock, MoreVertical } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
 
 type WhiteboardCardProps = React.ComponentProps<'div'> & {
@@ -29,7 +29,7 @@ function WhiteboardCard({
       )}
       {...props}
     >
-      <div className="bg-background-subtle relative h-26 bg-[radial-gradient(var(--border-strong)_1px,transparent_1px)] bg-[length:16px_16px] bg-[position:12px_12px]">
+      <div className="bg-background-subtle relative h-26 bg-[radial-gradient(var(--border-strong)_1.5px,transparent_1.5px)] bg-[length:32px_32px] bg-[position:16px_16px]">
         {onMenuClick && (
           <button
             type="button"
@@ -45,11 +45,11 @@ function WhiteboardCard({
         <p className="text-card-title text-foreground-strong">{title}</p>
         <div className="flex flex-col gap-1">
           <div className="text-foreground-tertiary flex items-center gap-1.5">
-            <CalendarPlus className="size-3.5" />
+            <Calendar className="size-3.5" />
             <span className="text-caption">생성일 {createdAtLabel}</span>
           </div>
           <div className="text-foreground-tertiary flex items-center gap-1.5">
-            <CalendarClock className="size-3.5" />
+            <Clock className="size-3.5" />
             <span className="text-caption">수정일 {updatedAtLabel}</span>
           </div>
         </div>

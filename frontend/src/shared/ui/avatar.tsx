@@ -20,7 +20,7 @@ const avatarVariants = cva(
 )
 
 const avatarFallbackVariants = cva(
-  'flex size-full items-center justify-center bg-linear-to-br from-presence-4 to-presence-6 font-bold text-action-primary-foreground',
+  'flex size-full items-center justify-center bg-linear-45 from-presence-4 to-presence-6 font-bold text-action-primary-foreground',
   {
     variants: {
       size: {

@@ -1,77 +1,56 @@
-import * as React from 'react'
-import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from 'cn'
 import { CircleAlert, CircleCheck, Info, TriangleAlert } from 'lucide-react'
-import { Toast as ToastPrimitive } from 'radix-ui'
+import { toast, Toaster as SonnerToaster, type ToasterProps } from 'sonner'
+import 'sonner/dist/styles.css'
+import { cn } from 'cn'
 
-function ToastProvider({
-  ...props
-}: React.ComponentProps<typeof ToastPrimitive.Provider>) {
-  return <ToastPrimitive.Provider data-slot="toast-provider" {...props} />
-}
+const DEFAULT_TOAST_DURATION = 4000
 
-function ToastViewport({
+function Toaster({
   className,
+  toastOptions,
+  duration = DEFAULT_TOAST_DURATION,
   ...props
-}: React.ComponentProps<typeof ToastPrimitive.Viewport>) {
+}: ToasterProps) {
   return (
-    <ToastPrimitive.Viewport
-      data-slot="toast-viewport"
-      className={cn(
-        'fixed right-4 bottom-4 z-50 flex w-full max-w-sm flex-col gap-2 outline-none',
-        className,
-      )}
+    <SonnerToaster
+      data-slot="toaster"
+      position="top-right"
+      offset={{ top: 24, right: 24 }}
+      duration={duration}
+      icons={{
+        success: <CircleCheck className="text-status-success size-5" />,
+        error: <CircleAlert className="text-status-danger size-5" />,
+        info: <Info className="text-status-info size-5" />,
+        warning: <TriangleAlert className="text-status-warning size-5" />,
+      }}
+      toastOptions={{
+        unstyled: true,
+        ...toastOptions,
+        classNames: {
+          ...toastOptions?.classNames,
+          toast: cn(
+            'text-body text-foreground-strong flex !w-fit items-center gap-2.5 rounded-md px-4 py-3 shadow-sm',
+            toastOptions?.classNames?.toast,
+          ),
+          success: cn(
+            'bg-status-success-subtle-bg',
+            toastOptions?.classNames?.success,
+          ),
+          error: cn(
+            'bg-status-danger-subtle-bg',
+            toastOptions?.classNames?.error,
+          ),
+          info: cn('bg-status-info-subtle-bg', toastOptions?.classNames?.info),
+          warning: cn(
+            'bg-status-warning-subtle-bg',
+            toastOptions?.classNames?.warning,
+          ),
+        },
+      }}
+      className={className}
       {...props}
     />
   )
 }
 
-const toastVariants = cva(
-  'text-body flex items-center gap-2.5 rounded-md px-4 py-3 text-foreground-strong shadow-sm',
-  {
-    variants: {
-      semantic: {
-        success: 'bg-status-success-subtle-bg',
-        danger: 'bg-status-danger-subtle-bg',
-        info: 'bg-status-info-subtle-bg',
-        warning: 'bg-status-warning-subtle-bg',
-      },
-    },
-    defaultVariants: {
-      semantic: 'success',
-    },
-  },
-)
-
-const toastIcons = {
-  success: CircleCheck,
-  danger: CircleAlert,
-  info: Info,
-  warning: TriangleAlert,
-} as const
-
-function Toast({
-  className,
-  semantic = 'success',
-  children,
-  ...props
-}: React.ComponentProps<typeof ToastPrimitive.Root> &
-  VariantProps<typeof toastVariants>) {
-  const Icon = toastIcons[semantic ?? 'success']
-
-  return (
-    <ToastPrimitive.Root
-      data-slot="toast"
-      data-semantic={semantic}
-      className={cn(toastVariants({ semantic, className }))}
-      {...props}
-    >
-      <Icon className="size-5 shrink-0" />
-      <ToastPrimitive.Description asChild>
-        <span>{children}</span>
-      </ToastPrimitive.Description>
-    </ToastPrimitive.Root>
-  )
-}
-
-export { ToastProvider, ToastViewport, Toast }
+export { Toaster, toast }
