@@ -1,7 +1,10 @@
 import { axiosInstance } from '@/shared/api'
 
+import type { SessionUser } from '@/entities/session'
+
 export interface RefreshAccessTokenResponse {
   accessToken: string
+  user: SessionUser
 }
 
 export async function refreshAccessTokenRequest(): Promise<RefreshAccessTokenResponse> {

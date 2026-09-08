@@ -1065,7 +1065,7 @@ EOF
   - `HttpError` from `@/utils/http-error` (Task 2)
 - Produces:
   - `login(email: string, password: string): Promise<{ accessToken: string; refreshToken: string; user: { id: string; name: string; email: string } }>`
-  - `refresh(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }>`
+  - `refresh(refreshToken: string): Promise<{ accessToken: string; refreshToken: string; user: { id: string; name: string; email: string } }>`
   - `logout(userId: string, sid: string): Promise<void>`
   - 위 3개 함수 모두 auth.controller.ts(Task 9)에서 사용.
 
@@ -1423,7 +1423,7 @@ export async function refreshHandler(req: Request, res: Response) {
   const result = await refresh(refreshToken);
 
   setRefreshTokenCookie(res, result.refreshToken);
-  res.status(200).json({ accessToken: result.accessToken });
+  res.status(200).json({ accessToken: result.accessToken, user: result.user });
 }
 
 export async function logoutHandler(req: Request, res: Response) {
@@ -1451,7 +1451,7 @@ git add src/controllers/auth.controller.ts
 git commit -m "$(cat <<'EOF'
 #{issue}/feature: 로그인/refresh/logout 컨트롤러 추가
 
-- refreshToken은 httpOnly 쿠키로, accessToken은 응답 body로 응답
+- refreshToken은 httpOnly 쿠키로, accessToken/user는 응답 body로 응답
 - refresh는 Origin 헤더가 CORS_ORIGIN과 다르면 거부(CSRF 방어 심화)
 EOF
 )"

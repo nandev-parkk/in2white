@@ -16,8 +16,18 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface LoginResult extends AuthTokens {
-  user: { id: string; name: string; email: string };
+  user: AuthUser;
+}
+
+export interface RefreshResult extends AuthTokens {
+  user: AuthUser;
 }
 
 export async function login(email: string, password: string): Promise<LoginResult> {
@@ -48,7 +58,7 @@ export async function login(email: string, password: string): Promise<LoginResul
   };
 }
 
-export async function refresh(refreshToken: string): Promise<AuthTokens> {
+export async function refresh(refreshToken: string): Promise<RefreshResult> {
   let payload;
   try {
     payload = await verifyRefreshToken(refreshToken);
@@ -76,7 +86,11 @@ export async function refresh(refreshToken: string): Promise<AuthTokens> {
     throw new HttpError(401, "INVALID_REFRESH_TOKEN", ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
   }
 
-  return { accessToken, refreshToken: newRefreshToken };
+  return {
+    accessToken,
+    refreshToken: newRefreshToken,
+    user: { id: user.id, name: user.name, email: user.email },
+  };
 }
 
 export async function logout(userId: string, sid: string): Promise<void> {

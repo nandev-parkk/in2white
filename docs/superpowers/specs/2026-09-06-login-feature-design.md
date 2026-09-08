@@ -25,6 +25,7 @@
 | 세션 정책 | **멀티 세션** — 기기(브라우저)별로 별도 세션 유지, 동시 로그인 허용 |
 | refresh 시 회전 | 같은 세션 내에서 accessToken + refreshToken 모두 재발급. Valkey 값 교체는 Lua `EVAL` 기반 compare-and-set으로 원자적으로 수행하고, 제시된 토큰이 이미 회전되어 폐기된 것이면(reuse) 해당 세션을 통째로 삭제한다 |
 | accessToken 전달 방식 | 로그인/refresh 성공 시 응답 body에 `accessToken` 포함 (프론트가 메모리에 보관, API 호출 시 `Authorization: Bearer` 헤더로 전송) |
+| refresh 복원 사용자 정보 | refresh 성공 시 로그인과 동일한 `{ id, name, email }` 사용자 정보를 응답 body에 포함해 앱 부팅 시 메모리 세션을 복원 |
 | refreshToken 전달 방식 | **httpOnly Secure 쿠키**로 전달 (응답 body에는 포함하지 않음) — JS에서 접근 불가능하게 해 XSS로 인한 탈취 위험을 줄인다 |
 
 > 최초 요구사항(로그인 시 두 토큰 모두 response body로 응답)에서, "단일 세션 → 멀티 세션"과 "refreshToken을 body 대신 httpOnly 쿠키로" 두 가지를 사용자 요청에 따라 변경했다. accessToken은 여전히 body로 응답한다.
@@ -82,7 +83,7 @@ refreshToken을 httpOnly 쿠키로 내려주려면 다음이 필요하다:
 5. 같은 `sid`로 accessToken/refreshToken을 새로 서명한 뒤, Valkey `refresh:{userId}:{sid}`에 대해 "저장된 해시가 제시된 refreshToken의 해시와 같을 때만 새 해시로 교체"하는 원자적 compare-and-set을 시도한다.
 6. 5번이 실패하면(이미 회전되어 폐기된 토큰이거나 세션 없음) 해당 `sid` 세션을 완전히 삭제하고(reuse detection) `401 INVALID_REFRESH_TOKEN`.
 7. 성공하면 새 refreshToken을 httpOnly 쿠키로 `Set-Cookie`.
-8. 응답(200) body: `{ accessToken }`.
+8. 응답(200) body: `{ accessToken, user: { id, name, email } }`.
 
 ### `POST /auth/logout`
 
@@ -142,14 +143,14 @@ backend/src/types/express.d.ts           (수정 불필요, AccessTokenPayload�
 - `user-service.test.ts`: 이메일 lowercase 정규화 후 조회, id로 조회.
 - `session-service.test.ts`: Valkey mock으로 세션별(sid) 저장, 원자적 회전(`rotateRefreshSession`) 성공/실패(이미 회전된 토큰·존재하지 않는 세션), 서로 다른 sid의 세션이 독립적인지, 저장값이 실제 sha256 해시와 정확히 일치하는지, 삭제 확인.
 - `auth-service.test.ts`: login/refresh/logout 비즈니스 로직을 하위 의존성(password/jwt/user.service/session.service)을 모킹해 단위 테스트. refresh 회전 실패 시 `deleteRefreshSession`이 호출되는지(reuse detection) 확인.
-- `auth.test.ts` (supertest, db/valkey는 `vi.mock`): 로그인 성공/실패(계정 없음, 비밀번호 틀림), 로그인 응답에 accessToken은 body로 오고 refreshToken은 body에 없이 `Set-Cookie`로만 오는지 확인(HttpOnly/SameSite/Path/Max-Age 속성 포함), 멀티 세션 독립성(두 기기 동시 로그인), refresh 성공/실패/회전 후 이전 refreshToken 무효화 확인, 회전된 refreshToken을 재사용하면 새로 회전된 토큰까지 함께 세션 폐기되는지(reuse detection) 확인, Origin 헤더가 CORS_ORIGIN과 다르면 403 확인, logout 후 해당 세션으로 refresh 불가 + 다른 기기(sid) 세션은 영향 없음 확인.
+- `auth.test.ts` (supertest, db/valkey는 `vi.mock`): 로그인 성공/실패(계정 없음, 비밀번호 틀림), 로그인 응답에 accessToken은 body로 오고 refreshToken은 body에 없이 `Set-Cookie`로만 오는지 확인(HttpOnly/SameSite/Path/Max-Age 속성 포함), 멀티 세션 독립성(두 기기 동시 로그인), refresh 성공 응답에 accessToken/user가 포함되는지 확인, refresh 성공/실패/회전 후 이전 refreshToken 무효화 확인, 회전된 refreshToken을 재사용하면 새로 회전된 토큰까지 함께 세션 폐기되는지(reuse detection) 확인, Origin 헤더가 CORS_ORIGIN과 다르면 403 확인, logout 후 해당 세션으로 refresh 불가 + 다른 기기(sid) 세션은 영향 없음 확인.
 
 ## 9. 완료 기준 (Definition of Done)
 
 - `POST /auth/login`에 올바른 자격증명으로 요청 시 200과 함께 body로 `accessToken`/`user`가 응답되고, `Set-Cookie`로 httpOnly refreshToken 쿠키가 내려오며, Valkey에 `refresh:{userId}:{sid}` 세션이 저장된다.
 - 같은 계정으로 서로 다른 두 클라이언트(쿠키 컨텍스트)에서 로그인하면 두 세션이 동시에 유효하다(멀티 세션 확인).
 - 잘못된 이메일/비밀번호로 요청 시 401 `INVALID_CREDENTIALS`가 응답되고, 계정 존재 여부와 무관하게 응답 시간이 유사하다.
-- `POST /auth/refresh`에 유효한 refreshToken 쿠키로 요청 시 새 accessToken(body)과 새 refreshToken(쿠키)이 발급되고, 이전 refreshToken으로는 더 이상 refresh할 수 없다. 이 회전은 Lua 기반 원자적 compare-and-set으로 이뤄진다.
+- `POST /auth/refresh`에 유효한 refreshToken 쿠키로 요청 시 새 accessToken/user(body)와 새 refreshToken(쿠키)이 발급되고, 이전 refreshToken으로는 더 이상 refresh할 수 없다. 이 회전은 Lua 기반 원자적 compare-and-set으로 이뤄진다.
 - 이미 회전되어 폐기된 refreshToken을 다시 제시하면(reuse) 그 sid의 세션 전체가 삭제되어, 방금 정상적으로 발급된 새 refreshToken까지 함께 무효화된다.
 - `Origin` 헤더가 `CORS_ORIGIN`과 다른 refresh 요청은 `403 INVALID_ORIGIN`으로 거부된다.
 - `POST /auth/logout` 후에는 해당 세션(sid)의 refreshToken으로 refresh가 실패하며, 다른 기기(sid)의 세션은 영향받지 않는다.

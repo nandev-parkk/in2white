@@ -8,8 +8,8 @@ export function refreshAccessToken(): Promise<string> {
   if (refreshPromise) return refreshPromise
 
   refreshPromise = refreshAccessTokenRequest()
-    .then(({ accessToken }) => {
-      useSessionStore.getState().updateAccessToken(accessToken)
+    .then(({ accessToken, user }) => {
+      useSessionStore.getState().setSession(accessToken, user)
       return accessToken
     })
     .finally(() => {

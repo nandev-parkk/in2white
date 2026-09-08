@@ -4,7 +4,7 @@
 
 **Goal:** Figma `Login (Alt)` 디자인대로 `/login` 페이지를 만들고 백엔드 `POST /auth/login`과 연동한다. 로그인 후에는 accessToken을 세션에 저장하고 `/`로 이동하며, accessToken 만료 시 refresh token으로 자동 갱신하고 갱신 실패 시 `/login`으로 이동하는 전역 인증 흐름까지 완성한다.
 
-**Architecture:** FSD(Feature-Sliced Design) 레이어를 따른다 — `shared/ui`(재사용 Input), `entities/session`(zustand 세션 store), `features/auth`(로그인·refresh·로그아웃 API, single-flight refresh, Axios 인터셉터, 인증 가드), `pages/login`(조합), `routes/__root.tsx`(전역 인증 가드), `routes/login.tsx`(로그인 경로 가드). `tokens.json`의 디자인 토큰을 `app/styles/index.css`에 CSS 변수로 배선해 Figma 참조 코드의 변수명을 그대로 쓸 수 있게 하고, 기존 shadcn 별칭도 같은 값으로 재매핑한다.
+**Architecture:** FSD(Feature-Sliced Design) 레이어를 따른다 — `shared/ui`(재사용 Input), `entities/session`(zustand 세션 store), `features/auth`(로그인·refresh·로그아웃 API, single-flight refresh, Axios 인터셉터, 전역 인증 가드), `pages/login`(조합), `routes/__root.tsx`(세션 복원과 전역 접근 제어), `routes/login.tsx`(로그인 화면). `tokens.json`의 디자인 토큰을 `app/styles/index.css`에 CSS 변수로 배선해 Figma 참조 코드의 변수명을 그대로 쓸 수 있게 하고, 기존 shadcn 별칭도 같은 값으로 재매핑한다.
 
 **Tech Stack:** React 19, TanStack Router(파일 기반 라우팅) + TanStack Query(`useMutation`), react-hook-form + zod(`@hookform/resolvers/zod`), zustand(세션 store), axios, class-variance-authority + `cn`(스타일), Tailwind CSS v4, vitest + `@testing-library/react`(테스트).
 
@@ -19,7 +19,7 @@
 - refresh token은 httpOnly 쿠키로만 사용하며 프론트에서 읽지 않는다. `/auth/refresh`는 `withCredentials`로 호출한다.
 - accessToken이 만료되면 동시 요청을 하나의 refresh 요청으로 합치고, refresh 성공 후 보호 요청을 재개한다. refresh 실패는 자동 재시도하지 않고 세션을 정리한 뒤 `/login`으로 이동한다.
 - 보호 요청이 401이면 refresh 후 원래 요청을 한 번만 재시도한다. 재시도 후에도 401이면 세션을 정리하고 `/login`으로 이동한다.
-- `/login` 외 경로는 전역 인증 가드로 보호한다. 새로고침 후 메모리 세션 복원은 별도 범위다.
+- 전역 인증 가드는 새로고침 후 메모리 세션이 없을 때 `/auth/refresh`로 세션 복원을 시도한다. `/login`은 refresh 성공 또는 유효한 세션이 있으면 `/`로 redirect하고, refresh 실패 시에만 접근을 허용한다.
 - 에러 메시지 원칙: API 요청 전 클라이언트 검증 실패는 `frontend/src/shared/constants/messages.ts`의 문구를 쓰고, API가 응답한 에러(401/400/5xx)는 응답 body의 `message`를 그대로 노출한다. 응답 자체를 못 받은 경우(네트워크 오류)만 `messages.ts`의 `NETWORK_ERROR`를 fallback으로 쓴다.
 - 로그인 성공 시 `/`로 이동한다(워크스페이스 페이지가 아직 없어 임시 조치, 스펙 §1 Non-Goals).
 - Figma `Login (Alt)` 프레임: node `96:5`, 파일 키 `Dimhltnal74SHy2NcLz1Lf`. Input 컴포넌트 사양: node `32:22`. Button 컴포넌트 사양: node `30:26`.
@@ -1398,36 +1398,38 @@ git commit -m "feat: 로그인 페이지(로고/태그라인/폼/footer) 조합"
 
 ---
 
-## Task 10: 라우트 인증 가드 및 전역 보호
+## Task 10: 라우트 인증 가드 및 전역 세션 복원
 
 **Files:**
 
 - Create: `frontend/src/routes/login.tsx`
-- Create: `frontend/src/routes/login.test.tsx`
 - Create: `frontend/src/features/auth/model/route-guards.ts`
 - Create: `frontend/src/routes/root.test.tsx`
+- Delete: `frontend/src/routes/login.test.tsx` (루트 전역 가드 테스트로 통합)
 - Modify: `frontend/src/routes/__root.tsx`
 - Modify: `frontend/src/routes/index.tsx`
 
 **Interfaces:**
 
 - Consumes: `LoginPage`(Task 9), `useSessionStore`(Task 5), `refreshAccessToken()`(Task 10-A).
-- Produces: `Route`(TanStack Router 파일 라우트), `redirectIfAuthenticated()`와 `redirectIfUnauthenticated()` 비동기 가드. `/login` 외 모든 경로는 유효한 accessToken/user를 요구하고, 만료 토큰은 진입 전에 refresh를 시도한다.
+- Produces: `Route`(TanStack Router 파일 라우트), `redirectIfUnauthenticated()` 비동기 전역 가드. 모든 경로에서 메모리 세션을 확인하고, 없거나 만료된 경우 refresh를 시도한다. `/login`은 유효한 세션이면 `/`로 redirect한다.
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
-`frontend/src/routes/login.test.tsx` 생성:
+`frontend/src/routes/root.test.tsx`에 전역 가드 테스트를 작성한다:
 
 ```tsx
 import { useSessionStore } from '@/entities/session'
 
-import { redirectIfAuthenticated } from './login'
+import { redirectIfUnauthenticated } from './__root'
 
 const mockRefreshAccessToken = vi.fn()
 
 vi.mock('@/features/auth/model/auth-session', () => ({
   refreshAccessToken: (...args: unknown[]) => mockRefreshAccessToken(...args),
 }))
+
+const user = { id: '1', name: '테스터', email: 'user@in2white.team' }
 
 function createToken(exp: number) {
   const encode = (value: unknown) =>
@@ -1439,60 +1441,67 @@ function createToken(exp: number) {
   return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ exp })}.signature`
 }
 
-describe('redirectIfAuthenticated', () => {
+describe('redirectIfUnauthenticated', () => {
   afterEach(() => {
     useSessionStore.getState().clearSession()
     mockRefreshAccessToken.mockReset()
   })
 
-  it('does nothing when there is no session', async () => {
-    await expect(redirectIfAuthenticated()).resolves.toBeUndefined()
+  it('allows the login route when refresh fails', async () => {
+    mockRefreshAccessToken.mockRejectedValueOnce(new Error('no refresh cookie'))
+
+    await expect(
+      redirectIfUnauthenticated({ location: { pathname: '/login' } }),
+    ).resolves.toBeUndefined()
   })
 
-  it('redirects to / when a valid session already exists', async () => {
-    useSessionStore.getState().setSession(createToken(2_000_000_000), {
-      id: '1',
-      name: '테스터',
-      email: 'user@in2white.team',
+  it('restores a missing session before allowing a protected route', async () => {
+    mockRefreshAccessToken.mockImplementationOnce(async () => {
+      useSessionStore.getState().setSession(createToken(2_000_000_000), user)
+      return 'restored-token'
     })
 
-    await expect(redirectIfAuthenticated()).rejects.toMatchObject({
-      options: { to: '/' },
-    })
+    await expect(
+      redirectIfUnauthenticated({ location: { pathname: '/' } }),
+    ).resolves.toBeUndefined()
+  })
+
+  it('redirects a logged-in session away from the login route', async () => {
+    useSessionStore.getState().setSession(createToken(2_000_000_000), user)
+
+    await expect(
+      redirectIfUnauthenticated({ location: { pathname: '/login' } }),
+    ).rejects.toMatchObject({ options: { to: '/' } })
   })
 })
 ```
 
 - [ ] **Step 2: 테스트 실패 확인**
 
-Run: `cd frontend && pnpm test -- routes/login.test`
-Expected: FAIL(`./login` 모듈이 없음).
+Run: `cd frontend && pnpm test -- routes/root.test`
+Expected: FAIL(세션 복원 및 로그인 경로 redirect가 아직 구현되지 않음).
 
 - [ ] **Step 3: `frontend/src/routes/login.tsx` 생성**
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
 
-import { redirectIfAuthenticated } from '@/features/auth/model/route-guards'
 import { LoginPage } from '@/pages/login'
 
-export { redirectIfAuthenticated }
-
 export const Route = createFileRoute('/login')({
-  beforeLoad: redirectIfAuthenticated,
   component: LoginPage,
 })
 ```
 
-`frontend/src/routes/__root.tsx`는 `beforeLoad: redirectIfUnauthenticated`를 설정해 `/login`만 비로그인 접근을 허용한다. `frontend/src/routes/index.tsx`는 같은 공통 가드를 명시적으로 연결하며, guard 단위 테스트는 다음을 검증한다.
+`frontend/src/routes/__root.tsx`는 `beforeLoad: redirectIfUnauthenticated`를 설정해 앱의 모든 경로에서 세션 복원과 접근 제어를 수행한다. `frontend/src/routes/login.tsx`에는 별도 인증 가드를 두지 않고 루트 가드에 위임한다. `frontend/src/routes/index.tsx`는 같은 공통 가드를 명시적으로 연결하며, guard 단위 테스트는 다음을 검증한다.
 
-- accessToken/user가 없으면 `/login`으로 redirect한다.
-- 만료 accessToken은 refresh 성공 시 보호 경로를 계속 진행하고, 실패 시 세션을 비운 뒤 `/login`으로 redirect한다.
-- `/login`에서는 유효한 세션을 `/`로 redirect하고, refresh 실패 세션은 비운 뒤 로그인 페이지 진입을 허용한다.
+- accessToken/user가 없으면 refresh 성공 후 세션을 복원한다.
+- 보호 경로에서 refresh 실패 시 세션을 비운 뒤 `/login`으로 redirect한다.
+- `/login`에서 유효한 세션 또는 refresh 성공 세션은 `/`로 redirect하고, refresh 실패 시 로그인 페이지 진입을 허용한다.
 
 - [ ] **Step 4: 테스트 통과 확인**
 
-Run: `cd frontend && pnpm test -- routes/login.test`
+Run: `cd frontend && pnpm test -- routes/root.test routes/index.test`
 Expected: PASS
 
 이 라우트 파일이 새로 생기면 `@tanstack/router-plugin`이 다음 `pnpm dev`/`pnpm build` 실행 시 `src/routeTree.gen.ts`를 자동 갱신한다(수동 편집 금지 파일, `.gitignore`/eslint에 이미 제외 설정됨).
@@ -1511,8 +1520,8 @@ Expected: 모두 PASS/에러 없음.
 
 ```bash
 cd frontend
-git add src/routes/login.tsx src/routes/login.test.tsx src/routeTree.gen.ts
-git commit -m "feat: /login 라우트 및 로그인 상태 가드 추가"
+git add src/routes/login.tsx src/routes/root.test.tsx src/routes/__root.tsx src/routes/index.tsx src/features/auth/model/route-guards.ts src/routeTree.gen.ts
+git commit -m "feat: restore auth session on route loading"
 ```
 
 ---
@@ -1533,15 +1542,15 @@ git commit -m "feat: /login 라우트 및 로그인 상태 가드 추가"
 
 **Interfaces and behavior:**
 
-- `refreshAccessTokenRequest()`는 body 없이 `POST /auth/refresh`를 호출하고 httpOnly refresh token 쿠키로 `{ accessToken }`을 받는다. `logoutRequest()`는 `POST /auth/logout`을 호출한다. Axios instance의 `withCredentials: true` 설정을 사용한다.
-- `refreshAccessToken()`은 동시 요청을 하나의 Promise로 합치는 single-flight coordinator다. 성공하면 `updateAccessToken()`으로 accessToken만 교체하고 user는 유지한다. refresh 실패는 자동 재시도하지 않는다.
+- `refreshAccessTokenRequest()`는 body 없이 `POST /auth/refresh`를 호출하고 httpOnly refresh token 쿠키로 `{ accessToken, user }`를 받는다. `logoutRequest()`는 `POST /auth/logout`을 호출한다. Axios instance의 `withCredentials: true` 설정을 사용한다.
+- `refreshAccessToken()`은 동시 요청을 하나의 Promise로 합치는 single-flight coordinator다. 성공하면 `setSession(accessToken, user)`로 accessToken/user를 함께 저장한다. refresh 실패는 자동 재시도하지 않는다.
 - Axios 요청 인터셉터는 로그인/refresh 요청을 제외하고, 보호 요청 직전에 만료 accessToken을 refresh한다. 보호 API가 401을 반환하면 refresh 후 원래 요청을 정확히 한 번만 재시도하며, 재시도 401 또는 refresh 실패 시 세션을 비우고 `/login` 이동 콜백을 호출한다. `_authRetry`로 무한 재시도를 막는다.
 - `App.tsx`는 Axios 인증 인터셉터를 한 번 초기화하고, 세션 만료 콜백을 TanStack Router의 `router.navigate({ to: '/login', replace: true })`에 연결한다. `/auth/login`의 401은 전역 세션 만료 처리에서 제외한다.
 - `HomePage`의 로그아웃은 API 성공/실패와 관계없이 client session을 비우고 `/login`으로 이동한다. 세션 없는 `HomePage`는 로그인 안내를 렌더링하지 않고 null을 반환한다.
 
 **Tests:**
 
-- refresh API의 body/응답 계약과 logout API 호출을 검증한다.
+- refresh API의 body/응답 계약(`accessToken`, `user`)과 logout API 호출을 검증한다.
 - 동시 refresh가 한 번만 실행되고, 실패가 재시도되지 않는지 검증한다.
 - 요청 전 만료 refresh, 보호 API 401의 1회 재시도, refresh 실패, 재시도 후 401, 로그인 401 제외를 검증한다.
 - 로그아웃 API 성공/실패 모두 clearSession과 `/login` 이동이 실행되는지 검증한다.
@@ -1567,12 +1576,13 @@ Run: `cd frontend && pnpm dev`
 - 빈 값으로 제출 시 필드 아래 빨간 에러 문구가 뜬다.
 - 이메일/비밀번호를 채우고 제출하면(실제 백엔드가 떠 있다면) 로딩 스피너가 잠깐 보이고 성공 시 `/`로 이동하거나, 틀린 자격증명이면 폼 하단에 에러 문구가 뜬다.
 
+- 로그인 후 새로고침해도 유효한 refresh token 쿠키로 세션이 복원되어 원래 화면이 유지된다.
 - 만료된 accessToken과 유효한 refresh token 쿠키로 보호 경로에 접근하면 refresh 후 원래 화면이 유지된다.
 - refresh token이 만료되었거나 무효하면 `/login`으로 이동하고, 브라우저 뒤로가기나 다른 보호 경로 접근으로 다시 보호 화면에 들어갈 수 없다.
 - 로그아웃하면 `/auth/logout` 호출 결과와 관계없이 `/login`으로 이동하고, 보호 경로 접근이 차단된다.
 
 - [ ] **Step 3: 브라우저 뒤로가기로 가드 확인**
 
-로그인 성공 후 브라우저 뒤로가기를 눌러 `/login`으로 돌아가려고 하면 즉시 `/`로 다시 리다이렉트되는지 확인한다. 로그아웃 또는 refresh 실패 후에는 `/login`에 머물고 보호 경로로 돌아갈 수 없는지 확인한다(새로고침 후 세션 복원은 스펙 §1 Non-Goals).
+로그인 성공 후 브라우저 뒤로가기 또는 주소창 입력으로 `/login`에 접근하면 즉시 `/`로 다시 리다이렉트되는지 확인한다. 로그아웃 또는 refresh 실패 후에는 `/login`에 머물고 보호 경로로 돌아갈 수 없는지 확인한다.
 
 이 Task는 코드 변경이나 커밋이 없다 — 확인 전용이다.
