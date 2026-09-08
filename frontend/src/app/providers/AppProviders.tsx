@@ -4,6 +4,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ErrorBoundary } from 'react-error-boundary'
 
 import { queryClient } from '@/shared/api'
+import { Toaster } from '@/shared/ui/toast'
 
 function ErrorFallback() {
   return (
@@ -18,6 +19,7 @@ export function AppProviders({ children }: PropsWithChildren) {
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <QueryClientProvider client={queryClient}>
         {children}
+        <Toaster />
         {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
       </QueryClientProvider>
     </ErrorBoundary>
