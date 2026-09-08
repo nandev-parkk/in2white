@@ -9,11 +9,15 @@ vi.mock('@/shared/api', () => ({
 describe('refreshAccessTokenRequest', () => {
   it('requests a new access token with the refresh cookie', async () => {
     vi.mocked(axiosInstance.post).mockResolvedValueOnce({
-      data: { accessToken: 'token-2' },
+      data: {
+        accessToken: 'token-2',
+        user: { id: '1', name: '테스터', email: 'user@in2white.team' },
+      },
     })
 
     await expect(refreshAccessTokenRequest()).resolves.toEqual({
       accessToken: 'token-2',
+      user: { id: '1', name: '테스터', email: 'user@in2white.team' },
     })
     expect(axiosInstance.post).toHaveBeenCalledWith('/auth/refresh')
   })

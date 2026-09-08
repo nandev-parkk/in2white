@@ -11,7 +11,7 @@ Figma `Login (Alt)` 디자인을 기준으로 이메일/비밀번호 로그인 �
 
 - 워크스페이스/프로젝트 목록 등 로그인 이후 페이지 — 아직 존재하지 않으므로 로그인 성공 시 임시로 `/`(기존 HomePage)로 이동한다. 워크스페이스 기능이 구현되면 리다이렉트 대상을 교체한다.
 - 회원가입 UI — `PRODUCT.md`에 따라 회원가입 기능 자체가 없다.
-- 새로고침(F5) 후에도 로그인 상태가 유지되도록 세션을 복원하는 기능 — accessToken이 메모리에만 있어 새로고침하면 사라진다. 이를 살리려면 refresh 토큰 쿠키로 앱 부팅 시 세션을 복원하는 별도 기능이 필요하며, 이번 스코프에서는 다루지 않는다. (단, 같은 SPA 세션 안에서의 가드는 §4.5에서 다룬다 — 이건 새로고침 생존과는 별개다.)
+- accessToken을 localStorage/sessionStorage에 영속화하는 기능 — 새로고침 시에는 httpOnly refresh token 쿠키로 `/auth/refresh`를 호출해 메모리 세션을 복원하고, 브라우저 저장소에는 accessToken을 기록하지 않는다.
 - 로그인 실패 반복에 대한 프론트 측 rate limit/lockout UI — 백엔드가 별도 제한을 두지 않으므로(백엔드 설계서 §1 Non-Goals) 프론트도 두지 않는다.
 
 ## 2. 화면 구조 (DESIGN.md §7.1, §7.2 Auth Shell)
@@ -70,8 +70,8 @@ Figma `Input` 컴포넌트(node `32:22`) 사양을 그대로 따른다 — State
 ### 4.3 `features/auth` (신규)
 
 - `api/login.ts` — `loginRequest(email, password)`: `axiosInstance.post('/auth/login', { email, password })`, 응답 타입 `{ accessToken: string, user: { id: string, name: string, email: string } }`.
-- `api/session.ts` — `refreshAccessTokenRequest()`: 쿠키를 사용해 `POST /auth/refresh`를 호출하고 `{ accessToken }`을 반환한다. `logoutRequest()`: `POST /auth/logout`을 호출한다.
-- `model/auth-session.ts` — 동시 요청이 발생해도 `/auth/refresh`를 한 번만 실행하는 single-flight refresh coordinator. 성공하면 store의 accessToken만 교체하고 user는 유지한다. 실패한 refresh는 자동 재시도하지 않는다.
+- `api/session.ts` — `refreshAccessTokenRequest()`: 쿠키를 사용해 `POST /auth/refresh`를 호출하고 `{ accessToken, user }`를 반환한다. `logoutRequest()`: `POST /auth/logout`을 호출한다.
+- `model/auth-session.ts` — 동시 요청이 발생해도 `/auth/refresh`를 한 번만 실행하는 single-flight refresh coordinator. 성공하면 store에 accessToken/user를 저장해 앱 부팅 후에도 메모리 세션을 복원한다. 실패한 refresh는 자동 재시도하지 않는다.
 - `model/auth-interceptor.ts` — 공통 Axios 요청/응답 인터셉터. 보호 요청 전 만료 토큰을 refresh하고, 보호 API의 401은 refresh 후 원래 요청을 한 번만 재시도한다. refresh 실패 또는 재시도 후 401이면 세션을 비우고 앱이 제공한 `/login` 이동 콜백을 호출한다. `/auth/login`과 `/auth/refresh`의 401은 이 흐름에서 제외한다.
 - `model/use-login.ts` — `useLogin()`: `@tanstack/react-query`의 `useMutation`으로 `loginRequest`를 감싸고, 성공 시 `useSessionStore.getState().setSession(...)` 호출.
 - `ui/LoginForm.tsx` — react-hook-form + zod(`@hookform/resolvers/zod`)로 클라이언트 검증(이메일 형식, 필수 입력, 문구는 `shared/constants/messages.ts` 참조). 제출 시 `useLogin().mutate`, 서버 응답의 `error.message`(없으면 `NETWORK_ERROR` fallback)를 폼 레벨 에러로 노출(§5), `isPending`을 Button의 로딩 상태에 연결.
@@ -83,11 +83,11 @@ Figma `Input` 컴포넌트(node `32:22`) 사양을 그대로 따른다 — State
 
 ### 4.5 라우트 인증 가드
 
-- `features/auth/model/route-guards.ts`에서 보호 경로와 로그인 경로의 가드를 공통으로 제공한다.
-- `routes/__root.tsx`의 전역 `beforeLoad`는 `/login`만 비로그인 접근을 허용하고, 그 외 모든 현재·추가 경로에 유효한 세션을 요구한다.
+- `features/auth/model/route-guards.ts`에서 앱 전역 세션 가드를 제공한다.
+- `routes/__root.tsx`의 전역 `beforeLoad`는 모든 경로에서 세션을 확인한다. 메모리 세션이 없으면 refresh를 시도하고, `/login`은 유효한 세션이 있거나 refresh 성공 시 `/`로 redirect한다. refresh 실패 시에만 `/login`을 허용한다.
 - 보호 경로 진입 시 accessToken이 만료되어 있으면 refresh를 먼저 시도한다. refresh 실패 시 세션을 비우고 `/login`으로 redirect한다.
-- `createFileRoute('/login')`은 유효한 세션이 있으면 `/`로 redirect한다. 만료 세션은 refresh 성공 시 `/`로 이동하고, refresh 실패 시 세션을 비운 뒤 로그인 페이지 진입을 허용한다.
-- accessToken은 메모리에만 있으므로 새로고침 후 세션 복원은 여전히 별도 범위다.
+- `createFileRoute('/login')`에는 별도 인증 가드를 두지 않고, 부모인 `__root.tsx`의 전역 가드가 유효한 세션을 `/`로 redirect한다. 만료 또는 메모리 세션 부재 상태는 refresh 성공 시 `/`로 이동하고, refresh 실패 시 세션을 비운 뒤 로그인 페이지 진입을 허용한다.
+- accessToken/user는 메모리에만 보관하며, 라우트 전역 가드가 메모리 세션이 없을 때 refresh cookie로 세션 복원을 시도한다.
 
 ### 4.6 앱 인증 초기화 및 로그아웃
 
@@ -133,7 +133,7 @@ Figma 마크 이미지(28×28, node `96:9`/`96:10`)를 다운로드해 `frontend
 
 - `shared/api/axios-instance.ts`에 `withCredentials: true`를 추가한다 — refreshToken httpOnly 쿠키를 브라우저가 주고받으려면 필수다(백엔드 설계서 §3, CORS `credentials: true`와 대응).
 - `features/auth/model/auth-interceptor.ts`를 앱 시작 시 설정해 현재 accessToken을 보호 요청에 적용하고, 만료/401 refresh 흐름을 공통 처리한다.
-- `/auth/refresh`는 요청 body 없이 `withCredentials` 쿠키만 사용하며, refresh 실패를 자동 재시도하지 않는다.
+- `/auth/refresh`는 요청 body 없이 `withCredentials` 쿠키만 사용하며, 성공 시 로그인과 동일한 `{ accessToken, user: { id, name, email } }`를 반환한다. refresh 실패는 자동 재시도하지 않는다.
 - `/auth/logout`은 현재 accessToken을 Authorization 헤더로 보내고, 백엔드가 현재 기기의 refresh 세션을 폐기하도록 한다.
 - `.env` 관련: 프론트 `VITE_API_BASE_URL`이 백엔드 `CORS_ORIGIN`(기본 `http://localhost:5173`)과 짝이 맞는지 로컬 개발 시 확인이 필요하다(코드 변경 아님, 개발 환경 확인 사항).
 
@@ -151,15 +151,15 @@ frontend/src/features/auth/api/login.ts               (신규) loginRequest(§4.
 frontend/src/features/auth/api/session.ts             (신규) refreshAccessTokenRequest/logoutRequest(§4.3, §4.6)
 frontend/src/features/auth/model/auth-session.ts       (신규) single-flight refresh coordinator(§4.3)
 frontend/src/features/auth/model/auth-interceptor.ts   (신규) Axios 인증·401 처리(§4.3, §7)
-frontend/src/features/auth/model/route-guards.ts      (신규) 전역/로그인 라우트 가드(§4.5)
+frontend/src/features/auth/model/route-guards.ts      (신규) 전역 세션 복원/인증 가드(§4.5)
 frontend/src/features/auth/model/use-login.ts         (신규) useLogin 훅(§4.3)
 frontend/src/features/auth/ui/LoginForm.tsx           (신규) 폼 UI/검증/에러 처리(§4.3, §5)
 frontend/src/features/auth/index.ts                   (신규)
 frontend/src/pages/login/ui/LoginPage.tsx             (신규) 페이지 조합(§4.4)
 frontend/src/pages/login/ui/LoginPage.test.tsx         (신규) 렌더링/제출 플로우 테스트
 frontend/src/pages/login/index.ts                     (신규)
-frontend/src/routes/login.tsx                         (신규) /login 라우트(§4.5)
-frontend/src/routes/__root.tsx                         (수정) `/login` 외 전역 인증 가드(§4.5)
+frontend/src/routes/login.tsx                         (신규) /login 로그인 페이지 라우트(전역 가드 위임, §4.5)
+frontend/src/routes/__root.tsx                         (수정) 세션 복원 및 전역 인증 가드(§4.5)
 frontend/src/routes/index.tsx                          (수정) 보호 라우트 가드 연결(§4.5)
 frontend/src/app/App.tsx                               (수정) Axios 인증 인터셉터 초기화(§4.6)
 frontend/src/pages/home/ui/HomePage.tsx                (수정) 로그아웃 API·세션 정리·/login 이동(§4.6)
@@ -179,11 +179,11 @@ frontend/public/logo-mark.png                          (신규) Figma 마크 에
   - API가 401을 응답하면 폼 레벨 에러 메시지가 표시되고 세션 store는 변경되지 않는다.
   - 제출 중에는 버튼이 `disabled` 상태다.
 - 라우트 가드: 세션 store에 accessToken이 있는 상태로 `/login`에 진입하면 `/`로 리다이렉트된다(TanStack Router 테스트 유틸 또는 `beforeLoad` 함수 단위 테스트로 검증).
-- 세션 store: 만료/유효/malformed token 판별과 accessToken만 교체하는 동작을 검증한다.
+- 세션 store: 만료/유효/malformed token 판별과 refresh 응답의 accessToken/user 저장 동작을 검증한다.
 - 인증 API: `/auth/refresh`와 `/auth/logout` 호출 계약을 검증한다.
 - 인증 세션: refresh 성공, refresh 실패, 동시 refresh single-flight를 검증한다.
 - Axios 인터셉터: 요청 전 만료 토큰 refresh, 보호 API 401 후 1회 재시도, refresh 실패, 재시도 후 401, 로그인 401 제외를 검증한다.
-- 전역 라우트 가드: `/login` 외 경로의 비로그인 접근 차단과 만료 세션의 refresh 성공/실패를 검증한다.
+- 전역 라우트 가드: 새로고침 후 메모리 세션 복원, 보호 경로의 refresh 성공/실패, 로그인 상태의 `/login` 접근 차단을 검증한다.
 - 로그아웃: API 성공·실패 모두 세션 정리 및 `/login` 이동을 검증한다.
 
 ## 10. 완료 기준 (Definition of Done)
@@ -196,7 +196,9 @@ frontend/public/logo-mark.png                          (신규) Figma 마크 에
 - `pnpm lint`, `pnpm test`(frontend)가 통과한다.
 - `tokens.json`의 색상/spacing/radius 값이 하드코딩 없이 CSS 변수를 통해 적용된다.
 - 유효한 로그인 세션에서 `/login`에 접근하면 `/`로 리다이렉트된다.
+- 새로고침 후 유효한 refresh token 쿠키가 있으면 accessToken/user 세션이 복원되고 기존 보호 화면에 머문다.
 - accessToken 만료 시 refresh token 쿠키로 자동 갱신되고, refresh 실패 시 `/login`으로 리다이렉트된다.
 - 보호 API의 401은 refresh 성공 시 한 번만 재시도하며, 재시도 후에도 401이면 `/login`으로 리다이렉트된다.
 - 비로그인 상태에서 `/login` 외 모든 경로 접근이 `/login`으로 차단된다.
+- 로그인 상태에서 `/login` 접근이 `/`로 차단된다.
 - 로그아웃 시 백엔드 현재 기기 세션을 폐기하고 `/login`으로 이동한다.

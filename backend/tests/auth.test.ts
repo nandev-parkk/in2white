@@ -269,6 +269,11 @@ describe("POST /auth/refresh and /auth/logout", () => {
 
     expect(refreshResponse.status).toBe(200);
     expect(refreshResponse.body.accessToken).toEqual(expect.any(String));
+    expect(refreshResponse.body.user).toEqual({
+      id: "user-1",
+      name: "Test User",
+      email: "user@example.com",
+    });
     const rotatedCookie = extractCookie(refreshResponse, "refreshToken");
     expect(rotatedCookie).toBeTruthy();
     expect(rotatedCookie).not.toBe(refreshCookie);

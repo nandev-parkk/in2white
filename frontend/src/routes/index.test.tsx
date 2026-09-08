@@ -27,6 +27,8 @@ describe('redirectIfUnauthenticated', () => {
   })
 
   it('세션이 없으면 로그인 페이지로 보낸다', async () => {
+    mockRefreshAccessToken.mockRejectedValueOnce(new Error('no refresh cookie'))
+
     await expect(redirectIfUnauthenticated()).rejects.toMatchObject({
       options: { to: '/login' },
     })

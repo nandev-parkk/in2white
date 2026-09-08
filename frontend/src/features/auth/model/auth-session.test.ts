@@ -24,6 +24,7 @@ describe('refreshAccessToken', () => {
   it('stores the refreshed token and keeps the current user', async () => {
     vi.mocked(refreshAccessTokenRequest).mockResolvedValueOnce({
       accessToken: 'token-2',
+      user: { id: '1', name: '테스터', email: 'user@in2white.team' },
     })
 
     await expect(refreshAccessToken()).resolves.toBe('token-2')
@@ -34,8 +35,26 @@ describe('refreshAccessToken', () => {
     })
   })
 
+  it('restores the user when refreshing after the in-memory session is lost', async () => {
+    useSessionStore.getState().clearSession()
+    vi.mocked(refreshAccessTokenRequest).mockResolvedValueOnce({
+      accessToken: 'restored-token',
+      user: { id: '1', name: '테스터', email: 'user@in2white.team' },
+    })
+
+    await refreshAccessToken()
+
+    expect(useSessionStore.getState()).toMatchObject({
+      accessToken: 'restored-token',
+      user: { id: '1', name: '테스터', email: 'user@in2white.team' },
+    })
+  })
+
   it('shares one refresh request between concurrent callers', async () => {
-    let resolveRefresh!: (value: { accessToken: string }) => void
+    let resolveRefresh!: (value: {
+      accessToken: string
+      user: { id: string; name: string; email: string }
+    }) => void
     vi.mocked(refreshAccessTokenRequest).mockReturnValueOnce(
       new Promise((resolve) => {
         resolveRefresh = resolve
@@ -44,7 +63,10 @@ describe('refreshAccessToken', () => {
 
     const first = refreshAccessToken()
     const second = refreshAccessToken()
-    resolveRefresh({ accessToken: 'token-2' })
+    resolveRefresh({
+      accessToken: 'token-2',
+      user: { id: '1', name: '테스터', email: 'user@in2white.team' },
+    })
 
     await expect(Promise.all([first, second])).resolves.toEqual([
       'token-2',
