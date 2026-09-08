@@ -3,6 +3,7 @@ import { createWorkspaceSchema, updateWorkspaceSchema } from "@/schemas/workspac
 import {
   createWorkspace,
   deleteWorkspace,
+  getWorkspaceDetail,
   listWorkspaces,
   updateWorkspace,
 } from "@/services/workspace.service";
@@ -23,6 +24,17 @@ export async function listWorkspacesHandler(req: Request, res: Response) {
 
   const workspaceList = await listWorkspaces(user.sub);
   res.status(200).json({ workspaces: workspaceList });
+}
+
+export async function getWorkspaceDetailHandler(req: Request, res: Response) {
+  const user = requireUser(req);
+
+  const workspace = await getWorkspaceDetail({
+    workspaceId: req.params.workspaceId,
+    userId: user.sub,
+  });
+
+  res.status(200).json({ workspace });
 }
 
 export async function updateWorkspaceHandler(req: Request, res: Response) {

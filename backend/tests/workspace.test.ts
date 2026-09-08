@@ -4,7 +4,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { createApp } from "@/app";
 import { db } from "@/db/client";
 import { signAccessToken } from "@/lib/jwt";
-import { workspaceMemberships, workspaces } from "@/db/schema";
+import { projects, users, workspaceMemberships, workspaces } from "@/db/schema";
 
 vi.mock("@/db/client", () => ({
   db: {
@@ -261,6 +261,213 @@ describe("GET /workspaces", () => {
 
     const response = await request(createApp())
       .get("/workspaces")
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+  });
+});
+
+describe("GET /workspaces/:workspaceId", () => {
+  function mockWorkspaceDetailQueries({
+    workspaceRows = [
+      {
+        id: "workspace-1",
+        name: "Brand Studio",
+        ownerId: "owner-1",
+        ownerName: "Workspace Owner",
+        isDefault: false,
+        createdAt: new Date("2026-09-07T00:00:00.000Z"),
+        updatedAt: new Date("2026-09-07T00:05:00.000Z"),
+        role: "owner" as const,
+      },
+    ],
+    memberCountRows = [{ memberCount: 7 }],
+    projectCountRows = [{ projectCount: 4 }],
+    workspaceError,
+    memberCountError,
+    projectCountError,
+  }: {
+    workspaceRows?: unknown[];
+    memberCountRows?: unknown[];
+    projectCountRows?: unknown[];
+    workspaceError?: Error;
+    memberCountError?: Error;
+    projectCountError?: Error;
+  } = {}) {
+    const workspaceQuery = {
+      from: vi.fn().mockReturnThis(),
+      innerJoin: vi.fn().mockReturnThis(),
+      where: workspaceError
+        ? vi.fn().mockRejectedValue(workspaceError)
+        : vi.fn().mockResolvedValue(workspaceRows),
+    };
+    const memberCountQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: memberCountError
+        ? vi.fn().mockRejectedValue(memberCountError)
+        : vi.fn().mockResolvedValue(memberCountRows),
+    };
+    const projectCountQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: projectCountError
+        ? vi.fn().mockRejectedValue(projectCountError)
+        : vi.fn().mockResolvedValue(projectCountRows),
+    };
+
+    vi.mocked(db.select)
+      .mockReturnValueOnce(workspaceQuery as never)
+      .mockReturnValueOnce(memberCountQuery as never)
+      .mockReturnValueOnce(projectCountQuery as never);
+
+    return { memberCountQuery, projectCountQuery, workspaceQuery };
+  }
+
+  it("returns workspace detail and owner permissions", async () => {
+    const createdAt = new Date("2026-09-07T00:00:00.000Z");
+    const updatedAt = new Date("2026-09-07T00:05:00.000Z");
+    mockWorkspaceDetailQueries({
+      workspaceRows: [
+        {
+          id: "workspace-1",
+          name: "Brand Studio",
+          ownerId: "user-1",
+          ownerName: "Workspace Owner",
+          isDefault: false,
+          createdAt,
+          updatedAt,
+          role: "owner",
+        },
+      ],
+    });
+
+    const response = await request(createApp())
+      .get("/workspaces/workspace-1")
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      workspace: {
+        id: "workspace-1",
+        name: "Brand Studio",
+        owner: { id: "user-1", name: "Workspace Owner" },
+        isDefault: false,
+        createdAt: createdAt.toISOString(),
+        updatedAt: updatedAt.toISOString(),
+        role: "owner",
+        permissions: {
+          canRename: true,
+          canDelete: true,
+          canManageMembers: true,
+          canCreateProject: true,
+          canViewMembers: true,
+        },
+        counts: { memberCount: 7, projectCount: 4 },
+      },
+    });
+    expect(db.select).toHaveBeenCalledTimes(3);
+    const workspaceQuery = vi.mocked(db.select).mock.results[0]?.value as {
+      innerJoin: ReturnType<typeof vi.fn>;
+      where: ReturnType<typeof vi.fn>;
+    };
+    const memberCountQuery = vi.mocked(db.select).mock.results[1]?.value as {
+      where: ReturnType<typeof vi.fn>;
+    };
+    const projectCountQuery = vi.mocked(db.select).mock.results[2]?.value as {
+      where: ReturnType<typeof vi.fn>;
+    };
+    expect(workspaceQuery.innerJoin).toHaveBeenNthCalledWith(
+      1,
+      workspaces,
+      eq(workspaceMemberships.workspaceId, workspaces.id),
+    );
+    expect(workspaceQuery.innerJoin).toHaveBeenNthCalledWith(
+      2,
+      users,
+      eq(workspaces.ownerId, users.id),
+    );
+    expect(workspaceQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(workspaceMemberships.workspaceId, "workspace-1"),
+        eq(workspaceMemberships.userId, "user-1"),
+      ),
+    );
+    expect(memberCountQuery.where).toHaveBeenCalledWith(
+      eq(workspaceMemberships.workspaceId, "workspace-1"),
+    );
+    expect(projectCountQuery.where).toHaveBeenCalledWith(eq(projects.workspaceId, "workspace-1"));
+  });
+
+  it("returns member permissions and hides default workspace deletion", async () => {
+    mockWorkspaceDetailQueries({
+      workspaceRows: [
+        {
+          id: "workspace-default",
+          name: "My Workspace",
+          ownerId: "owner-1",
+          ownerName: "Workspace Owner",
+          isDefault: true,
+          createdAt: new Date("2026-09-07T00:00:00.000Z"),
+          updatedAt: new Date("2026-09-07T00:05:00.000Z"),
+          role: "member",
+        },
+      ],
+      memberCountRows: [{ memberCount: 2 }],
+      projectCountRows: [{ projectCount: 1 }],
+    });
+
+    const response = await request(createApp())
+      .get("/workspaces/workspace-default")
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.workspace.role).toBe("member");
+    expect(response.body.workspace.permissions).toEqual({
+      canRename: false,
+      canDelete: false,
+      canManageMembers: false,
+      canCreateProject: true,
+      canViewMembers: true,
+    });
+    expect(response.body.workspace.counts).toEqual({ memberCount: 2, projectCount: 1 });
+  });
+
+  it("returns 401 when the request is not authenticated", async () => {
+    const response = await request(createApp()).get("/workspaces/workspace-1");
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHORIZED");
+    expect(db.select).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the user is not a workspace member", async () => {
+    mockWorkspaceDetailQueries({ workspaceRows: [] });
+
+    const response = await request(createApp())
+      .get("/workspaces/workspace-1")
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("WORKSPACE_NOT_FOUND");
+    expect(db.select).toHaveBeenCalledOnce();
+  });
+
+  it("returns 500 when the workspace detail query fails", async () => {
+    mockWorkspaceDetailQueries({ workspaceError: new Error("workspace detail failed") });
+
+    const response = await request(createApp())
+      .get("/workspaces/workspace-1")
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+  });
+
+  it("returns 500 when a workspace count query fails", async () => {
+    mockWorkspaceDetailQueries({ projectCountError: new Error("project count failed") });
+
+    const response = await request(createApp())
+      .get("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
     expect(response.status).toBe(500);

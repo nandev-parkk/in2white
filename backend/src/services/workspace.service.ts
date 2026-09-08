@@ -1,7 +1,7 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq } from "drizzle-orm";
 import { ERROR_MESSAGES } from "@/constants/messages";
 import { db } from "@/db/client";
-import { workspaceMemberships, workspaces } from "@/db/schema";
+import { projects, users, workspaceMemberships, workspaces } from "@/db/schema";
 import { HttpError } from "@/utils/http-error";
 
 export interface CreateWorkspaceInput {
@@ -19,6 +19,37 @@ export type WorkspaceListItem = typeof workspaces.$inferSelect & {
   role: (typeof workspaceMemberships.$inferSelect)["role"];
 };
 
+export interface GetWorkspaceDetailInput {
+  workspaceId: string;
+  userId: string;
+}
+
+export interface WorkspacePermissions {
+  canRename: boolean;
+  canDelete: boolean;
+  canManageMembers: boolean;
+  canCreateProject: boolean;
+  canViewMembers: boolean;
+}
+
+export interface WorkspaceDetail {
+  id: string;
+  name: string;
+  owner: {
+    id: string;
+    name: string;
+  };
+  isDefault: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  role: (typeof workspaceMemberships.$inferSelect)["role"];
+  permissions: WorkspacePermissions;
+  counts: {
+    memberCount: number;
+    projectCount: number;
+  };
+}
+
 export async function listWorkspaces(userId: string): Promise<WorkspaceListItem[]> {
   return db
     .select({
@@ -34,6 +65,70 @@ export async function listWorkspaces(userId: string): Promise<WorkspaceListItem[
     .innerJoin(workspaces, eq(workspaceMemberships.workspaceId, workspaces.id))
     .where(eq(workspaceMemberships.userId, userId))
     .orderBy(desc(workspaces.isDefault), asc(workspaces.createdAt), asc(workspaces.id));
+}
+
+export async function getWorkspaceDetail({
+  workspaceId,
+  userId,
+}: GetWorkspaceDetailInput): Promise<WorkspaceDetail> {
+  const [workspace] = await db
+    .select({
+      id: workspaces.id,
+      name: workspaces.name,
+      ownerId: users.id,
+      ownerName: users.name,
+      isDefault: workspaces.isDefault,
+      createdAt: workspaces.createdAt,
+      updatedAt: workspaces.updatedAt,
+      role: workspaceMemberships.role,
+    })
+    .from(workspaceMemberships)
+    .innerJoin(workspaces, eq(workspaceMemberships.workspaceId, workspaces.id))
+    .innerJoin(users, eq(workspaces.ownerId, users.id))
+    .where(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, userId),
+      ),
+    );
+
+  if (!workspace) {
+    throw new HttpError(404, "WORKSPACE_NOT_FOUND", ERROR_MESSAGES.WORKSPACE_NOT_FOUND);
+  }
+
+  const [[memberCount], [projectCount]] = await Promise.all([
+    db
+      .select({ memberCount: count() })
+      .from(workspaceMemberships)
+      .where(eq(workspaceMemberships.workspaceId, workspaceId)),
+    db
+      .select({ projectCount: count() })
+      .from(projects)
+      .where(eq(projects.workspaceId, workspaceId)),
+  ]);
+
+  const isOwner = workspace.role === "owner";
+
+  return {
+    id: workspace.id,
+    name: workspace.name,
+    owner: { id: workspace.ownerId, name: workspace.ownerName },
+    isDefault: workspace.isDefault,
+    createdAt: workspace.createdAt,
+    updatedAt: workspace.updatedAt,
+    role: workspace.role,
+    permissions: {
+      canRename: isOwner,
+      canDelete: isOwner && !workspace.isDefault,
+      canManageMembers: isOwner,
+      canCreateProject: true,
+      canViewMembers: true,
+    },
+    counts: {
+      memberCount: Number(memberCount?.memberCount ?? 0),
+      projectCount: Number(projectCount?.projectCount ?? 0),
+    },
+  };
 }
 
 export async function createWorkspace({
