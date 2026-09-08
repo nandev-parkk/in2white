@@ -128,7 +128,11 @@ function Sidebar({
           collapsed ? 'items-center' : 'pr-8',
         )}
       >
-        <div className="bg-action-primary size-9 rounded-lg" />
+        <img
+          src="/logo-mark.png"
+          alt="in2white"
+          className="size-7 rounded-sm"
+        />
         {!collapsed && (
           <>
             <button
@@ -150,12 +154,12 @@ function Sidebar({
                 <Avatar
                   key={member.id}
                   size="small"
-                  className="ring-1.5 ring-background-default -mr-1"
+                  className="ring-1.5 ring-background-default -mr-1 size-5"
                 >
                   {member.imageUrl && (
                     <AvatarImage src={member.imageUrl} alt={member.name} />
                   )}
-                  <AvatarFallback size="small">
+                  <AvatarFallback size="small" className="text-xs">
                     {member.name.slice(0, 1)}
                   </AvatarFallback>
                 </Avatar>

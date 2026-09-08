@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Storybook
+storybook-static
+
 # TanStack Router (auto-generated)
 src/routeTree.gen.ts
 
