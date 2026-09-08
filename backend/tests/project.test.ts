@@ -920,7 +920,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
 
 describe("DELETE /workspaces/:workspaceId/projects/:projectId", () => {
   it("allows an owner to delete another creator's project and returns 204", async () => {
-    const { projectQuery, projectDelete } = mockProjectDeleteTransaction();
+    const { membershipQuery, projectQuery, projectDelete } = mockProjectDeleteTransaction();
 
     const response = await request(createApp())
       .delete("/workspaces/" + workspaceId + "/projects/" + createdProject.id)
@@ -928,6 +928,12 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId", () => {
 
     expect(response.status).toBe(204);
     expect(response.body).toEqual({});
+    expect(membershipQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, "user-1"),
+      ),
+    );
     expect(projectQuery.where).toHaveBeenCalledWith(
       and(
         eq(projects.id, createdProject.id),
