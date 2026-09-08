@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull } from "drizzle-orm";
 import { ERROR_MESSAGES } from "@/constants/messages";
 import { db } from "@/db/client";
 import { projects, users, workspaceMemberships, workspaces } from "@/db/schema";
@@ -104,7 +104,7 @@ export async function getWorkspaceDetail({
     db
       .select({ projectCount: count() })
       .from(projects)
-      .where(eq(projects.workspaceId, workspaceId)),
+      .where(and(eq(projects.workspaceId, workspaceId), isNull(projects.deletedAt))),
   ]);
 
   const isOwner = workspace.role === "owner";

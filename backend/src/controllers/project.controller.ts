@@ -6,7 +6,12 @@ import {
   projectUpdateParamsSchema,
   updateProjectSchema,
 } from "@/schemas/project.schema";
-import { createProject, listProjects, updateProject } from "@/services/project.service";
+import {
+  createProject,
+  deleteProject,
+  listProjects,
+  updateProject,
+} from "@/services/project.service";
 import { parseOrThrow } from "@/utils/parse-or-throw";
 import { requireUser } from "@/utils/require-user";
 
@@ -55,4 +60,17 @@ export async function updateProjectHandler(req: Request, res: Response) {
   });
 
   res.status(200).json({ project });
+}
+
+export async function deleteProjectHandler(req: Request, res: Response) {
+  const user = requireUser(req);
+  const { workspaceId, projectId } = parseOrThrow(projectUpdateParamsSchema, req.params);
+
+  await deleteProject({
+    workspaceId,
+    projectId,
+    userId: user.sub,
+  });
+
+  res.status(204).send();
 }

@@ -1,6 +1,6 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { createApp } from "@/app";
 import { db } from "@/db/client";
 import { signAccessToken } from "@/lib/jwt";
@@ -323,7 +323,7 @@ describe("GET /workspaces/:workspaceId", () => {
     return { memberCountQuery, projectCountQuery, workspaceQuery };
   }
 
-  it("returns workspace detail and owner permissions", async () => {
+  it("returns workspace detail and owner permissions while excluding deleted projects from the project count", async () => {
     const createdAt = new Date("2026-09-07T00:00:00.000Z");
     const updatedAt = new Date("2026-09-07T00:05:00.000Z");
     mockWorkspaceDetailQueries({
@@ -395,7 +395,9 @@ describe("GET /workspaces/:workspaceId", () => {
     expect(memberCountQuery.where).toHaveBeenCalledWith(
       eq(workspaceMemberships.workspaceId, "workspace-1"),
     );
-    expect(projectCountQuery.where).toHaveBeenCalledWith(eq(projects.workspaceId, "workspace-1"));
+    expect(projectCountQuery.where).toHaveBeenCalledWith(
+      and(eq(projects.workspaceId, "workspace-1"), isNull(projects.deletedAt)),
+    );
   });
 
   it("returns member permissions and hides default workspace deletion", async () => {

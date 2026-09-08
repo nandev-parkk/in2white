@@ -15,6 +15,13 @@
       "when": 1788796965321,
       "tag": "0001_tiresome_killmonger",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788888261862,
+      "tag": "0002_wandering_bruce_banner",
+      "breakpoints": true
     }
   ]
 }

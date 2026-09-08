@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, isNull } from "drizzle-orm";
 import { ERROR_MESSAGES } from "@/constants/messages";
 import { db } from "@/db/client";
 import { projects, users, workspaceMemberships } from "@/db/schema";
@@ -45,6 +45,12 @@ export interface UpdateProjectInput {
   userId: string;
   name?: string;
   description?: string | null;
+}
+
+export interface DeleteProjectInput {
+  workspaceId: string;
+  projectId: string;
+  userId: string;
 }
 
 export async function createProject({
@@ -110,7 +116,13 @@ export async function updateProject({
     const [project] = await tx
       .select({ id: projects.id, creatorId: projects.creatorId })
       .from(projects)
-      .where(and(eq(projects.id, projectId), eq(projects.workspaceId, workspaceId)));
+      .where(
+        and(
+          eq(projects.id, projectId),
+          eq(projects.workspaceId, workspaceId),
+          isNull(projects.deletedAt),
+        ),
+      );
 
     if (!project) {
       throw new HttpError(404, "PROJECT_NOT_FOUND", ERROR_MESSAGES.PROJECT_NOT_FOUND);
@@ -139,7 +151,13 @@ export async function updateProject({
     const [updatedProject] = await tx
       .update(projects)
       .set(updateValues)
-      .where(and(eq(projects.id, projectId), eq(projects.workspaceId, workspaceId)))
+      .where(
+        and(
+          eq(projects.id, projectId),
+          eq(projects.workspaceId, workspaceId),
+          isNull(projects.deletedAt),
+        ),
+      )
       .returning();
 
     if (!updatedProject) {
@@ -147,6 +165,64 @@ export async function updateProject({
     }
 
     return updatedProject;
+  });
+}
+
+export async function deleteProject({
+  workspaceId,
+  projectId,
+  userId,
+}: DeleteProjectInput): Promise<void> {
+  return db.transaction(async (tx) => {
+    const [membership] = await tx
+      .select({ role: workspaceMemberships.role })
+      .from(workspaceMemberships)
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          eq(workspaceMemberships.userId, userId),
+        ),
+      );
+
+    if (!membership) {
+      throw new HttpError(404, "WORKSPACE_NOT_FOUND", ERROR_MESSAGES.WORKSPACE_NOT_FOUND);
+    }
+
+    const [project] = await tx
+      .select({ id: projects.id, creatorId: projects.creatorId })
+      .from(projects)
+      .where(
+        and(
+          eq(projects.id, projectId),
+          eq(projects.workspaceId, workspaceId),
+          isNull(projects.deletedAt),
+        ),
+      );
+
+    if (!project) {
+      throw new HttpError(404, "PROJECT_NOT_FOUND", ERROR_MESSAGES.PROJECT_NOT_FOUND);
+    }
+
+    if (membership.role !== "owner" && project.creatorId !== userId) {
+      throw new HttpError(403, "PROJECT_DELETE_FORBIDDEN", ERROR_MESSAGES.PROJECT_DELETE_FORBIDDEN);
+    }
+
+    const now = new Date();
+    const [deletedProject] = await tx
+      .update(projects)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(projects.id, projectId),
+          eq(projects.workspaceId, workspaceId),
+          isNull(projects.deletedAt),
+        ),
+      )
+      .returning({ id: projects.id });
+
+    if (!deletedProject) {
+      throw new HttpError(404, "PROJECT_NOT_FOUND", ERROR_MESSAGES.PROJECT_NOT_FOUND);
+    }
   });
 }
 
@@ -173,6 +249,7 @@ export async function listProjects({
 
   const whereCondition = and(
     eq(projects.workspaceId, workspaceId),
+    isNull(projects.deletedAt),
     search ? ilike(projects.name, buildContainsSearchPattern(search)) : undefined,
   );
 

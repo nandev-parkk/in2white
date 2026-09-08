@@ -1,6 +1,6 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { and, asc, count, desc, eq, ilike } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, isNull } from "drizzle-orm";
 import { createApp } from "@/app";
 import { db } from "@/db/client";
 import { projects, users, workspaceMemberships } from "@/db/schema";
@@ -121,6 +121,50 @@ function mockProjectUpdateTransaction({
   vi.mocked(db.transaction).mockImplementation(async (callback) => callback(transaction as never));
 
   return { membershipQuery, projectQuery, projectUpdate, transaction };
+}
+
+function mockProjectDeleteTransaction({
+  membershipRows = [{ role: "owner" }],
+  projectRows = [{ id: createdProject.id, creatorId: "user-2" }],
+  deletedProjectRows = [{ id: createdProject.id }],
+  membershipError,
+  projectError,
+  deleteError,
+}: {
+  membershipRows?: unknown[];
+  projectRows?: unknown[];
+  deletedProjectRows?: unknown[];
+  membershipError?: Error;
+  projectError?: Error;
+  deleteError?: Error;
+} = {}) {
+  const membershipQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: membershipError
+      ? vi.fn().mockRejectedValue(membershipError)
+      : vi.fn().mockResolvedValue(membershipRows),
+  };
+  const projectQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: projectError
+      ? vi.fn().mockRejectedValue(projectError)
+      : vi.fn().mockResolvedValue(projectRows),
+  };
+  const projectDelete = {
+    set: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    returning: deleteError
+      ? vi.fn().mockRejectedValue(deleteError)
+      : vi.fn().mockResolvedValue(deletedProjectRows),
+  };
+  const transaction = {
+    select: vi.fn().mockReturnValueOnce(membershipQuery).mockReturnValueOnce(projectQuery),
+    update: vi.fn().mockReturnValue(projectDelete),
+  };
+
+  vi.mocked(db.transaction).mockImplementation(async (callback) => callback(transaction as never));
+
+  return { membershipQuery, projectQuery, projectDelete, transaction };
 }
 
 function mockProjectListQueries({
@@ -448,10 +492,18 @@ describe("GET /workspaces/:workspaceId/projects", () => {
       ),
     );
     expect(countQuery.where).toHaveBeenCalledWith(
-      and(eq(projects.workspaceId, workspaceId), ilike(projects.name, "%Brand%")),
+      and(
+        eq(projects.workspaceId, workspaceId),
+        isNull(projects.deletedAt),
+        ilike(projects.name, "%Brand%"),
+      ),
     );
     expect(projectQuery.where).toHaveBeenCalledWith(
-      and(eq(projects.workspaceId, workspaceId), ilike(projects.name, "%Brand%")),
+      and(
+        eq(projects.workspaceId, workspaceId),
+        isNull(projects.deletedAt),
+        ilike(projects.name, "%Brand%"),
+      ),
     );
     expect(projectQuery.orderBy).toHaveBeenCalledWith(
       desc(projects.updatedAt),
@@ -475,10 +527,18 @@ describe("GET /workspaces/:workspaceId/projects", () => {
 
     expect(response.status).toBe(200);
     expect(countQuery.where).toHaveBeenCalledWith(
-      and(eq(projects.workspaceId, workspaceId), ilike(projects.name, "%100\\%\\_done\\\\now%")),
+      and(
+        eq(projects.workspaceId, workspaceId),
+        isNull(projects.deletedAt),
+        ilike(projects.name, "%100\\%\\_done\\\\now%"),
+      ),
     );
     expect(projectQuery.where).toHaveBeenCalledWith(
-      and(eq(projects.workspaceId, workspaceId), ilike(projects.name, "%100\\%\\_done\\\\now%")),
+      and(
+        eq(projects.workspaceId, workspaceId),
+        isNull(projects.deletedAt),
+        ilike(projects.name, "%100\\%\\_done\\\\now%"),
+      ),
     );
   });
 
@@ -497,7 +557,12 @@ describe("GET /workspaces/:workspaceId/projects", () => {
       projects: [],
       pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
     });
-    expect(countQuery.where).toHaveBeenCalledOnce();
+    expect(countQuery.where).toHaveBeenCalledWith(
+      and(eq(projects.workspaceId, workspaceId), isNull(projects.deletedAt)),
+    );
+    expect(projectQuery.where).toHaveBeenCalledWith(
+      and(eq(projects.workspaceId, workspaceId), isNull(projects.deletedAt)),
+    );
     expect(projectQuery.limit).toHaveBeenCalledWith(20);
     expect(projectQuery.offset).toHaveBeenCalledWith(0);
   });
@@ -624,7 +689,7 @@ describe("GET /workspaces/:workspaceId/projects", () => {
 
 describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
   it("allows an owner to update any project name and description", async () => {
-    const { projectUpdate } = mockProjectUpdateTransaction();
+    const { projectQuery, projectUpdate } = mockProjectUpdateTransaction();
 
     const response = await request(createApp())
       .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
@@ -647,6 +712,14 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
       description: "Updated description",
       updatedAt: expect.any(Date),
     });
+    const activeProjectCondition = and(
+      eq(projects.id, createdProject.id),
+      eq(projects.workspaceId, workspaceId),
+      isNull(projects.deletedAt),
+    );
+
+    expect(projectQuery.where).toHaveBeenCalledWith(activeProjectCondition);
+    expect(projectUpdate.where).toHaveBeenCalledWith(activeProjectCondition);
   });
 
   it("allows a creator member to update only the description", async () => {
@@ -871,5 +944,141 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
       name: "Updated Campaign",
       updatedAt: expect.any(Date),
     });
+  });
+});
+
+describe("DELETE /workspaces/:workspaceId/projects/:projectId", () => {
+  it("allows an owner to delete another creator's project and returns 204", async () => {
+    const { membershipQuery, projectQuery, projectDelete } = mockProjectDeleteTransaction();
+
+    const response = await request(createApp())
+      .delete("/workspaces/" + workspaceId + "/projects/" + createdProject.id)
+      .set("Authorization", "Bearer " + (await createAccessToken()));
+
+    expect(response.status).toBe(204);
+    expect(response.body).toEqual({});
+    expect(membershipQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, "user-1"),
+      ),
+    );
+    expect(projectQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(projects.id, createdProject.id),
+        eq(projects.workspaceId, workspaceId),
+        isNull(projects.deletedAt),
+      ),
+    );
+    expect(projectDelete.set).toHaveBeenCalledWith({
+      deletedAt: expect.any(Date),
+      updatedAt: expect.any(Date),
+    });
+    expect(projectDelete.where).toHaveBeenCalledWith(
+      and(
+        eq(projects.id, createdProject.id),
+        eq(projects.workspaceId, workspaceId),
+        isNull(projects.deletedAt),
+      ),
+    );
+  });
+
+  it("allows the project creator member to delete the project", async () => {
+    const { projectDelete } = mockProjectDeleteTransaction({
+      membershipRows: [{ role: "member" }],
+      projectRows: [{ id: createdProject.id, creatorId: "user-1" }],
+    });
+
+    const response = await request(createApp())
+      .delete("/workspaces/" + workspaceId + "/projects/" + createdProject.id)
+      .set("Authorization", "Bearer " + (await createAccessToken()));
+
+    expect(response.status).toBe(204);
+    expect(projectDelete.set).toHaveBeenCalledOnce();
+  });
+
+  it("returns 404 for a non-member before looking up the project", async () => {
+    const { projectQuery, projectDelete } = mockProjectDeleteTransaction({ membershipRows: [] });
+
+    const response = await request(createApp())
+      .delete("/workspaces/" + workspaceId + "/projects/" + createdProject.id)
+      .set("Authorization", "Bearer " + (await createAccessToken()));
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("WORKSPACE_NOT_FOUND");
+    expect(projectQuery.where).not.toHaveBeenCalled();
+    expect(projectDelete.set).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for a member who did not create the project", async () => {
+    const { projectDelete } = mockProjectDeleteTransaction({
+      membershipRows: [{ role: "member" }],
+    });
+
+    const response = await request(createApp())
+      .delete("/workspaces/" + workspaceId + "/projects/" + createdProject.id)
+      .set("Authorization", "Bearer " + (await createAccessToken()));
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("PROJECT_DELETE_FORBIDDEN");
+    expect(projectDelete.set).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: "workspace id", path: "not-a-uuid/projects/" + createdProject.id },
+    { label: "project id", path: workspaceId + "/projects/not-a-uuid" },
+  ])("returns 400 for an invalid $label", async ({ path }) => {
+    const response = await request(createApp())
+      .delete("/workspaces/" + path)
+      .set("Authorization", "Bearer " + (await createAccessToken()));
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the active project is missing or already deleted", async () => {
+    const { projectDelete } = mockProjectDeleteTransaction({ projectRows: [] });
+
+    const response = await request(createApp())
+      .delete("/workspaces/" + workspaceId + "/projects/" + createdProject.id)
+      .set("Authorization", "Bearer " + (await createAccessToken()));
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("PROJECT_NOT_FOUND");
+    expect(projectDelete.set).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 without authentication", async () => {
+    const response = await request(createApp()).delete(
+      "/workspaces/" + workspaceId + "/projects/" + createdProject.id,
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHORIZED");
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: "membership", options: { membershipError: new Error("membership failed") } },
+    { label: "project", options: { projectError: new Error("project failed") } },
+    { label: "delete", options: { deleteError: new Error("delete failed") } },
+  ])("returns 500 when the $label query fails", async ({ options }) => {
+    const { projectQuery, projectDelete } = mockProjectDeleteTransaction(options);
+
+    const response = await request(createApp())
+      .delete("/workspaces/" + workspaceId + "/projects/" + createdProject.id)
+      .set("Authorization", "Bearer " + (await createAccessToken()));
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+
+    if (options.membershipError) {
+      expect(projectQuery.where).not.toHaveBeenCalled();
+      expect(projectDelete.set).not.toHaveBeenCalled();
+    }
+    if (options.projectError) {
+      expect(projectDelete.set).not.toHaveBeenCalled();
+    }
   });
 });
