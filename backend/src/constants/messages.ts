@@ -20,4 +20,9 @@ export const ERROR_MESSAGES = {
   WORKSPACE_UPDATE_FORBIDDEN: "워크스페이스를 수정할 권한이 없습니다",
   WORKSPACE_DELETE_FORBIDDEN: "워크스페이스를 삭제할 권한이 없습니다",
   WORKSPACE_DEFAULT_DELETE_FORBIDDEN: "기본 워크스페이스는 삭제할 수 없습니다",
+  WORKSPACE_ID_INVALID: "유효하지 않은 워크스페이스 ID입니다",
+  PROJECT_NAME_REQUIRED: "프로젝트 이름을 입력해주세요",
+  PROJECT_NAME_TOO_LONG: "프로젝트 이름은 50자 이내로 입력해주세요",
+  PROJECT_DESCRIPTION_INVALID: "프로젝트 설명은 문자열이어야 합니다",
+  PROJECT_DESCRIPTION_TOO_LONG: "프로젝트 설명은 200자 이내로 입력해주세요",
 } as const;
