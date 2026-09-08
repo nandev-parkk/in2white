@@ -122,6 +122,30 @@ describe('HomePage', () => {
     expect(screen.getAllByText('워크스페이스 불러오는 중')).toHaveLength(2)
   })
 
+  it('Figma 기준 흰색 페이지와 사이드바 구분선을 사용한다', () => {
+    useSessionStore.getState().setSession('token-1', userFixture)
+    mockUseWorkspaces.mockReturnValue({
+      data: [workspaceFixture],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    })
+    mockUseCreateWorkspace.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      error: null,
+      reset: vi.fn(),
+    })
+
+    renderHomePage()
+
+    const sidebar = screen.getByRole('complementary', {
+      name: '워크스페이스 사이드바',
+    })
+    expect(sidebar).toHaveClass('border-sidebar-border')
+    expect(sidebar.parentElement).toHaveClass('bg-background-default')
+  })
+
   it('생성 중에는 모달을 닫아 mutation을 초기화할 수 없다', async () => {
     useSessionStore.getState().setSession('token-1', userFixture)
     const reset = vi.fn()
@@ -331,6 +355,41 @@ describe('HomePage', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('생성 다이얼로그 외부를 눌러도 워크스페이스 목록을 유지한다', async () => {
+    useSessionStore.getState().setSession('token-1', userFixture)
+    mockUseWorkspaces.mockReturnValue({
+      data: [workspaceFixture],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    })
+    mockUseCreateWorkspace.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      error: null,
+      reset: vi.fn(),
+    })
+
+    renderHomePage()
+
+    await userEvent.click(screen.getByRole('button', { name: 'My Workspace' }))
+    await userEvent.click(
+      screen.getByRole('button', { name: '새 워크스페이스 생성' }),
+    )
+
+    fireEvent.pointerDown(
+      document.querySelector('[data-slot="dialog-overlay"]') as HTMLElement,
+    )
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(
+      document.querySelector('[data-slot="workspace-switcher-popover"]'),
+    ).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: '취소' }))
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+  })
+
   it('생성 직후 임시 항목을 표시하고 새 API 목록으로 교체한다', async () => {
     useSessionStore.getState().setSession('token-1', userFixture)
     let workspaces = [workspaceFixture]
@@ -415,7 +474,6 @@ describe('HomePage', () => {
     expect(reset).toHaveBeenCalledOnce()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'My Workspace' }))
     await userEvent.click(
       screen.getByRole('button', { name: '새 워크스페이스 생성' }),
     )

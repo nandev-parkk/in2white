@@ -28,6 +28,11 @@ function WorkspaceCreateDialog({
   const [name, setName] = useState('')
   const [requiredError, setRequiredError] = useState(false)
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) setRequiredError(false)
+    onOpenChange(nextOpen)
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -44,13 +49,15 @@ function WorkspaceCreateDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-[227px] max-w-90 overflow-y-auto p-8">
-        <DialogTitle>새 워크스페이스 만들기</DialogTitle>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="min-h-[227px] max-w-90 p-8">
+        <DialogTitle className="text-[20px] leading-7 font-bold tracking-[-0.012em]">
+          새 워크스페이스 만들기
+        </DialogTitle>
         <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             <label
-              className="text-label text-foreground-default"
+              className="text-foreground-default text-[14px] leading-[17px] font-semibold tracking-[0.0145em]"
               htmlFor="workspace-name"
             >
               이름
@@ -82,16 +89,25 @@ function WorkspaceCreateDialog({
               {error}
             </p>
           )}
-          <DialogFooter className="mt-1">
+          <DialogFooter
+            role="group"
+            aria-label="워크스페이스 생성 액션"
+            className="mt-5"
+          >
             <Button
               type="button"
               variant="tertiary"
+              className="h-9 rounded-md px-4"
               disabled={loading}
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
             >
               취소
             </Button>
-            <Button type="submit" loading={loading}>
+            <Button
+              type="submit"
+              loading={loading}
+              className="h-9 rounded-md px-4"
+            >
               만들기
             </Button>
           </DialogFooter>

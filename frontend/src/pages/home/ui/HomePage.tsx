@@ -98,7 +98,7 @@ function AuthenticatedHomePage({
   }
 
   return (
-    <div className="bg-background-canvas flex min-h-svh">
+    <div className="bg-background-default flex min-h-svh">
       <Sidebar
         className="min-h-svh shrink-0"
         collapsed={collapsed}
@@ -109,6 +109,7 @@ function AuthenticatedHomePage({
         selectedWorkspaceId={resolvedSelectedWorkspaceId}
         onWorkspaceChange={setSelectedWorkspaceId}
         onCreateWorkspace={() => handleCreateDialogOpenChange(true)}
+        workspaceDialogOpen={createDialogOpen}
         workspaceMembers={[{ id: user.id, name: user.name, presenceIndex: 1 }]}
         activeNav={activeNav}
         onNavChange={setActiveNav}
