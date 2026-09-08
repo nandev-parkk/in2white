@@ -492,10 +492,18 @@ describe("GET /workspaces/:workspaceId/projects", () => {
       ),
     );
     expect(countQuery.where).toHaveBeenCalledWith(
-      and(eq(projects.workspaceId, workspaceId), ilike(projects.name, "%Brand%")),
+      and(
+        eq(projects.workspaceId, workspaceId),
+        isNull(projects.deletedAt),
+        ilike(projects.name, "%Brand%"),
+      ),
     );
     expect(projectQuery.where).toHaveBeenCalledWith(
-      and(eq(projects.workspaceId, workspaceId), ilike(projects.name, "%Brand%")),
+      and(
+        eq(projects.workspaceId, workspaceId),
+        isNull(projects.deletedAt),
+        ilike(projects.name, "%Brand%"),
+      ),
     );
     expect(projectQuery.orderBy).toHaveBeenCalledWith(
       desc(projects.updatedAt),
@@ -519,10 +527,18 @@ describe("GET /workspaces/:workspaceId/projects", () => {
 
     expect(response.status).toBe(200);
     expect(countQuery.where).toHaveBeenCalledWith(
-      and(eq(projects.workspaceId, workspaceId), ilike(projects.name, "%100\\%\\_done\\\\now%")),
+      and(
+        eq(projects.workspaceId, workspaceId),
+        isNull(projects.deletedAt),
+        ilike(projects.name, "%100\\%\\_done\\\\now%"),
+      ),
     );
     expect(projectQuery.where).toHaveBeenCalledWith(
-      and(eq(projects.workspaceId, workspaceId), ilike(projects.name, "%100\\%\\_done\\\\now%")),
+      and(
+        eq(projects.workspaceId, workspaceId),
+        isNull(projects.deletedAt),
+        ilike(projects.name, "%100\\%\\_done\\\\now%"),
+      ),
     );
   });
 
@@ -541,7 +557,12 @@ describe("GET /workspaces/:workspaceId/projects", () => {
       projects: [],
       pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
     });
-    expect(countQuery.where).toHaveBeenCalledOnce();
+    expect(countQuery.where).toHaveBeenCalledWith(
+      and(eq(projects.workspaceId, workspaceId), isNull(projects.deletedAt)),
+    );
+    expect(projectQuery.where).toHaveBeenCalledWith(
+      and(eq(projects.workspaceId, workspaceId), isNull(projects.deletedAt)),
+    );
     expect(projectQuery.limit).toHaveBeenCalledWith(20);
     expect(projectQuery.offset).toHaveBeenCalledWith(0);
   });
@@ -668,7 +689,7 @@ describe("GET /workspaces/:workspaceId/projects", () => {
 
 describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
   it("allows an owner to update any project name and description", async () => {
-    const { projectUpdate } = mockProjectUpdateTransaction();
+    const { projectQuery, projectUpdate } = mockProjectUpdateTransaction();
 
     const response = await request(createApp())
       .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
@@ -691,6 +712,14 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
       description: "Updated description",
       updatedAt: expect.any(Date),
     });
+    const activeProjectCondition = and(
+      eq(projects.id, createdProject.id),
+      eq(projects.workspaceId, workspaceId),
+      isNull(projects.deletedAt),
+    );
+
+    expect(projectQuery.where).toHaveBeenCalledWith(activeProjectCondition);
+    expect(projectUpdate.where).toHaveBeenCalledWith(activeProjectCondition);
   });
 
   it("allows a creator member to update only the description", async () => {

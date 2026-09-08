@@ -116,7 +116,13 @@ export async function updateProject({
     const [project] = await tx
       .select({ id: projects.id, creatorId: projects.creatorId })
       .from(projects)
-      .where(and(eq(projects.id, projectId), eq(projects.workspaceId, workspaceId)));
+      .where(
+        and(
+          eq(projects.id, projectId),
+          eq(projects.workspaceId, workspaceId),
+          isNull(projects.deletedAt),
+        ),
+      );
 
     if (!project) {
       throw new HttpError(404, "PROJECT_NOT_FOUND", ERROR_MESSAGES.PROJECT_NOT_FOUND);
@@ -145,7 +151,13 @@ export async function updateProject({
     const [updatedProject] = await tx
       .update(projects)
       .set(updateValues)
-      .where(and(eq(projects.id, projectId), eq(projects.workspaceId, workspaceId)))
+      .where(
+        and(
+          eq(projects.id, projectId),
+          eq(projects.workspaceId, workspaceId),
+          isNull(projects.deletedAt),
+        ),
+      )
       .returning();
 
     if (!updatedProject) {
@@ -237,6 +249,7 @@ export async function listProjects({
 
   const whereCondition = and(
     eq(projects.workspaceId, workspaceId),
+    isNull(projects.deletedAt),
     search ? ilike(projects.name, buildContainsSearchPattern(search)) : undefined,
   );
 
