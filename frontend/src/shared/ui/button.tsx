@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react'
 import { Slot } from 'radix-ui'
 
 const buttonVariants = cva(
-  "text-label inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap transition-colors outline-none select-none disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-3 focus-visible:ring-action-focus-ring [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "text-label inline-flex shrink-0 items-center justify-center whitespace-nowrap transition-colors outline-none select-none disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-3 focus-visible:ring-action-focus-ring [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -47,6 +47,28 @@ function Button({
     loading?: boolean
   }) {
   const Comp = asChild ? Slot.Root : 'button'
+  const content = asChild ? (
+    children
+  ) : (
+    <span
+      data-slot="button-content"
+      className="relative inline-flex items-center justify-center"
+    >
+      {loading && (
+        <Loader2
+          aria-hidden="true"
+          data-slot="button-loading"
+          className="absolute right-full mr-1.5 animate-spin"
+        />
+      )}
+      <span
+        data-slot="button-label"
+        className="inline-flex items-center gap-1.5"
+      >
+        {children}
+      </span>
+    </span>
+  )
 
   return (
     <Comp
@@ -58,8 +80,7 @@ function Button({
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     >
-      {loading && <Loader2 className="animate-spin" />}
-      {children}
+      {content}
     </Comp>
   )
 }

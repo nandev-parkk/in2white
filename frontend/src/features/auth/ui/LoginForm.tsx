@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { MESSAGES } from '@/shared/constants/messages'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
+import { toast } from '@/shared/ui/toast'
 
 import { useLogin } from '../model/use-login'
 
@@ -50,10 +51,11 @@ export function LoginForm() {
       onSuccess: () => {
         navigate({ to: '/' })
       },
+      onError: (error) => {
+        toast.error(getErrorMessage(error))
+      },
     })
   }
-
-  const formError = login.isError ? getErrorMessage(login.error) : null
 
   return (
     <form
@@ -113,15 +115,6 @@ export function LoginForm() {
           </p>
         )}
       </div>
-
-      {formError && (
-        <p
-          role="alert"
-          className="text-status-danger w-full text-center text-[12px]"
-        >
-          {formError}
-        </p>
-      )}
 
       <Button
         type="submit"
