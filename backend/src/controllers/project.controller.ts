@@ -1,7 +1,12 @@
 import type { Request, Response } from "express";
 import { listQuerySchema } from "@/schemas/list-query.schema";
-import { createProjectSchema, projectParamsSchema } from "@/schemas/project.schema";
-import { createProject, listProjects } from "@/services/project.service";
+import {
+  createProjectSchema,
+  projectParamsSchema,
+  projectUpdateParamsSchema,
+  updateProjectSchema,
+} from "@/schemas/project.schema";
+import { createProject, listProjects, updateProject } from "@/services/project.service";
 import { parseOrThrow } from "@/utils/parse-or-throw";
 import { requireUser } from "@/utils/require-user";
 
@@ -34,4 +39,20 @@ export async function listProjectsHandler(req: Request, res: Response) {
   });
 
   res.status(200).json(result);
+}
+
+export async function updateProjectHandler(req: Request, res: Response) {
+  const user = requireUser(req);
+  const { workspaceId, projectId } = parseOrThrow(projectUpdateParamsSchema, req.params);
+  const { name, description } = parseOrThrow(updateProjectSchema, req.body);
+
+  const project = await updateProject({
+    workspaceId,
+    projectId,
+    userId: user.sub,
+    name,
+    description,
+  });
+
+  res.status(200).json({ project });
 }

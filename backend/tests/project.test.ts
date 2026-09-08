@@ -5,6 +5,7 @@ import { createApp } from "@/app";
 import { db } from "@/db/client";
 import { projects, users, workspaceMemberships } from "@/db/schema";
 import { signAccessToken } from "@/lib/jwt";
+import { updateProject } from "@/services/project.service";
 
 vi.mock("@/db/client", () => ({
   db: {
@@ -30,10 +31,10 @@ beforeEach(() => {
   vi.mocked(db.select).mockReset();
 });
 
-async function createAccessToken() {
+async function createAccessToken(sub = "user-1") {
   return signAccessToken({
-    sub: "user-1",
-    email: "user@example.com",
+    sub,
+    email: sub + "@example.com",
     sid: "session-1",
   });
 }
@@ -69,6 +70,57 @@ function mockProjectCreateTransaction({
   vi.mocked(db.transaction).mockImplementation(async (callback) => callback(transaction as never));
 
   return { membershipQuery, projectInsert, transaction };
+}
+
+function mockProjectUpdateTransaction({
+  membershipRows = [{ role: "owner" }],
+  projectRows = [{ id: createdProject.id, creatorId: "user-2" }],
+  updatedProjectRows = [
+    {
+      ...createdProject,
+      name: "Updated Campaign",
+      description: "Updated description",
+      updatedAt: new Date("2026-09-08T00:05:00.000Z"),
+    },
+  ],
+  membershipError,
+  projectError,
+  updateError,
+}: {
+  membershipRows?: unknown[];
+  projectRows?: unknown[];
+  updatedProjectRows?: unknown[];
+  membershipError?: Error;
+  projectError?: Error;
+  updateError?: Error;
+} = {}) {
+  const membershipQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: membershipError
+      ? vi.fn().mockRejectedValue(membershipError)
+      : vi.fn().mockResolvedValue(membershipRows),
+  };
+  const projectQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: projectError
+      ? vi.fn().mockRejectedValue(projectError)
+      : vi.fn().mockResolvedValue(projectRows),
+  };
+  const projectUpdate = {
+    set: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    returning: updateError
+      ? vi.fn().mockRejectedValue(updateError)
+      : vi.fn().mockResolvedValue(updatedProjectRows),
+  };
+  const transaction = {
+    select: vi.fn().mockReturnValueOnce(membershipQuery).mockReturnValueOnce(projectQuery),
+    update: vi.fn().mockReturnValue(projectUpdate),
+  };
+
+  vi.mocked(db.transaction).mockImplementation(async (callback) => callback(transaction as never));
+
+  return { membershipQuery, projectQuery, projectUpdate, transaction };
 }
 
 function mockProjectListQueries({
@@ -567,5 +619,257 @@ describe("GET /workspaces/:workspaceId/projects", () => {
       expect(projectQuery.limit).toHaveBeenCalledOnce();
       expect(projectQuery.offset).toHaveBeenCalledOnce();
     }
+  });
+});
+
+describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
+  it("allows an owner to update any project name and description", async () => {
+    const { projectUpdate } = mockProjectUpdateTransaction();
+
+    const response = await request(createApp())
+      .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({
+        name: "  Updated Campaign  ",
+        description: "  Updated description  ",
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.project).toEqual({
+      ...createdProject,
+      name: "Updated Campaign",
+      description: "Updated description",
+      createdAt: createdProject.createdAt.toISOString(),
+      updatedAt: "2026-09-08T00:05:00.000Z",
+    });
+    expect(projectUpdate.set).toHaveBeenCalledWith({
+      name: "Updated Campaign",
+      description: "Updated description",
+      updatedAt: expect.any(Date),
+    });
+  });
+
+  it("allows a creator member to update only the description", async () => {
+    const { projectUpdate } = mockProjectUpdateTransaction({
+      membershipRows: [{ role: "member" }],
+      projectRows: [{ id: createdProject.id, creatorId: "user-1" }],
+      updatedProjectRows: [
+        {
+          ...createdProject,
+          description: "Updated description",
+          updatedAt: new Date("2026-09-08T00:05:00.000Z"),
+        },
+      ],
+    });
+
+    const response = await request(createApp())
+      .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ description: "  Updated description  " });
+
+    expect(response.status).toBe(200);
+    expect(projectUpdate.set).toHaveBeenCalledWith({
+      description: "Updated description",
+      updatedAt: expect.any(Date),
+    });
+  });
+
+  it("allows a creator member to update only the name", async () => {
+    const { projectUpdate } = mockProjectUpdateTransaction({
+      membershipRows: [{ role: "member" }],
+      projectRows: [{ id: createdProject.id, creatorId: "user-1" }],
+    });
+
+    const response = await request(createApp())
+      .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "  Updated Campaign  " });
+
+    expect(response.status).toBe(200);
+    expect(projectUpdate.set).toHaveBeenCalledWith({
+      name: "Updated Campaign",
+      updatedAt: expect.any(Date),
+    });
+  });
+
+  it.each([null, "   "])("normalizes description %j to null", async (description) => {
+    const { projectUpdate } = mockProjectUpdateTransaction();
+
+    const response = await request(createApp())
+      .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ description });
+
+    expect(response.status).toBe(200);
+    expect(projectUpdate.set).toHaveBeenCalledWith({
+      description: null,
+      updatedAt: expect.any(Date),
+    });
+  });
+
+  it("returns 400 for an empty PATCH body", async () => {
+    const response = await request(createApp())
+      .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects an empty service update before opening a transaction", async () => {
+    db.transaction.mockClear();
+
+    await expect(
+      updateProject({
+        workspaceId,
+        projectId: createdProject.id,
+        userId: "user-1",
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: "VALIDATION_ERROR",
+    });
+
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: "invalid workspace id", path: `not-a-uuid/projects/${createdProject.id}` },
+    { label: "invalid project id", path: `${workspaceId}/projects/not-a-uuid` },
+    {
+      label: "invalid name",
+      path: `${workspaceId}/projects/${createdProject.id}`,
+      body: { name: "   " },
+    },
+    {
+      label: "null name",
+      path: `${workspaceId}/projects/${createdProject.id}`,
+      body: { name: null },
+    },
+    {
+      label: "invalid description type",
+      path: `${workspaceId}/projects/${createdProject.id}`,
+      body: { description: 123 },
+    },
+    {
+      label: "description longer than 200 characters",
+      path: `${workspaceId}/projects/${createdProject.id}`,
+      body: { description: "a".repeat(201) },
+    },
+  ])("returns 400 for $label", async ({ path, body }) => {
+    const response = await request(createApp())
+      .patch(`/workspaces/${path}`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send(body);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 without authentication", async () => {
+    const response = await request(createApp()).patch(
+      `/workspaces/${workspaceId}/projects/${createdProject.id}`,
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHORIZED");
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 and skips project lookup for a non-member", async () => {
+    const { projectQuery, projectUpdate } = mockProjectUpdateTransaction({
+      membershipRows: [],
+    });
+
+    const response = await request(createApp())
+      .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "Updated Campaign" });
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("WORKSPACE_NOT_FOUND");
+    expect(projectQuery.where).not.toHaveBeenCalled();
+    expect(projectUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the project is not in the requested workspace", async () => {
+    const { projectUpdate } = mockProjectUpdateTransaction({ projectRows: [] });
+
+    const response = await request(createApp())
+      .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "Updated Campaign" });
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("PROJECT_NOT_FOUND");
+    expect(projectUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when a member did not create the project", async () => {
+    const { projectUpdate } = mockProjectUpdateTransaction({
+      membershipRows: [{ role: "member" }],
+      projectRows: [{ id: createdProject.id, creatorId: "user-2" }],
+    });
+
+    const response = await request(createApp())
+      .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "Updated Campaign" });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("PROJECT_UPDATE_FORBIDDEN");
+    expect(projectUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 and stops after a membership query error", async () => {
+    const { projectQuery, projectUpdate } = mockProjectUpdateTransaction({
+      membershipError: new Error("membership query failed"),
+    });
+
+    const response = await request(createApp())
+      .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "Updated Campaign" });
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+    expect(projectQuery.where).not.toHaveBeenCalled();
+    expect(projectUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 and stops before update after a project query error", async () => {
+    const { projectUpdate } = mockProjectUpdateTransaction({
+      projectError: new Error("project query failed"),
+    });
+
+    const response = await request(createApp())
+      .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "Updated Campaign" });
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+    expect(projectUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when the update query fails", async () => {
+    const { projectUpdate } = mockProjectUpdateTransaction({
+      updateError: new Error("project update failed"),
+    });
+
+    const response = await request(createApp())
+      .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "Updated Campaign" });
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+    expect(projectUpdate.set).toHaveBeenCalledWith({
+      name: "Updated Campaign",
+      updatedAt: expect.any(Date),
+    });
   });
 });
