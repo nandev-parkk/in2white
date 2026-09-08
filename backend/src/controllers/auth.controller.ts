@@ -63,7 +63,7 @@ export async function refreshHandler(req: Request, res: Response) {
   try {
     const result = await refresh(refreshToken);
     setRefreshTokenCookie(res, result.refreshToken);
-    res.status(200).json({ accessToken: result.accessToken });
+    res.status(200).json({ accessToken: result.accessToken, user: result.user });
   } catch (err) {
     clearRefreshTokenCookie(res);
     throw err;

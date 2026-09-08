@@ -124,7 +124,11 @@ describe("auth.service refresh", () => {
 
     const result = await refresh("valid-refresh-token");
 
-    expect(result).toEqual({ accessToken: "new-access-token", refreshToken: "new-refresh-token" });
+    expect(result).toEqual({
+      accessToken: "new-access-token",
+      refreshToken: "new-refresh-token",
+      user: { id: "user-1", name: "Test User", email: "user@example.com" },
+    });
     expect(sessionService.rotateRefreshSession).toHaveBeenCalledWith(
       "user-1",
       "sid-1",

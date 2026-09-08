@@ -13,37 +13,22 @@ interface RouteGuardContext {
 export async function redirectIfUnauthenticated({
   location,
 }: RouteGuardContext = {}) {
-  if (location?.pathname === '/login') return
+  const pathname = location?.pathname
+  let { accessToken, user } = useSessionStore.getState()
 
-  const { accessToken, user } = useSessionStore.getState()
-
-  if (!accessToken || !user) {
-    throw redirect({ to: '/login' })
-  }
-
-  if (isAccessTokenExpired(accessToken)) {
+  if (!accessToken || !user || isAccessTokenExpired(accessToken)) {
     try {
-      await refreshAccessToken()
+      accessToken = await refreshAccessToken()
+      user = useSessionStore.getState().user
     } catch {
       useSessionStore.getState().clearSession()
+
+      if (pathname === '/login') return
       throw redirect({ to: '/login' })
     }
   }
-}
 
-export async function redirectIfAuthenticated() {
-  const { accessToken, user } = useSessionStore.getState()
-
-  if (accessToken && user && isAccessTokenExpired(accessToken)) {
-    try {
-      await refreshAccessToken()
-    } catch {
-      useSessionStore.getState().clearSession()
-      return
-    }
-  }
-
-  if (useSessionStore.getState().accessToken && user) {
+  if (pathname === '/login' && accessToken && user) {
     throw redirect({ to: '/' })
   }
 }
