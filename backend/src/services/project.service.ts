@@ -39,6 +39,14 @@ export interface CreateProjectInput {
   creatorId: string;
 }
 
+export interface UpdateProjectInput {
+  workspaceId: string;
+  projectId: string;
+  userId: string;
+  name?: string;
+  description?: string | null;
+}
+
 export async function createProject({
   workspaceId,
   name,
@@ -70,6 +78,75 @@ export async function createProject({
     }
 
     return project;
+  });
+}
+
+export async function updateProject({
+  workspaceId,
+  projectId,
+  userId,
+  name,
+  description,
+}: UpdateProjectInput): Promise<typeof projects.$inferSelect> {
+  if (name === undefined && description === undefined) {
+    throw new HttpError(400, "VALIDATION_ERROR", ERROR_MESSAGES.PROJECT_UPDATE_FIELDS_REQUIRED);
+  }
+
+  return db.transaction(async (tx) => {
+    const [membership] = await tx
+      .select({ role: workspaceMemberships.role })
+      .from(workspaceMemberships)
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          eq(workspaceMemberships.userId, userId),
+        ),
+      );
+
+    if (!membership) {
+      throw new HttpError(404, "WORKSPACE_NOT_FOUND", ERROR_MESSAGES.WORKSPACE_NOT_FOUND);
+    }
+
+    const [project] = await tx
+      .select({ id: projects.id, creatorId: projects.creatorId })
+      .from(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.workspaceId, workspaceId)));
+
+    if (!project) {
+      throw new HttpError(404, "PROJECT_NOT_FOUND", ERROR_MESSAGES.PROJECT_NOT_FOUND);
+    }
+
+    if (membership.role !== "owner" && project.creatorId !== userId) {
+      throw new HttpError(403, "PROJECT_UPDATE_FORBIDDEN", ERROR_MESSAGES.PROJECT_UPDATE_FORBIDDEN);
+    }
+
+    const updateValues: {
+      name?: string;
+      description?: string | null;
+      updatedAt: Date;
+    } = {
+      updatedAt: new Date(),
+    };
+
+    if (name !== undefined) {
+      updateValues.name = name;
+    }
+
+    if (description !== undefined) {
+      updateValues.description = description;
+    }
+
+    const [updatedProject] = await tx
+      .update(projects)
+      .set(updateValues)
+      .where(and(eq(projects.id, projectId), eq(projects.workspaceId, workspaceId)))
+      .returning();
+
+    if (!updatedProject) {
+      throw new HttpError(404, "PROJECT_NOT_FOUND", ERROR_MESSAGES.PROJECT_NOT_FOUND);
+    }
+
+    return updatedProject;
   });
 }
 
