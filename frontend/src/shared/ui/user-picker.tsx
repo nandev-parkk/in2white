@@ -38,7 +38,7 @@ function UserPicker({
 }: UserPickerProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="p-6">
         <DialogTitle>{title}</DialogTitle>
         <Search
           placeholder="이름 또는 이메일로 검색"

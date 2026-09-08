@@ -41,6 +41,20 @@ pnpm test            # vitest run
 pnpm test:watch      # vitest (watch)
 ```
 
+## Storybook
+
+브라우저에서 공용 UI 컴포넌트를 확인하려면 다음 명령을 실행합니다.
+
+```bash
+pnpm storybook
+```
+
+정적 Storybook 빌드를 생성하려면 다음 명령을 실행합니다.
+
+```bash
+pnpm build-storybook
+```
+
 ## 환경 변수
 
 `.env`에 다음 값을 설정:

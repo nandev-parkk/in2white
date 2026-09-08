@@ -31,7 +31,11 @@ function AppShellHeader({
       {...props}
     >
       <button type="button" className="flex items-center gap-1.5">
-        <span className="bg-action-primary size-6 rounded-sm" />
+        <img
+          src="/logo-mark.png"
+          alt="in2white"
+          className="size-6 rounded-sm"
+        />
         <span className="text-heading3 text-foreground-strong">
           {workspaceName}
         </span>
