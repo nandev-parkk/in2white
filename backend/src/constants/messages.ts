@@ -25,4 +25,9 @@ export const ERROR_MESSAGES = {
   PROJECT_NAME_TOO_LONG: "프로젝트 이름은 50자 이내로 입력해주세요",
   PROJECT_DESCRIPTION_INVALID: "프로젝트 설명은 문자열이어야 합니다",
   PROJECT_DESCRIPTION_TOO_LONG: "프로젝트 설명은 200자 이내로 입력해주세요",
+  SEARCH_INVALID: "검색어는 문자열이어야 합니다",
+  SEARCH_TOO_LONG: "검색어는 100자 이내로 입력해주세요",
+  PAGE_INVALID: "페이지는 1 이상의 정수여야 합니다",
+  LIMIT_INVALID: "페이지 크기는 1 이상의 정수여야 합니다",
+  LIMIT_TOO_LARGE: "페이지 크기는 100 이하로 입력해주세요",
 } as const;

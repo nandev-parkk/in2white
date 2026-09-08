@@ -1,14 +1,15 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { and, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike } from "drizzle-orm";
 import { createApp } from "@/app";
 import { db } from "@/db/client";
-import { projects, workspaceMemberships } from "@/db/schema";
+import { projects, users, workspaceMemberships } from "@/db/schema";
 import { signAccessToken } from "@/lib/jwt";
 
 vi.mock("@/db/client", () => ({
   db: {
     transaction: vi.fn(),
+    select: vi.fn(),
   },
 }));
 
@@ -26,6 +27,7 @@ const createdProject = {
 
 beforeEach(() => {
   vi.mocked(db.transaction).mockReset();
+  vi.mocked(db.select).mockReset();
 });
 
 async function createAccessToken() {
@@ -67,6 +69,57 @@ function mockProjectCreateTransaction({
   vi.mocked(db.transaction).mockImplementation(async (callback) => callback(transaction as never));
 
   return { membershipQuery, projectInsert, transaction };
+}
+
+function mockProjectListQueries({
+  membershipRows = [{ id: "membership-1" }],
+  countRows = [{ total: 3 }],
+  projectRows = [
+    {
+      ...createdProject,
+      creator: { id: "user-1", name: "작성자" },
+    },
+  ],
+  membershipError,
+  countError,
+  projectError,
+}: {
+  membershipRows?: unknown[];
+  countRows?: unknown[];
+  projectRows?: unknown[];
+  membershipError?: Error;
+  countError?: Error;
+  projectError?: Error;
+} = {}) {
+  const membershipQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: membershipError
+      ? vi.fn().mockRejectedValue(membershipError)
+      : vi.fn().mockResolvedValue(membershipRows),
+  };
+  const countQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: countError
+      ? vi.fn().mockRejectedValue(countError)
+      : vi.fn().mockResolvedValue(countRows),
+  };
+  const projectQuery = {
+    from: vi.fn().mockReturnThis(),
+    innerJoin: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    offset: projectError
+      ? vi.fn().mockRejectedValue(projectError)
+      : vi.fn().mockResolvedValue(projectRows),
+  };
+
+  vi.mocked(db.select)
+    .mockReturnValueOnce(membershipQuery as never)
+    .mockReturnValueOnce(countQuery as never)
+    .mockReturnValueOnce(projectQuery as never);
+
+  return { membershipQuery, countQuery, projectQuery };
 }
 
 describe("POST /workspaces/:workspaceId/projects", () => {
@@ -273,5 +326,246 @@ describe("POST /workspaces/:workspaceId/projects", () => {
 
     expect(response.status).toBe(500);
     expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+  });
+});
+
+describe("GET /workspaces/:workspaceId/projects", () => {
+  it("검색된 프로젝트와 페이지네이션 메타데이터를 반환한다", async () => {
+    const createdAt = new Date("2026-09-08T00:00:00.000Z");
+    const updatedAt = new Date("2026-09-08T00:05:00.000Z");
+    const { membershipQuery, countQuery, projectQuery } = mockProjectListQueries({
+      countRows: [{ total: 5 }],
+      projectRows: [
+        {
+          id: "project-3",
+          workspaceId,
+          name: "Brand Campaign",
+          description: "설명",
+          creatorId: "user-2",
+          creator: { id: "user-2", name: "홍길동" },
+          createdAt,
+          updatedAt,
+        },
+      ],
+    });
+
+    const response = await request(createApp())
+      .get(`/workspaces/${workspaceId}/projects`)
+      .query({ search: "  Brand  ", page: "2", limit: "2" })
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      projects: [
+        {
+          id: "project-3",
+          workspaceId,
+          name: "Brand Campaign",
+          description: "설명",
+          creatorId: "user-2",
+          creator: { id: "user-2", name: "홍길동" },
+          createdAt: createdAt.toISOString(),
+          updatedAt: updatedAt.toISOString(),
+        },
+      ],
+      pagination: { page: 2, limit: 2, total: 5, totalPages: 3 },
+    });
+    expect(db.select).toHaveBeenNthCalledWith(1, {
+      id: workspaceMemberships.id,
+    });
+    expect(db.select).toHaveBeenNthCalledWith(2, { total: count() });
+    expect(db.select).toHaveBeenNthCalledWith(3, {
+      id: projects.id,
+      workspaceId: projects.workspaceId,
+      name: projects.name,
+      description: projects.description,
+      creatorId: projects.creatorId,
+      creator: { id: users.id, name: users.name },
+      createdAt: projects.createdAt,
+      updatedAt: projects.updatedAt,
+    });
+    expect(membershipQuery.from).toHaveBeenCalledWith(workspaceMemberships);
+    expect(countQuery.from).toHaveBeenCalledWith(projects);
+    expect(projectQuery.from).toHaveBeenCalledWith(projects);
+    expect(countQuery.where).toHaveBeenCalledOnce();
+    expect(projectQuery.innerJoin).toHaveBeenCalledWith(users, eq(projects.creatorId, users.id));
+    expect(membershipQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, "user-1"),
+      ),
+    );
+    expect(countQuery.where).toHaveBeenCalledWith(
+      and(eq(projects.workspaceId, workspaceId), ilike(projects.name, "%Brand%")),
+    );
+    expect(projectQuery.where).toHaveBeenCalledWith(
+      and(eq(projects.workspaceId, workspaceId), ilike(projects.name, "%Brand%")),
+    );
+    expect(projectQuery.orderBy).toHaveBeenCalledWith(
+      desc(projects.updatedAt),
+      desc(projects.createdAt),
+      asc(projects.id),
+    );
+    expect(projectQuery.limit).toHaveBeenCalledWith(2);
+    expect(projectQuery.offset).toHaveBeenCalledWith(2);
+  });
+
+  it("검색어의 LIKE 와일드카드와 백슬래시를 escape한 패턴을 count와 목록 조회에 전달한다", async () => {
+    const { countQuery, projectQuery } = mockProjectListQueries({
+      countRows: [{ total: 0 }],
+      projectRows: [],
+    });
+
+    const response = await request(createApp())
+      .get(`/workspaces/${workspaceId}/projects`)
+      .query({ search: "100%_done\\now" })
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(200);
+    expect(countQuery.where).toHaveBeenCalledWith(
+      and(eq(projects.workspaceId, workspaceId), ilike(projects.name, "%100\\%\\_done\\\\now%")),
+    );
+    expect(projectQuery.where).toHaveBeenCalledWith(
+      and(eq(projects.workspaceId, workspaceId), ilike(projects.name, "%100\\%\\_done\\\\now%")),
+    );
+  });
+
+  it("query가 없으면 1페이지와 20개 기본값을 사용한다", async () => {
+    const { countQuery, projectQuery } = mockProjectListQueries({
+      countRows: [{ total: 0 }],
+      projectRows: [],
+    });
+
+    const response = await request(createApp())
+      .get(`/workspaces/${workspaceId}/projects`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      projects: [],
+      pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+    });
+    expect(countQuery.where).toHaveBeenCalledOnce();
+    expect(projectQuery.limit).toHaveBeenCalledWith(20);
+    expect(projectQuery.offset).toHaveBeenCalledWith(0);
+  });
+
+  it("검색 결과가 없으면 빈 목록을 반환한다", async () => {
+    mockProjectListQueries({ countRows: [{ total: 0 }], projectRows: [] });
+
+    const response = await request(createApp())
+      .get(`/workspaces/${workspaceId}/projects`)
+      .query({ search: "missing" })
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.projects).toEqual([]);
+    expect(response.body.pagination).toEqual({
+      page: 1,
+      limit: 20,
+      total: 0,
+      totalPages: 0,
+    });
+  });
+
+  it("인증이 없으면 401을 반환하고 DB를 조회하지 않는다", async () => {
+    const response = await request(createApp()).get(`/workspaces/${workspaceId}/projects`);
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHORIZED");
+    expect(db.select).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { workspaceId: "not-a-uuid", query: {} },
+    { workspaceId, query: { page: "0" } },
+    { workspaceId, query: { limit: "101" } },
+    { workspaceId, query: { search: "a".repeat(101) } },
+  ])(
+    "목록 입력이 잘못되면 400을 반환한다: $query",
+    async ({ workspaceId: pathWorkspaceId, query }) => {
+      const response = await request(createApp())
+        .get(`/workspaces/${pathWorkspaceId}/projects`)
+        .query(query)
+        .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe("VALIDATION_ERROR");
+      expect(db.select).not.toHaveBeenCalled();
+    },
+  );
+
+  it("비멤버면 404를 반환하고 프로젝트 조회를 실행하지 않는다", async () => {
+    const { countQuery, projectQuery } = mockProjectListQueries({
+      membershipRows: [],
+    });
+
+    const response = await request(createApp())
+      .get(`/workspaces/${workspaceId}/projects`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("WORKSPACE_NOT_FOUND");
+    expect(countQuery.where).not.toHaveBeenCalled();
+    expect(projectQuery.where).not.toHaveBeenCalled();
+  });
+
+  it("전체 페이지를 초과하면 빈 목록과 계산된 페이지 정보를 반환한다", async () => {
+    const { projectQuery } = mockProjectListQueries({
+      countRows: [{ total: 5 }],
+      projectRows: [],
+    });
+
+    const response = await request(createApp())
+      .get(`/workspaces/${workspaceId}/projects`)
+      .query({ page: "4", limit: "2" })
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      projects: [],
+      pagination: { page: 4, limit: 2, total: 5, totalPages: 3 },
+    });
+    expect(projectQuery.limit).toHaveBeenCalledWith(2);
+    expect(projectQuery.offset).toHaveBeenCalledWith(6);
+  });
+
+  it.each([
+    {
+      label: "멤버십",
+      options: { membershipError: new Error("membership failed") },
+    },
+    { label: "개수", options: { countError: new Error("count failed") } },
+    {
+      label: "프로젝트 목록",
+      options: { projectError: new Error("projects failed") },
+    },
+  ])("$label 조회가 실패하면 500을 반환한다", async ({ label, options }) => {
+    const { membershipQuery, countQuery, projectQuery } = mockProjectListQueries(options);
+
+    const response = await request(createApp())
+      .get(`/workspaces/${workspaceId}/projects`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+
+    if (label === "멤버십") {
+      expect(db.select).toHaveBeenCalledOnce();
+      expect(membershipQuery.where).toHaveBeenCalledOnce();
+      expect(countQuery.where).not.toHaveBeenCalled();
+      expect(projectQuery.where).not.toHaveBeenCalled();
+      return;
+    }
+
+    expect(membershipQuery.where).toHaveBeenCalledOnce();
+    expect(countQuery.where).toHaveBeenCalledOnce();
+    expect(projectQuery.where).toHaveBeenCalledOnce();
+
+    if (label === "프로젝트 목록") {
+      expect(projectQuery.orderBy).toHaveBeenCalledOnce();
+      expect(projectQuery.limit).toHaveBeenCalledOnce();
+      expect(projectQuery.offset).toHaveBeenCalledOnce();
+    }
   });
 });
