@@ -5,6 +5,7 @@ import type { Response as SupertestResponse } from "supertest";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { db } from "@/db/client";
 import { valkey } from "@/cache/valkey";
+import { ERROR_MESSAGES } from "@/constants/messages";
 import { hashPassword } from "@/lib/password";
 import { authRouter } from "@/routes/auth.routes";
 import { errorHandlerMiddleware } from "@/middlewares/error-handler.middleware";
@@ -102,19 +103,19 @@ describe("POST /auth/login", () => {
 
     const response = await request(buildTestApp())
       .post("/auth/login")
-      .send({ email: "missing@example.com", password: "whatever" });
+      .send({ email: "missing@example.com", password: "Whatever123!" });
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe("INVALID_CREDENTIALS");
   });
 
   it("returns 401 for a wrong password", async () => {
-    const passwordHash = await hashPassword("correct-password");
+    const passwordHash = await hashPassword("Correct123!");
     vi.mocked(db.query.users.findFirst).mockResolvedValue({ ...seededUser, passwordHash });
 
     const response = await request(buildTestApp())
       .post("/auth/login")
-      .send({ email: "user@example.com", password: "wrong-password" });
+      .send({ email: "user@example.com", password: "Wrong123!" });
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe("INVALID_CREDENTIALS");
@@ -129,14 +130,25 @@ describe("POST /auth/login", () => {
     expect(response.body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("returns 400 when the password violates the password policy", async () => {
+    const response = await request(buildTestApp())
+      .post("/auth/login")
+      .send({ email: "user@example.com", password: "Password123" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(response.body.error.message).toBe(ERROR_MESSAGES.PASSWORD_INVALID);
+    expect(db.query.users.findFirst).not.toHaveBeenCalled();
+  });
+
   it("returns accessToken/user in the body and refreshToken only as a cookie", async () => {
-    const passwordHash = await hashPassword("correct-password");
+    const passwordHash = await hashPassword("Correct123!");
     vi.mocked(db.query.users.findFirst).mockResolvedValue({ ...seededUser, passwordHash });
     wireValkeyMock(new Map());
 
     const response = await request(buildTestApp())
       .post("/auth/login")
-      .send({ email: "user@example.com", password: "correct-password" });
+      .send({ email: "user@example.com", password: "Correct123!" });
 
     expect(response.status).toBe(200);
     expect(response.body.accessToken).toEqual(expect.any(String));
@@ -158,17 +170,17 @@ describe("POST /auth/login", () => {
   });
 
   it("keeps two devices logged in independently (multi-session)", async () => {
-    const passwordHash = await hashPassword("correct-password");
+    const passwordHash = await hashPassword("Correct123!");
     vi.mocked(db.query.users.findFirst).mockResolvedValue({ ...seededUser, passwordHash });
     wireValkeyMock(new Map());
     const app = buildTestApp();
 
     const deviceALogin = await request(app)
       .post("/auth/login")
-      .send({ email: "user@example.com", password: "correct-password" });
+      .send({ email: "user@example.com", password: "Correct123!" });
     const deviceBLogin = await request(app)
       .post("/auth/login")
-      .send({ email: "user@example.com", password: "correct-password" });
+      .send({ email: "user@example.com", password: "Correct123!" });
 
     const deviceACookie = extractCookie(deviceALogin, "refreshToken") as string;
     const deviceBCookie = extractCookie(deviceBLogin, "refreshToken") as string;
@@ -187,17 +199,17 @@ describe("POST /auth/login", () => {
   });
 
   it("logging out one device does not affect another device's session", async () => {
-    const passwordHash = await hashPassword("correct-password");
+    const passwordHash = await hashPassword("Correct123!");
     vi.mocked(db.query.users.findFirst).mockResolvedValue({ ...seededUser, passwordHash });
     wireValkeyMock(new Map());
     const app = buildTestApp();
 
     const deviceALogin = await request(app)
       .post("/auth/login")
-      .send({ email: "user@example.com", password: "correct-password" });
+      .send({ email: "user@example.com", password: "Correct123!" });
     const deviceBLogin = await request(app)
       .post("/auth/login")
-      .send({ email: "user@example.com", password: "correct-password" });
+      .send({ email: "user@example.com", password: "Correct123!" });
 
     const deviceAAccessToken = deviceALogin.body.accessToken as string;
     const deviceBCookie = extractCookie(deviceBLogin, "refreshToken") as string;
@@ -225,14 +237,14 @@ describe("POST /auth/refresh and /auth/logout", () => {
   });
 
   async function loginAndGetApp() {
-    const passwordHash = await hashPassword("correct-password");
+    const passwordHash = await hashPassword("Correct123!");
     vi.mocked(db.query.users.findFirst).mockResolvedValue({ ...seededUser, passwordHash });
     wireValkeyMock(new Map());
 
     const app = buildTestApp();
     const loginResponse = await request(app)
       .post("/auth/login")
-      .send({ email: "user@example.com", password: "correct-password" });
+      .send({ email: "user@example.com", password: "Correct123!" });
 
     return {
       app,

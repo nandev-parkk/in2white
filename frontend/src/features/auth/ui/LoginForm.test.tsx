@@ -72,6 +72,19 @@ describe('LoginForm', () => {
     expect(axiosInstance.post).not.toHaveBeenCalled()
   })
 
+  it('shows a password policy error and does not call the API', async () => {
+    renderLoginForm()
+
+    await userEvent.type(screen.getByLabelText('이메일'), 'user@in2white.team')
+    await userEvent.type(screen.getByLabelText('비밀번호'), 'Password123')
+    await userEvent.click(screen.getByRole('button', { name: '로그인' }))
+
+    expect(
+      await screen.findByText('비밀번호를 정확히 입력해주세요'),
+    ).toBeInTheDocument()
+    expect(axiosInstance.post).not.toHaveBeenCalled()
+  })
+
   it('stores the session and navigates to / on success', async () => {
     vi.mocked(axiosInstance.post).mockResolvedValueOnce({
       data: {
@@ -83,7 +96,7 @@ describe('LoginForm', () => {
     renderLoginForm()
 
     await userEvent.type(screen.getByLabelText('이메일'), 'user@in2white.team')
-    await userEvent.type(screen.getByLabelText('비밀번호'), 'password123')
+    await userEvent.type(screen.getByLabelText('비밀번호'), 'Password123!')
     await userEvent.click(screen.getByRole('button', { name: '로그인' }))
 
     await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: '/' }))
@@ -107,7 +120,7 @@ describe('LoginForm', () => {
     renderLoginForm()
 
     await userEvent.type(screen.getByLabelText('이메일'), 'user@in2white.team')
-    await userEvent.type(screen.getByLabelText('비밀번호'), 'wrong-password')
+    await userEvent.type(screen.getByLabelText('비밀번호'), 'Wrong123!')
     await userEvent.click(screen.getByRole('button', { name: '로그인' }))
 
     await waitFor(() =>
@@ -131,7 +144,7 @@ describe('LoginForm', () => {
     renderLoginForm()
 
     await userEvent.type(screen.getByLabelText('이메일'), 'user@in2white.team')
-    await userEvent.type(screen.getByLabelText('비밀번호'), 'password123')
+    await userEvent.type(screen.getByLabelText('비밀번호'), 'Password123!')
     await userEvent.click(screen.getByRole('button', { name: '로그인' }))
 
     await waitFor(() =>
@@ -157,7 +170,7 @@ describe('LoginForm', () => {
     renderLoginForm()
 
     await userEvent.type(screen.getByLabelText('이메일'), 'user@in2white.team')
-    await userEvent.type(screen.getByLabelText('비밀번호'), 'password123')
+    await userEvent.type(screen.getByLabelText('비밀번호'), 'Password123!')
     await userEvent.click(screen.getByRole('button', { name: '로그인' }))
 
     // shared/ui Button의 loading prop은 라벨을 그대로 두고 스피너만 앞에 붙이며
