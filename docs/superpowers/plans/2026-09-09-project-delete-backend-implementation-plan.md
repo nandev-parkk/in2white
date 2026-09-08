@@ -2,9 +2,11 @@
 
 > **에이전트 작업자용:** 이 계획을 실행할 때는 superpowers:subagent-driven-development(권장) 또는 superpowers:executing-plans를 사용한다. 단계는 체크박스(`- [ ]`)로 추적하며, 각 구현 단계는 테스트 우선으로 진행한다.
 
-**Goal:** 인증된 워크스페이스 Owner 또는 프로젝트 Creator가 프로젝트를 소프트 삭제할 수 있는 DELETE /workspaces/:workspaceId/projects/:projectId API와 활성 프로젝트 필터를 추가한다.
+**Status:** 구현 완료 · 최종 리뷰 finding 수정 완료
 
-**Architecture:** 기존 routes → controllers → services → db/schema 계층을 유지한다. projects.deletedAt nullable timestamp로 삭제 상태를 저장하고, 서비스 트랜잭션에서 멤버십·프로젝트·권한을 검증한 뒤 deletedAt과 updatedAt을 갱신한다. 목록과 수정은 deletedAt IS NULL 조건으로 활성 프로젝트만 대상으로 한다.
+**Goal:** 인증된 워크스페이스 Owner 또는 프로젝트 Creator가 프로젝트를 소프트 삭제할 수 있는 DELETE /workspaces/:workspaceId/projects/:projectId API와 활성 프로젝트 필터를 추가하고, 워크스페이스 상세 프로젝트 집계도 활성 프로젝트만 대상으로 유지한다.
+
+**Architecture:** 기존 routes → controllers → services → db/schema 계층을 유지한다. projects.deletedAt nullable timestamp로 삭제 상태를 저장하고, 서비스 트랜잭션에서 멤버십·프로젝트·권한을 검증한 뒤 deletedAt과 updatedAt을 갱신한다. 목록·수정과 워크스페이스 상세 프로젝트 집계는 deletedAt IS NULL 조건으로 활성 프로젝트만 대상으로 한다.
 
 **Tech Stack:** Node.js 20+, TypeScript, Express, Drizzle ORM/PostgreSQL, Zod, Vitest, Supertest, pnpm.
 
@@ -19,7 +21,7 @@
 - 삭제 성공 응답은 204 No Content다.
 - 삭제 권한은 워크스페이스 Owner 또는 프로젝트 Creator다.
 - 비멤버는 404 WORKSPACE_NOT_FOUND, 권한 없는 Member는 403 PROJECT_DELETE_FORBIDDEN, 대상 없음·이미 삭제됨은 404 PROJECT_NOT_FOUND다.
-- 프로젝트 목록과 수정은 활성 프로젝트(deletedAt IS NULL)만 대상으로 한다.
+- 프로젝트 목록·수정과 워크스페이스 상세 프로젝트 집계는 활성 프로젝트(deletedAt IS NULL)만 대상으로 한다.
 - 하위 화이트보드 문서는 물리 삭제하지 않는다.
 - 실제 DB에 migration을 적용하지 않는다. migration 파일 생성과 코드 검증까지만 수행한다.
 - 사용자가 요청하기 전에는 Git commit, push, merge, PR을 실행하지 않는다.
@@ -37,6 +39,8 @@
   - PROJECT_DELETE_FORBIDDEN 메시지를 추가한다.
 - Modify: backend/src/services/project.service.ts
   - 활성 프로젝트 필터를 목록·수정에 반영하고 deleteProject 유스케이스를 추가한다.
+- Modify: backend/src/services/workspace.service.ts
+  - 워크스페이스 상세 project count에서 삭제 프로젝트를 제외한다.
 - Modify: backend/src/controllers/project.controller.ts
   - DELETE handler에서 인증·path 검증·204 응답을 담당한다.
 - Modify: backend/src/routes/project.routes.ts
@@ -45,6 +49,10 @@
   - projects.deletedAt 컬럼 export를 검증한다.
 - Modify: backend/tests/project.test.ts
   - DELETE API 계약과 목록·수정의 활성 프로젝트 조건을 검증한다.
+- Modify: backend/tests/workspace.test.ts
+  - 워크스페이스 상세 project count query의 활성 프로젝트 조건을 검증한다.
+- Remove from Git index: .superpowers/sdd/2026-09-09-project-delete-backend-implementation-plan/task-1-report.md
+  - 로컬 SDD artifact는 보존하고 PR 변경 범위에서는 제외한다.
 - Modify: 이 문서
   - 구현 종료 후 Implementation Results를 추가해 실제 변경·검증·차이·후속 작업을 기록한다.
 
@@ -624,17 +632,44 @@ Expected: 이번 작업의 설계·계획·schema·migration·service·controlle
 
 구현 파일, 계획과의 차이, 명령별 검증 결과와 실패 원인, 남은 후속 작업은 아래 결과 섹션에 기록했다. 실제 migration은 적용하지 않았다.
 
+---
+
+### Task 6: 최종 리뷰 finding 수정 (완료)
+
+**Files:**
+- Modify: backend/tests/workspace.test.ts
+- Modify: backend/src/services/workspace.service.ts
+- Modify: docs/superpowers/specs/2026-09-09-project-delete-backend-design.md
+- Modify: docs/superpowers/plans/2026-09-09-project-delete-backend-implementation-plan.md
+- Remove from Git index: .superpowers/sdd/2026-09-09-project-delete-backend-implementation-plan/task-1-report.md
+
+- [x] **Step 1: 워크스페이스 상세 집계 회귀 테스트를 먼저 보강하고 RED를 확인했다.**
+
+`backend/tests/workspace.test.ts`의 상세 성공 테스트 이름에 삭제 프로젝트 제외 계약을 드러내고, project count query가 `and(eq(projects.workspaceId, workspaceId), isNull(projects.deletedAt))`를 사용하도록 기대값을 변경했다. 기존 구현에서 `pnpm --dir backend test -- tests/workspace.test.ts --silent`를 실행해 Test Files 1 failed, Tests 1 failed | 29 passed, exit 1을 확인했다. 실패 원인은 기존 쿼리가 workspace 조건만 전달한 것이었다.
+
+- [x] **Step 2: 최소 구현으로 GREEN을 확인했다.**
+
+`backend/src/services/workspace.service.ts`에 `isNull` import를 추가하고 project count query에 활성 프로젝트 조건을 적용했다. 동일 workspace 테스트를 재실행해 Test Files 1 passed, Tests 30 passed, exit 0을 확인했다.
+
+- [x] **Step 3: 설계·계획 문서와 SDD artifact 추적 상태를 정리했다.**
+
+설계와 계획에 워크스페이스 상세 집계 계약, 변경 파일, 테스트 전략, 완료 기준과 실제 결과를 반영했다. `task-1-report.md`는 `git rm --cached`로 Git index에서만 제거해 로컬 파일은 보존하고 PR 범위에서는 제외했다.
+
+- [x] **Step 4: 지정된 최종 검증을 완료했다.**
+
+집중 테스트 93개와 전체 테스트 173개, lint, build, 변경 source/test Prettier, `git diff --check`가 통과했다. 전체 `src tests` Prettier는 기존 baseline의 2개 파일에서만 동일하게 실패했다.
+
 ## 완료 기준
 
 - DELETE /workspaces/:workspaceId/projects/:projectId가 Owner와 Creator에게 204를 반환한다.
 - 비멤버·권한 없는 Member·없는 프로젝트·이미 삭제된 프로젝트가 설계된 상태 코드와 오류 코드를 반환한다.
 - 삭제 시 프로젝트 행은 보존되고 deletedAt, updatedAt이 기록된다.
-- 목록 count/rows와 수정 조회/update가 삭제된 프로젝트를 제외한다.
+- 목록 count/rows, 수정 조회/update, 워크스페이스 상세 project count가 삭제된 프로젝트를 제외한다.
 - 하위 화이트보드 문서가 물리 삭제되지 않는다.
 - migration 파일이 생성되지만 실제 DB migration은 실행되지 않는다.
 - 관련 테스트·lint·build·변경 파일 format 검증이 통과한다. 기존 baseline의 무관한 format 경고는 후속 정리 대상으로 남긴다.
 - Implementation Results에 실제 변경과 검증 결과를 기록했다.
-- Git push·PR은 실행하지 않았고, 설계 문서와 구현 계획 문서는 `9adfc14`에서 커밋 완료했다.
+- 최종 리뷰 finding 수정과 SDD 보고서 추적 제외가 하나의 fix commit 범위로 정리됐고, Git push·PR은 실행하지 않았다.
 
 ## Implementation Results
 
@@ -647,12 +682,15 @@ Expected: 이번 작업의 설계·계획·schema·migration·service·controlle
 - `backend/src/constants/messages.ts`에 `PROJECT_DELETE_FORBIDDEN`을 추가했다.
 - `backend/tests/project.test.ts`와 `backend/tests/db-schema.test.ts`에 삭제 권한·인증·UUID·비멤버·중복/대상 없음·DB 오류·활성 목록/수정 필터 및 schema 검증을 추가했다.
 - 목록의 count/rows와 수정 조회/update에 `deletedAt IS NULL` 조건을 적용했으며, 하위 화이트보드 문서는 삭제하지 않는다.
+- 최종 리뷰 수정에서 `backend/src/services/workspace.service.ts`의 상세 project count에도 `deletedAt IS NULL` 조건을 적용하고 `backend/tests/workspace.test.ts`의 회귀 계약을 보강했다.
+- 로컬 SDD artifact인 `.superpowers/sdd/2026-09-09-project-delete-backend-implementation-plan/task-1-report.md`는 파일을 보존하면서 Git 추적에서 제외했다.
 
 ### 계획과 달라진 점
 
 - Task 1, Task 4는 계획과 동일하게 구현했다.
 - Task 2(실패 테스트)와 Task 3(서비스·컨트롤러·라우트 구현)는 작업 효율을 위해 `f26c212`에서 원자적으로 함께 반영했다. 테스트 우선 계약은 유지했고, 이후 `920024c` 리뷰 수정에서 성공 삭제 테스트가 membership query의 workspace/user 조건까지 검증하도록 보강했다.
-- 구현 결과 자체에는 승인된 설계와의 기능적 차이가 없다. 실제 DB migration 적용은 수행하지 않았다.
+- 최초 계획에는 워크스페이스 상세 `counts.projectCount`의 활성 프로젝트 필터가 빠져 있었다. 최종 리뷰 fix에서 설계·계획 범위를 보완하고 TDD로 service와 테스트를 수정했다.
+- 실제 DB migration 적용은 수행하지 않았다.
 
 ### 실행한 검증 명령과 결과
 
@@ -663,11 +701,25 @@ Expected: 이번 작업의 설계·계획·schema·migration·service·controlle
 - `pnpm --dir backend exec prettier --check src/db/schema/projects.ts src/services/project.service.ts src/controllers/project.controller.ts src/routes/project.routes.ts src/constants/messages.ts tests/db-schema.test.ts tests/project.test.ts` — PASS, 이번 변경 파일 7개 포맷 검사 완료.
 - `pnpm --dir backend exec prettier --check src tests` — FAIL, 이번 변경과 무관한 기존 추적 파일 `src/db/migrations/meta/0000_snapshot.json`, `src/scripts/create-test-user.ts` 2개에서만 포맷 경고. 두 파일은 기준 커밋에서도 동일하게 실패하며 수정하지 않았다.
 - `git diff --check` — PASS, whitespace 오류 없음, exit 0.
-- `git status --short` — PASS, 현재 미추적 변경은 승인된 설계 문서와 구현 계획 문서뿐이다. 기존 구현 파일과 `.superpowers` 보고서는 보존했다.
+- `git status --short` — 기존 구현 종료 당시 승인된 설계 문서와 구현 계획 문서만 미추적 상태였으며, 기존 구현 파일과 `.superpowers` 보고서를 보존했다.
 - `pnpm --dir backend db:migrate` — 실행하지 않음. 요구사항대로 migration 파일만 생성했다.
+
+### 최종 리뷰 fix round 검증 결과
+
+- RED `pnpm --dir backend test -- tests/workspace.test.ts --silent` — 예상 실패, Test Files 1 failed, Tests 1 failed | 29 passed, exit 1. project count query의 활성 프로젝트 조건 누락을 재현했다.
+- GREEN `pnpm --dir backend test -- tests/workspace.test.ts` — PASS, Test Files 1 passed, Tests 30 passed, exit 0.
+- `pnpm --dir backend test -- tests/workspace.test.ts tests/project.test.ts` — PASS, Test Files 2 passed, Tests 93 passed, exit 0.
+- `pnpm --dir backend test` — PASS, Test Files 20 passed, Tests 173 passed, exit 0.
+- `pnpm --dir backend lint` — PASS, ESLint 오류 없음, exit 0.
+- `pnpm --dir backend build` — PASS, `tsc && tsc-alias --resolve-full-paths` 완료, exit 0.
+- `pnpm --dir backend exec prettier --check src/services/workspace.service.ts tests/workspace.test.ts` — PASS, 변경 source/test 2개 포맷 검사 완료.
+- `pnpm --dir backend exec prettier --check src tests` — FAIL, 기존 baseline과 동일하게 `src/db/migrations/meta/0000_snapshot.json`, `src/scripts/create-test-user.ts` 2개에서만 포맷 경고. 이번 fix 범위에서는 수정하지 않았다.
+- `git diff --check` — PASS, whitespace 오류 없음, exit 0.
+- `.superpowers/sdd/2026-09-09-project-delete-backend-implementation-plan/task-1-report.md` — 로컬 파일 보존, Git index 제거 완료.
+- `pnpm --dir backend db:migrate` — 실행하지 않음. 기존 계획대로 실제 migration은 적용하지 않았다.
 
 ### 남은 후속 작업
 
 - 기존 baseline의 Prettier 포맷 경고 2개를 별도 정리 작업으로 처리해야 한다. 이번 Task 5에서는 구현 파일을 임의 수정하지 않았다.
 - 실제 환경에서 migration 적용, 프로젝트 복구 API, 영구 삭제/보존 기간 정리, 화이트보드 문서 API의 상위 프로젝트 삭제 상태 연동은 범위 밖이다.
-- 설계 문서와 구현 계획 문서만 `9adfc14`에서 documentation commit으로 커밋 완료했다. 기존 baseline 포맷 경고 2개는 별도 정리 작업으로 남긴다.
+- 기존 baseline 포맷 경고 2개는 별도 정리 작업으로 남긴다. 최종 리뷰 finding과 문서 정합성 보강은 완료했다.

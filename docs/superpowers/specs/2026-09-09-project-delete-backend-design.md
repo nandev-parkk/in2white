@@ -2,11 +2,11 @@
 
 ## 상태
 
-설계 승인 완료 · 사용자 설계 승인 완료 · 자체 검토 완료
+설계 승인 완료 · 사용자 설계 승인 완료 · 구현 및 최종 리뷰 수정 반영 완료 · 자체 검토 완료
 
 ## 목표
 
-인증된 워크스페이스 Owner 또는 프로젝트 Creator가 프로젝트를 삭제할 수 있는 백엔드 API를 추가한다. 삭제는 물리 삭제가 아닌 소프트 삭제로 처리하여 프로젝트 행과 하위 화이트보드 문서를 보존하되, 삭제된 프로젝트는 활성 리소스 조회·수정·삭제 대상에서 제외한다.
+인증된 워크스페이스 Owner 또는 프로젝트 Creator가 프로젝트를 삭제할 수 있는 백엔드 API를 추가한다. 삭제는 물리 삭제가 아닌 소프트 삭제로 처리하여 프로젝트 행과 하위 화이트보드 문서를 보존하되, 삭제된 프로젝트는 활성 리소스 조회·수정·삭제 대상과 워크스페이스 상세의 프로젝트 집계에서 제외한다.
 
 ## 근거 문서
 
@@ -38,6 +38,7 @@
 - 프로젝트 소프트 삭제와 삭제 시각 기록
 - 프로젝트 목록에서 삭제된 프로젝트 제외
 - 프로젝트 수정에서 삭제된 프로젝트 제외
+- 워크스페이스 상세 `counts.projectCount`에서 삭제된 프로젝트 제외
 - 인증·입력·멤버십·권한·중복 삭제·DB 오류 테스트
 - 삭제된 프로젝트의 하위 화이트보드 문서를 물리 삭제하지 않는 정책 문서화
 
@@ -82,7 +83,7 @@ HTTP `204 No Content`를 반환하며 응답 본문은 없다.
 | 이미 소프트 삭제된 프로젝트 | 404 | `PROJECT_NOT_FOUND` | 재삭제하지 않음 |
 | 예상하지 못한 DB 오류 | 500 | `INTERNAL_SERVER_ERROR` | 기존 오류 처리 계층 사용 |
 
-삭제된 프로젝트는 프로젝트 목록에서 반환하지 않는다. 기존 프로젝트 수정 API도 `deletedAt IS NULL` 조건을 사용하므로 삭제된 프로젝트 수정 요청은 `PROJECT_NOT_FOUND`가 된다.
+삭제된 프로젝트는 프로젝트 목록에서 반환하지 않는다. 기존 프로젝트 수정 API도 `deletedAt IS NULL` 조건을 사용하므로 삭제된 프로젝트 수정 요청은 `PROJECT_NOT_FOUND`가 된다. 워크스페이스 상세의 `counts.projectCount`도 `workspaceId`와 `deletedAt IS NULL` 조건을 함께 사용해 활성 프로젝트만 집계한다.
 
 ## 권한 규칙
 
@@ -151,6 +152,7 @@ update projects
 
 - `listProjects`의 count query와 rows query 모두 `isNull(projects.deletedAt)` 조건을 포함한다.
 - `updateProject`의 project 조회와 update 조건 모두 `isNull(projects.deletedAt)` 조건을 포함한다.
+- `getWorkspaceDetail`의 project count query는 workspace 조건과 `isNull(projects.deletedAt)` 조건을 함께 사용한다.
 - `createProject`는 새 프로젝트를 `deletedAt = NULL`로 생성하며 기존 생성 계약을 유지한다.
 - 삭제된 프로젝트의 하위 문서 데이터는 보존되지만, 향후 문서 조회·수정·삭제 API는 삭제된 상위 프로젝트를 접근 경로에서 제외해야 한다.
 
@@ -165,6 +167,8 @@ update projects
 - 수정: `backend/src/services/project.service.ts`
   - `isNull` 기반 활성 프로젝트 필터를 목록·수정에 반영한다.
   - `DeleteProjectInput`과 `deleteProject` 유스케이스를 추가한다.
+- 수정: `backend/src/services/workspace.service.ts`
+  - 워크스페이스 상세의 프로젝트 수를 활성 프로젝트만 대상으로 집계한다.
 - 수정: `backend/src/controllers/project.controller.ts`
   - 삭제 handler를 추가한다.
 - 수정: `backend/src/routes/project.routes.ts`
@@ -173,6 +177,8 @@ update projects
   - `PROJECT_DELETE_FORBIDDEN` 메시지를 추가한다.
 - 수정: `backend/tests/project.test.ts`
   - 삭제 API 계약, 기존 목록·수정의 deletedAt 필터, 오류 경계를 검증한다.
+- 수정: `backend/tests/workspace.test.ts`
+  - 워크스페이스 상세 project count query의 `workspaceId + deletedAt IS NULL` 조건을 검증한다.
 - 추가: `docs/superpowers/plans/2026-09-09-project-delete-backend-implementation-plan.md`
   - 구현 단계와 결과를 기록한다.
 
@@ -191,10 +197,11 @@ update projects
 - 삭제 성공은 204이며 body를 반환하지 않는다.
 - DB update가 실패하면 기존 내부 오류 처리로 500을 반환한다.
 - 삭제된 프로젝트는 목록의 total과 rows 모두에서 제외되어 pagination 결과가 일관된다.
+- 삭제된 프로젝트는 워크스페이스 상세의 `counts.projectCount`에서도 제외된다.
 
 ## 테스트 전략
 
-`backend/tests/project.test.ts`에서 기존 Supertest·Vitest·DB mock 패턴을 확장한다.
+`backend/tests/project.test.ts`와 `backend/tests/workspace.test.ts`에서 기존 Supertest·Vitest·DB mock 패턴을 확장한다.
 
 필수 시나리오는 다음과 같다.
 
@@ -209,17 +216,27 @@ update projects
 9. delete update DB 오류는 500 `INTERNAL_SERVER_ERROR`다.
 10. 프로젝트 목록 count와 rows query에 `deletedAt IS NULL` 조건이 포함된다.
 11. 프로젝트 수정 조회와 update 조건에 `deletedAt IS NULL` 조건이 포함된다.
+12. 워크스페이스 상세 project count query에 `workspaceId`와 `deletedAt IS NULL` 조건이 함께 포함된다.
 
 검증 명령은 다음과 같다.
 
 ```bash
-pnpm --dir backend test -- tests/project.test.ts
+pnpm --dir backend test -- tests/workspace.test.ts tests/project.test.ts
 pnpm --dir backend test
 pnpm --dir backend lint
 pnpm --dir backend build
-pnpm --dir backend exec prettier --check src tests
+pnpm --dir backend exec prettier --check src/services/workspace.service.ts tests/workspace.test.ts
 git diff --check
 ```
+
+## 완료 기준
+
+- 프로젝트 삭제 API의 권한·오류·204 응답 계약이 충족된다.
+- 삭제 시 프로젝트 행과 하위 화이트보드 문서는 보존되고 `deletedAt`, `updatedAt`이 기록된다.
+- 프로젝트 목록 count/rows, 수정 조회/update, 워크스페이스 상세 `counts.projectCount`가 활성 프로젝트만 대상으로 한다.
+- schema와 migration 파일이 nullable `projects.deleted_at`을 일관되게 표현하며 실제 migration은 적용하지 않는다.
+- 관련 테스트, 전체 테스트, lint, build, 변경 source/test Prettier, diff 검사가 통과한다.
+- 기존 전체 Prettier baseline의 무관한 2개 파일 경고는 별도 후속 작업으로 유지한다.
 
 ## 결정 사항
 
@@ -229,6 +246,6 @@ git diff --check
 - 성공 응답은 `204 No Content`다.
 - 삭제 권한은 워크스페이스 Owner 또는 프로젝트 Creator다.
 - 비멤버는 `WORKSPACE_NOT_FOUND`, 권한 없는 Member는 `PROJECT_DELETE_FORBIDDEN`, 대상 없음·이미 삭제됨은 `PROJECT_NOT_FOUND`다.
-- 목록과 수정은 활성 프로젝트(`deletedAt IS NULL`)만 대상으로 한다.
+- 목록·수정과 워크스페이스 상세 프로젝트 집계는 활성 프로젝트(`deletedAt IS NULL`)만 대상으로 한다.
 - 하위 화이트보드 문서는 물리 삭제하지 않는다.
 - 실제 DB migration 실행과 Git commit은 사용자 요청 전까지 하지 않는다.
