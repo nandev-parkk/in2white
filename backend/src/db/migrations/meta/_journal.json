@@ -8,6 +8,13 @@
       "when": 1788623514715,
       "tag": "0000_normal_gamora",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788796965321,
+      "tag": "0001_tiresome_killmonger",
+      "breakpoints": true
     }
   ]
 }

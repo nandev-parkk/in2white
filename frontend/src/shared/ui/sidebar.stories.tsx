@@ -1,6 +1,7 @@
 import { useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
+import type { WorkspaceSummary } from '@/entities/workspace'
 import type { PresenceUser } from '@/shared/ui/presence-avatar-stack'
 import { Sidebar, type SidebarNavKey } from '@/shared/ui/sidebar'
 
@@ -21,9 +22,23 @@ const NAV_LABELS: Record<SidebarNavKey, string> = {
   settings: '설정',
 }
 
+const WORKSPACE: WorkspaceSummary = {
+  id: 'workspace-1',
+  name: '인투화이트 디자인팀',
+  ownerId: 'user-1',
+  isDefault: true,
+  createdAt: '2026-09-08T00:00:00.000Z',
+  updatedAt: '2026-09-08T00:00:00.000Z',
+  role: 'owner',
+}
+
 type SidebarStoryProps = Pick<
   ComponentProps<typeof Sidebar>,
-  | 'workspaceName'
+  | 'workspace'
+  | 'workspaces'
+  | 'selectedWorkspaceId'
+  | 'onWorkspaceChange'
+  | 'onCreateWorkspace'
   | 'workspaceMembers'
   | 'userName'
   | 'userEmail'
@@ -33,7 +48,11 @@ type SidebarStoryProps = Pick<
 >
 
 function SidebarExample({
-  workspaceName,
+  workspace,
+  workspaces,
+  selectedWorkspaceId,
+  onWorkspaceChange,
+  onCreateWorkspace,
   workspaceMembers,
   userName,
   userEmail,
@@ -69,7 +88,11 @@ function SidebarExample({
       <Sidebar
         collapsed={collapsed}
         onCollapsedChange={setCollapsed}
-        workspaceName={workspaceName}
+        workspace={workspace}
+        workspaces={workspaces}
+        selectedWorkspaceId={selectedWorkspaceId}
+        onWorkspaceChange={onWorkspaceChange}
+        onCreateWorkspace={onCreateWorkspace}
         workspaceMembers={workspaceMembers}
         activeNav={activeNav}
         onNavChange={handleNavChange}
@@ -99,7 +122,11 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   args: {
     collapsed: false,
-    workspaceName: '인투화이트 디자인팀',
+    workspace: WORKSPACE,
+    workspaces: [WORKSPACE],
+    selectedWorkspaceId: WORKSPACE.id,
+    onWorkspaceChange: () => undefined,
+    onCreateWorkspace: () => undefined,
     workspaceMembers: MEMBERS,
     activeNav: 'projects',
     onNavChange: () => undefined,
@@ -111,7 +138,11 @@ const meta = {
     <SidebarExample
       collapsed={args.collapsed}
       activeNav={args.activeNav}
-      workspaceName={args.workspaceName}
+      workspace={args.workspace}
+      workspaces={args.workspaces}
+      selectedWorkspaceId={args.selectedWorkspaceId}
+      onWorkspaceChange={args.onWorkspaceChange}
+      onCreateWorkspace={args.onCreateWorkspace}
       workspaceMembers={args.workspaceMembers}
       userName={args.userName}
       userEmail={args.userEmail}
