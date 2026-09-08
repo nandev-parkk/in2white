@@ -63,7 +63,7 @@
 - Consumes: 기존 projects Drizzle table과 db-schema.test.ts의 schema export 검사
 - Produces: projects.deletedAt 타입과 projects.deleted_at database column
 
-- [ ] **Step 1: deletedAt 컬럼을 요구하는 실패 테스트를 추가한다.**
+- [x] **Step 1: deletedAt 컬럼을 요구하는 실패 테스트를 추가한다.**
 
 backend/tests/db-schema.test.ts의 기존 schema describe 안에 다음 테스트를 추가한다.
 
@@ -73,13 +73,13 @@ it("projects schema exposes a nullable deletedAt column", () => {
 });
 ~~~
 
-- [ ] **Step 2: 스키마 테스트가 새 컬럼 부재로 실패하는지 확인한다.**
+- [x] **Step 2: 스키마 테스트가 새 컬럼 부재로 실패하는지 확인한다.**
 
 Run: pnpm --dir backend test -- tests/db-schema.test.ts
 
 Expected: projects.deletedAt가 아직 정의되지 않아 실패한다.
 
-- [ ] **Step 3: Drizzle schema에 nullable deletedAt을 추가한다.**
+- [x] **Step 3: Drizzle schema에 nullable deletedAt을 추가한다.**
 
 backend/src/db/schema/projects.ts의 updatedAt 뒤에 다음 컬럼을 추가한다.
 
@@ -89,13 +89,13 @@ deletedAt: timestamp("deleted_at", { withTimezone: true }),
 
 default와 notNull()은 사용하지 않는다. 기존 행과 새 프로젝트의 값이 NULL이면 활성 상태라는 계약을 유지한다.
 
-- [ ] **Step 4: 스키마 테스트가 통과하는지 확인한다.**
+- [x] **Step 4: 스키마 테스트가 통과하는지 확인한다.**
 
 Run: pnpm --dir backend test -- tests/db-schema.test.ts
 
 Expected: schema 테스트 전체 PASS.
 
-- [ ] **Step 5: Drizzle migration을 생성한다.**
+- [x] **Step 5: Drizzle migration을 생성한다.**
 
 Run: pnpm --dir backend db:generate
 
@@ -107,7 +107,7 @@ ALTER TABLE "projects" ADD COLUMN "deleted_at" timestamp with time zone;
 
 pnpm --dir backend db:migrate는 실행하지 않는다.
 
-- [ ] **Step 6: migration diff가 파괴적 변경 없이 생성됐는지 확인한다.**
+- [x] **Step 6: migration diff가 파괴적 변경 없이 생성됐는지 확인한다.**
 
 Run: git diff --check
 
@@ -124,7 +124,7 @@ Expected: whitespace 오류가 없고, projects 테이블의 nullable column 추
 - Consumes: createApp(), signAccessToken(), db.transaction mock, projects, workspaceMemberships, projectUpdateParamsSchema
 - Produces: 삭제 service와 HTTP route가 만족해야 하는 API·DB 호출 계약
 
-- [ ] **Step 1: DELETE용 transaction mock helper를 추가한다.**
+- [x] **Step 1: DELETE용 transaction mock helper를 추가한다.**
 
 기존 mockProjectUpdateTransaction과 같은 mock 패턴으로 다음 helper를 backend/tests/project.test.ts 공통 helper 영역에 추가한다.
 
@@ -174,7 +174,7 @@ function mockProjectDeleteTransaction({
 }
 ~~~
 
-- [ ] **Step 2: 성공·권한·입력·존재 여부 테스트를 추가한다.**
+- [x] **Step 2: 성공·권한·입력·존재 여부 테스트를 추가한다.**
 
 backend/tests/project.test.ts 끝에 다음 DELETE describe를 추가한다. 현재 route/service가 없으므로 테스트는 먼저 실패해야 한다.
 
@@ -293,7 +293,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId", () => {
 import { and, asc, count, desc, eq, ilike, isNull } from "drizzle-orm";
 ~~~
 
-- [ ] **Step 3: DB 오류 테스트를 추가한다.**
+- [x] **Step 3: DB 오류 테스트를 추가한다.**
 
 같은 DELETE describe 안에 다음 테스트를 추가한다. membership query, project query, soft-delete update가 각각 500 INTERNAL_SERVER_ERROR가 되고 뒤 단계가 호출되지 않는지 검증한다.
 
@@ -322,7 +322,7 @@ it.each([
 });
 ~~~
 
-- [ ] **Step 4: 삭제 테스트만 실행해 RED를 확인한다.**
+- [x] **Step 4: 삭제 테스트만 실행해 RED를 확인한다.**
 
 Run: pnpm --dir backend test -- tests/project.test.ts
 
@@ -343,7 +343,7 @@ Expected: 기존 프로젝트 테스트는 통과하고 새 DELETE 테스트는 
 - Consumes: Task 1의 projects.deletedAt, Task 2의 HTTP·DB 호출 테스트
 - Produces: deleteProject(input: DeleteProjectInput): Promise<void>, DELETE /workspaces/:workspaceId/projects/:projectId
 
-- [ ] **Step 1: 삭제 권한 오류 메시지를 추가한다.**
+- [x] **Step 1: 삭제 권한 오류 메시지를 추가한다.**
 
 backend/src/constants/messages.ts에 기존 PROJECT_UPDATE_FORBIDDEN 다음 항목을 추가한다.
 
@@ -351,7 +351,7 @@ backend/src/constants/messages.ts에 기존 PROJECT_UPDATE_FORBIDDEN 다음 항�
 PROJECT_DELETE_FORBIDDEN: "프로젝트를 삭제할 권한이 없습니다",
 ~~~
 
-- [ ] **Step 2: service import와 삭제 입력 타입을 추가한다.**
+- [x] **Step 2: service import와 삭제 입력 타입을 추가한다.**
 
 backend/src/services/project.service.ts의 import를 다음 의미로 확장한다.
 
@@ -369,7 +369,7 @@ export interface DeleteProjectInput {
 }
 ~~~
 
-- [ ] **Step 3: deleteProject transaction을 구현한다.**
+- [x] **Step 3: deleteProject transaction을 구현한다.**
 
 updateProject 함수 뒤에 다음 로직을 추가한다.
 
@@ -439,7 +439,7 @@ export async function deleteProject({
 
 같은 now 값을 deletedAt과 updatedAt에 사용해 한 삭제 동작의 시각을 일관되게 기록한다. update 결과가 없으면 동시 삭제 또는 이미 삭제된 상태로 보고 404를 반환한다.
 
-- [ ] **Step 4: controller에 DELETE handler를 추가한다.**
+- [x] **Step 4: controller에 DELETE handler를 추가한다.**
 
 service import에 deleteProject를 추가하고, updateProjectHandler 뒤에 다음 handler를 추가한다.
 
@@ -458,7 +458,7 @@ export async function deleteProjectHandler(req: Request, res: Response) {
 }
 ~~~
 
-- [ ] **Step 5: project router에 인증 DELETE route를 연결한다.**
+- [x] **Step 5: project router에 인증 DELETE route를 연결한다.**
 
 backend/src/routes/project.routes.ts에 handler import와 다음 route를 추가한다.
 
@@ -466,7 +466,7 @@ backend/src/routes/project.routes.ts에 handler import와 다음 route를 추가
 projectRouter.delete("/:projectId", authenticate, asyncHandler(deleteProjectHandler));
 ~~~
 
-- [ ] **Step 6: DELETE API 테스트를 GREEN으로 만든다.**
+- [x] **Step 6: DELETE API 테스트를 GREEN으로 만든다.**
 
 Run: pnpm --dir backend test -- tests/project.test.ts
 
@@ -484,7 +484,7 @@ Expected: Task 2의 DELETE 성공·권한·입력·존재 여부·DB 오류 테�
 - Consumes: Task 1의 projects.deletedAt, Task 3의 삭제 상태 계약
 - Produces: 목록 pagination과 수정 query가 활성 프로젝트만 대상으로 하는 동작
 
-- [ ] **Step 1: 목록 query의 활성 조건을 검증하는 실패 assertion을 추가한다.**
+- [x] **Step 1: 목록 query의 활성 조건을 검증하는 실패 assertion을 추가한다.**
 
 기존 GET 목록 테스트의 countQuery.where와 projectQuery.where 기대값을 다음 형태로 확장한다.
 
@@ -516,7 +516,7 @@ expect(projectQuery.where).toHaveBeenCalledWith(
 );
 ~~~
 
-- [ ] **Step 2: 수정 query의 활성 조건을 검증하는 실패 assertion을 추가한다.**
+- [x] **Step 2: 수정 query의 활성 조건을 검증하는 실패 assertion을 추가한다.**
 
 기존 PATCH 성공 테스트에서 projectQuery.where와 projectUpdate.where 기대값을 다음 조건으로 확장한다.
 
@@ -533,13 +533,13 @@ expect(projectUpdate.where).toHaveBeenCalledWith(activeProjectCondition);
 
 프로젝트 조회 mock이 빈 배열을 반환하는 기존 테스트는 삭제된 프로젝트도 동일하게 404 PROJECT_NOT_FOUND가 되는 계약을 이미 검증하므로 유지한다.
 
-- [ ] **Step 3: 목록·수정 테스트를 실행해 RED를 확인한다.**
+- [x] **Step 3: 목록·수정 테스트를 실행해 RED를 확인한다.**
 
 Run: pnpm --dir backend test -- tests/project.test.ts
 
 Expected: DELETE 테스트는 통과하지만 isNull(projects.deletedAt)가 아직 목록·수정 query에 없어서 관련 assertion이 실패한다.
 
-- [ ] **Step 4: listProjects의 count와 rows 조건에 isNull을 추가한다.**
+- [x] **Step 4: listProjects의 count와 rows 조건에 isNull을 추가한다.**
 
 backend/src/services/project.service.ts의 whereCondition을 다음 형태로 변경한다.
 
@@ -553,7 +553,7 @@ const whereCondition = and(
 
 count query와 project rows query가 같은 whereCondition을 계속 공유하게 하여 total과 rows가 같은 활성 집합을 사용하도록 한다.
 
-- [ ] **Step 5: updateProject 조회와 update 조건에 isNull을 추가한다.**
+- [x] **Step 5: updateProject 조회와 update 조건에 isNull을 추가한다.**
 
 프로젝트 조회와 update의 where 조건에 다음 세 조건을 모두 사용한다.
 
@@ -567,7 +567,7 @@ and(
 
 이를 통해 삭제된 프로젝트는 권한 확인 단계에서부터 PROJECT_NOT_FOUND가 되고, 직접 update되지 않는다.
 
-- [ ] **Step 6: 프로젝트 회귀 테스트를 GREEN으로 확인한다.**
+- [x] **Step 6: 프로젝트 회귀 테스트를 GREEN으로 확인한다.**
 
 Run: pnpm --dir backend test -- tests/project.test.ts
 
@@ -584,19 +584,19 @@ Expected: 생성·목록·수정·삭제 프로젝트 테스트 전체 PASS.
 - Consumes: Task 1~4의 schema, migration, service, controller, route, message, test 결과
 - Produces: 검증 결과와 실제 계획 대비 변경 사항이 기록된 구현 계획 문서
 
-- [ ] **Step 1: 집중 테스트를 실행한다.**
+- [x] **Step 1: 집중 테스트를 실행한다.**
 
 Run: pnpm --dir backend test -- tests/project.test.ts tests/db-schema.test.ts
 
 Expected: 프로젝트 API와 DB schema 테스트 전체 PASS.
 
-- [ ] **Step 2: 전체 테스트를 실행한다.**
+- [x] **Step 2: 전체 테스트를 실행한다.**
 
 Run: pnpm --dir backend test
 
 Expected: 전체 테스트 파일과 테스트 케이스 PASS.
 
-- [ ] **Step 3: lint와 build를 실행한다.**
+- [x] **Step 3: lint와 build를 실행한다.**
 
 Run: pnpm --dir backend lint
 
@@ -606,11 +606,11 @@ Run: pnpm --dir backend build
 
 Expected: TypeScript compile과 tsc-alias 처리 성공.
 
-- [ ] **Step 4: 포맷과 diff 검사를 실행한다.**
+- [x] **Step 4: 포맷과 diff 검사를 실행한다.**
 
 Run: pnpm --dir backend exec prettier --check src tests
 
-Expected: backend source와 test 파일 포맷 검사 PASS.
+Expected: 변경 파일의 source/test 포맷 검사는 PASS한다. repository-wide 검사에서 발견된 기존 baseline 2개 파일의 경고는 Implementation Results에 예외로 기록한다.
 
 Run: git diff --check
 
@@ -633,8 +633,8 @@ Expected: 이번 작업의 설계·계획·schema·migration·service·controlle
 - 하위 화이트보드 문서가 물리 삭제되지 않는다.
 - migration 파일이 생성되지만 실제 DB migration은 실행되지 않는다.
 - 관련 테스트·lint·build·변경 파일 format 검증이 통과한다. 기존 baseline의 무관한 format 경고는 후속 정리 대상으로 남긴다.
-- Implementation Results가 실제 변경과 검증 결과로 갱신된다.
-- Git commit·push·PR은 사용자 요청 없이는 실행하지 않는다.
+- Implementation Results에 실제 변경과 검증 결과를 기록했다.
+- Git push·PR은 실행하지 않았고, 설계 문서와 구현 계획 문서는 `9adfc14`에서 커밋 완료했다.
 
 ## Implementation Results
 
@@ -670,4 +670,4 @@ Expected: 이번 작업의 설계·계획·schema·migration·service·controlle
 
 - 기존 baseline의 Prettier 포맷 경고 2개를 별도 정리 작업으로 처리해야 한다. 이번 Task 5에서는 구현 파일을 임의 수정하지 않았다.
 - 실제 환경에서 migration 적용, 프로젝트 복구 API, 영구 삭제/보존 기간 정리, 화이트보드 문서 API의 상위 프로젝트 삭제 상태 연동은 범위 밖이다.
-- 변경 파일 Prettier 검증까지 통과한 상태에서 설계 문서와 구현 계획 문서만 documentation commit으로 커밋한다. 기존 baseline 포맷 경고 2개는 별도 정리 작업으로 남긴다.
+- 설계 문서와 구현 계획 문서만 `9adfc14`에서 documentation commit으로 커밋 완료했다. 기존 baseline 포맷 경고 2개는 별도 정리 작업으로 남긴다.
