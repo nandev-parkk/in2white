@@ -46,6 +46,16 @@ const otherWorkspaceFixture: WorkspaceSummary = {
 
 const mockUseWorkspaces = vi.fn()
 const mockUseCreateWorkspace = vi.fn()
+const mockNavigate = vi.fn()
+const mockLogoutRequest = vi.fn()
+
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => mockNavigate,
+}))
+
+vi.mock('@/features/auth/api/session', () => ({
+  logoutRequest: (...args: unknown[]) => mockLogoutRequest(...args),
+}))
 
 vi.mock('@/features/workspace', () => ({
   useWorkspaces: (...args: unknown[]) => mockUseWorkspaces(...args),
@@ -79,12 +89,15 @@ describe('HomePage', () => {
     useSessionStore.getState().clearSession()
     mockUseWorkspaces.mockReset()
     mockUseCreateWorkspace.mockReset()
+    mockNavigate.mockReset()
+    mockLogoutRequest.mockReset()
+    mockLogoutRequest.mockResolvedValue(undefined)
   })
 
-  it('세션이 없으면 워크스페이스 훅을 실행하지 않고 안전 상태를 표시한다', () => {
+  it('세션이 없으면 워크스페이스 훅을 실행하지 않고 아무것도 표시하지 않는다', () => {
     renderHomePage()
 
-    expect(screen.getByText('로그인이 필요해요')).toBeInTheDocument()
+    expect(screen.queryByText('로그인이 필요해요')).not.toBeInTheDocument()
     expect(mockUseWorkspaces).not.toHaveBeenCalled()
     expect(mockUseCreateWorkspace).not.toHaveBeenCalled()
   })
@@ -138,7 +151,7 @@ describe('HomePage', () => {
     expect(reset).not.toHaveBeenCalled()
   })
 
-  it('로그아웃을 선택하면 세션을 비우고 로그인 안내를 표시한다', async () => {
+  it('로그아웃을 선택하면 세션을 비우고 로그인 페이지로 이동한다', async () => {
     useSessionStore.getState().setSession('token-1', userFixture)
     mockUseWorkspaces.mockReturnValue({
       data: [workspaceFixture],
@@ -157,7 +170,36 @@ describe('HomePage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '로그아웃' }))
 
-    expect(screen.getByText('로그인이 필요해요')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/login', replace: true })
+    })
+    expect(screen.queryByText('로그인이 필요해요')).not.toBeInTheDocument()
+    expect(useSessionStore.getState().accessToken).toBeNull()
+  })
+
+  it('로그아웃 API가 실패해도 세션을 비우고 로그인 페이지로 이동한다', async () => {
+    useSessionStore.getState().setSession('token-1', userFixture)
+    mockLogoutRequest.mockRejectedValueOnce(new Error('logout failed'))
+    mockUseWorkspaces.mockReturnValue({
+      data: [workspaceFixture],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    })
+    mockUseCreateWorkspace.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      error: null,
+      reset: vi.fn(),
+    })
+
+    renderHomePage()
+
+    await userEvent.click(screen.getByRole('button', { name: '로그아웃' }))
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/login', replace: true })
+    })
     expect(useSessionStore.getState().accessToken).toBeNull()
   })
 
