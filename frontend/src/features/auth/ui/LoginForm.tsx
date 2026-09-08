@@ -7,6 +7,8 @@ import { z } from 'zod'
 import { MESSAGES } from '@/shared/constants/messages'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
+import { PasswordInput } from '@/shared/ui/password-input'
+import { loginPasswordSchema } from '@/shared/validation/password-schema'
 import { toast } from '@/shared/ui/toast'
 
 import { useLogin } from '../model/use-login'
@@ -16,7 +18,7 @@ const loginSchema = z.object({
     .string()
     .min(1, MESSAGES.EMAIL_REQUIRED)
     .email(MESSAGES.EMAIL_INVALID_FORMAT),
-  password: z.string().min(1, MESSAGES.PASSWORD_REQUIRED),
+  password: loginPasswordSchema,
 })
 
 type LoginFormValues = z.infer<typeof loginSchema>
@@ -94,9 +96,8 @@ export function LoginForm() {
         >
           비밀번호
         </label>
-        <Input
+        <PasswordInput
           id="login-password"
-          type="password"
           size="large"
           placeholder="••••••••"
           aria-invalid={!!errors.password}
