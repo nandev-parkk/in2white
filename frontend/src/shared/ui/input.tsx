@@ -17,14 +17,19 @@ const inputVariants = cva(
   },
 )
 
+type InputProps = Omit<React.ComponentProps<'input'>, 'size'> &
+  VariantProps<typeof inputVariants> & {
+    endAdornment?: React.ReactNode
+  }
+
 function Input({
   className,
   type,
   size = 'default',
+  endAdornment,
   ...props
-}: Omit<React.ComponentProps<'input'>, 'size'> &
-  VariantProps<typeof inputVariants>) {
-  return (
+}: InputProps) {
+  const input = (
     <input
       type={type}
       data-slot="input"
@@ -33,6 +38,25 @@ function Input({
       {...props}
     />
   )
+
+  if (!endAdornment) {
+    return input
+  }
+
+  return (
+    <span className="relative block w-full" data-slot="input-wrapper">
+      {React.cloneElement(input, {
+        className: cn(input.props.className, 'pr-12'),
+      })}
+      <span
+        className="text-foreground-tertiary absolute inset-y-0 right-3 flex items-center"
+        data-slot="input-end-adornment"
+      >
+        {endAdornment}
+      </span>
+    </span>
+  )
 }
 
 export { Input, inputVariants }
+export type { InputProps }

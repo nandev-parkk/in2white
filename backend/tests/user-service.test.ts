@@ -2,11 +2,16 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { eq } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { db } from "@/db/client";
-import { users } from "@/db/schema";
-import { getUserByEmail, getUserById } from "@/services/user.service";
+import { users, workspaceMemberships, workspaces } from "@/db/schema";
+import {
+  getUserByEmail,
+  getUserById,
+  upsertUserWithDefaultWorkspace,
+} from "@/services/user.service";
 
 vi.mock("@/db/client", () => ({
   db: {
+    transaction: vi.fn(),
     query: {
       users: {
         findFirst: vi.fn(),
@@ -33,6 +38,7 @@ const mockUser = {
 describe("getUserByEmail", () => {
   beforeEach(() => {
     vi.mocked(db.query.users.findFirst).mockReset();
+    vi.mocked(db.transaction).mockReset();
     vi.mocked(eq).mockClear();
   });
 
@@ -88,5 +94,143 @@ describe("getUserById", () => {
 
     expect(result?.email).toBe("user@example.com");
     expect(eq).toHaveBeenCalledWith(users.id, "user-1");
+  });
+});
+
+describe("upsertUserWithDefaultWorkspace", () => {
+  const defaultWorkspace = {
+    id: "workspace-default",
+    name: "My Workspace",
+    ownerId: "user-1",
+    isDefault: true,
+    createdAt: new Date("2026-09-08T00:00:00.000Z"),
+    updatedAt: new Date("2026-09-08T00:00:00.000Z"),
+  };
+
+  function mockProvisioningTransaction({
+    defaultWorkspaceRows = [],
+    workspaceRows = [defaultWorkspace],
+    membershipError,
+  }: {
+    defaultWorkspaceRows?: unknown[];
+    workspaceRows?: unknown[];
+    membershipError?: Error;
+  } = {}) {
+    const userInsert = {
+      values: vi.fn().mockReturnThis(),
+      onConflictDoUpdate: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([mockUser]),
+    };
+    const workspaceQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue(defaultWorkspaceRows),
+    };
+    const workspaceInsert = {
+      values: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue(workspaceRows),
+    };
+    const membershipInsert = {
+      values: vi.fn().mockReturnThis(),
+      onConflictDoUpdate: membershipError
+        ? vi.fn().mockRejectedValue(membershipError)
+        : vi.fn().mockResolvedValue([]),
+    };
+    const transaction = {
+      insert: vi.fn((table: unknown) => {
+        if (table === users) return userInsert;
+        if (table === workspaces) return workspaceInsert;
+        return membershipInsert;
+      }),
+      select: vi.fn().mockReturnValue(workspaceQuery),
+    };
+
+    vi.mocked(db.transaction).mockImplementation(async (callback) =>
+      callback(transaction as never),
+    );
+
+    return { membershipInsert, transaction, userInsert, workspaceInsert, workspaceQuery };
+  }
+
+  it("creates a default workspace and owner membership for a new user", async () => {
+    const { membershipInsert, transaction, userInsert, workspaceInsert } =
+      mockProvisioningTransaction();
+
+    await upsertUserWithDefaultWorkspace({
+      email: "user@example.com",
+      name: "Test User",
+      passwordHash: "hashed-value",
+    });
+
+    expect(db.transaction).toHaveBeenCalledOnce();
+    expect(userInsert.values).toHaveBeenCalledWith({
+      email: "user@example.com",
+      name: "Test User",
+      passwordHash: "hashed-value",
+    });
+    expect(userInsert.onConflictDoUpdate).toHaveBeenCalledWith({
+      target: users.email,
+      set: { name: "Test User", passwordHash: "hashed-value" },
+    });
+    expect(workspaceInsert.values).toHaveBeenCalledWith({
+      name: "My Workspace",
+      ownerId: "user-1",
+      isDefault: true,
+    });
+    expect(membershipInsert.values).toHaveBeenCalledWith({
+      workspaceId: "workspace-default",
+      userId: "user-1",
+      role: "owner",
+    });
+    expect(transaction.insert).toHaveBeenCalledWith(users);
+    expect(transaction.insert).toHaveBeenCalledWith(workspaces);
+    expect(transaction.insert).toHaveBeenCalledWith(workspaceMemberships);
+  });
+
+  it("repairs a user who is missing the default workspace", async () => {
+    const { workspaceInsert } = mockProvisioningTransaction({ defaultWorkspaceRows: [] });
+
+    await upsertUserWithDefaultWorkspace({
+      email: "test@example.com",
+      name: "테스트유저",
+      passwordHash: "hashed-value",
+    });
+
+    expect(workspaceInsert.values).toHaveBeenCalledWith({
+      name: "My Workspace",
+      ownerId: "user-1",
+      isDefault: true,
+    });
+  });
+
+  it("does not create a duplicate workspace when the default already exists", async () => {
+    const { membershipInsert, workspaceInsert } = mockProvisioningTransaction({
+      defaultWorkspaceRows: [defaultWorkspace],
+    });
+
+    await upsertUserWithDefaultWorkspace({
+      email: "user@example.com",
+      name: "Test User",
+      passwordHash: "hashed-value",
+    });
+
+    expect(workspaceInsert.values).not.toHaveBeenCalled();
+    expect(membershipInsert.values).toHaveBeenCalledWith({
+      workspaceId: "workspace-default",
+      userId: "user-1",
+      role: "owner",
+    });
+  });
+
+  it("propagates membership errors so the transaction can roll back", async () => {
+    const membershipError = new Error("membership insert failed");
+    mockProvisioningTransaction({ membershipError });
+
+    await expect(
+      upsertUserWithDefaultWorkspace({
+        email: "user@example.com",
+        name: "Test User",
+        passwordHash: "hashed-value",
+      }),
+    ).rejects.toBe(membershipError);
   });
 });

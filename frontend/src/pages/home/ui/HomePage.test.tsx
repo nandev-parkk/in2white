@@ -40,6 +40,16 @@ const otherWorkspaceFixture: WorkspaceSummary = {
 
 const mockUseWorkspaces = vi.fn()
 const mockUseCreateWorkspace = vi.fn()
+const mockNavigate = vi.fn()
+const mockLogoutRequest = vi.fn()
+
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => mockNavigate,
+}))
+
+vi.mock('@/features/auth/api/session', () => ({
+  logoutRequest: (...args: unknown[]) => mockLogoutRequest(...args),
+}))
 
 vi.mock('@/features/workspace', () => ({
   useWorkspaces: (...args: unknown[]) => mockUseWorkspaces(...args),
@@ -77,16 +87,19 @@ describe('HomePage', () => {
     useSessionStore.getState().clearSession()
     mockUseWorkspaces.mockReset()
     mockUseCreateWorkspace.mockReset()
+    mockNavigate.mockReset()
+    mockLogoutRequest.mockReset()
+    mockLogoutRequest.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  it('세션이 없으면 워크스페이스 훅을 실행하지 않고 안전 상태를 표시한다', () => {
+  it('세션이 없으면 워크스페이스 훅을 실행하지 않고 아무것도 표시하지 않는다', () => {
     renderHomePage()
 
-    expect(screen.getByText('로그인이 필요해요')).toBeInTheDocument()
+    expect(screen.queryByText('로그인이 필요해요')).not.toBeInTheDocument()
     expect(mockUseWorkspaces).not.toHaveBeenCalled()
     expect(mockUseCreateWorkspace).not.toHaveBeenCalled()
   })
@@ -146,6 +159,30 @@ describe('HomePage', () => {
     )
   })
 
+  it('Figma 기준 흰색 페이지와 사이드바 구분선을 사용한다', () => {
+    useSessionStore.getState().setSession('token-1', userFixture)
+    mockUseWorkspaces.mockReturnValue({
+      data: [workspaceFixture],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    })
+    mockUseCreateWorkspace.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      error: null,
+      reset: vi.fn(),
+    })
+
+    renderHomePage()
+
+    const sidebar = screen.getByRole('complementary', {
+      name: '워크스페이스 사이드바',
+    })
+    expect(sidebar).toHaveClass('border-sidebar-border')
+    expect(sidebar.parentElement).toHaveClass('bg-background-default')
+  })
+
   it('생성 중에는 모달을 닫아 mutation을 초기화할 수 없다', async () => {
     useSessionStore.getState().setSession('token-1', userFixture)
     const reset = vi.fn()
@@ -175,7 +212,7 @@ describe('HomePage', () => {
     expect(reset).not.toHaveBeenCalled()
   })
 
-  it('로그아웃을 선택하면 세션을 비우고 로그인 안내를 표시한다', async () => {
+  it('로그아웃을 선택하면 세션을 비우고 로그인 페이지로 이동한다', async () => {
     useSessionStore.getState().setSession('token-1', userFixture)
     mockUseWorkspaces.mockReturnValue({
       data: [workspaceFixture],
@@ -194,7 +231,36 @@ describe('HomePage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '로그아웃' }))
 
-    expect(screen.getByText('로그인이 필요해요')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/login', replace: true })
+    })
+    expect(screen.queryByText('로그인이 필요해요')).not.toBeInTheDocument()
+    expect(useSessionStore.getState().accessToken).toBeNull()
+  })
+
+  it('로그아웃 API가 실패해도 세션을 비우고 로그인 페이지로 이동한다', async () => {
+    useSessionStore.getState().setSession('token-1', userFixture)
+    mockLogoutRequest.mockRejectedValueOnce(new Error('logout failed'))
+    mockUseWorkspaces.mockReturnValue({
+      data: [workspaceFixture],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    })
+    mockUseCreateWorkspace.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      error: null,
+      reset: vi.fn(),
+    })
+
+    renderHomePage()
+
+    await userEvent.click(screen.getByRole('button', { name: '로그아웃' }))
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/login', replace: true })
+    })
     expect(useSessionStore.getState().accessToken).toBeNull()
   })
 
@@ -367,8 +433,42 @@ describe('HomePage', () => {
     expect(mutateAsync).toHaveBeenCalledWith('새 팀')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'My Workspace' }))
     expect(screen.getByRole('option', { name: /새 팀/ })).toBeInTheDocument()
+  })
+
+  it('생성 다이얼로그 외부를 눌러도 워크스페이스 목록을 유지한다', async () => {
+    useSessionStore.getState().setSession('token-1', userFixture)
+    mockUseWorkspaces.mockReturnValue({
+      data: [workspaceFixture],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    })
+    mockUseCreateWorkspace.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      error: null,
+      reset: vi.fn(),
+    })
+
+    renderHomePage()
+
+    await userEvent.click(screen.getByRole('button', { name: 'My Workspace' }))
+    await userEvent.click(
+      screen.getByRole('button', { name: '새 워크스페이스 생성' }),
+    )
+
+    fireEvent.pointerDown(
+      document.querySelector('[data-slot="dialog-overlay"]') as HTMLElement,
+    )
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(
+      document.querySelector('[data-slot="workspace-switcher-popover"]'),
+    ).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: '취소' }))
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
   })
 
   it('생성 직후 임시 항목을 표시하고 새 API 목록으로 교체한다', async () => {
@@ -400,7 +500,6 @@ describe('HomePage', () => {
     expect(
       await screen.findByRole('button', { name: 'My Workspace' }),
     ).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'My Workspace' }))
     expect(screen.getByRole('option', { name: /새 팀/ })).toBeInTheDocument()
 
     workspaces = [workspaceFixture]
@@ -454,7 +553,6 @@ describe('HomePage', () => {
     expect(reset).toHaveBeenCalledOnce()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'My Workspace' }))
     await userEvent.click(
       screen.getByRole('button', { name: '새 워크스페이스 생성' }),
     )

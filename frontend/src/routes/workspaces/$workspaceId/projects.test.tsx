@@ -33,6 +33,16 @@ vi.mock('@/pages/home', () => ({
 }))
 
 describe('project route', () => {
+  function createToken(exp: number) {
+    const encode = (value: unknown) =>
+      btoa(JSON.stringify(value))
+        .replaceAll('+', '-')
+        .replaceAll('/', '_')
+        .replace(/=+$/, '')
+
+    return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ exp })}.signature`
+  }
+
   afterEach(() => {
     useSessionStore.getState().clearSession()
   })
@@ -41,13 +51,17 @@ describe('project route', () => {
     expect(PROJECTS_ROUTE).toBe('/workspaces/$workspaceId/projects')
   })
 
-  it('인증되지 않은 접근을 로그인 route로 보호한다', () => {
+  it('인증되지 않은 접근을 로그인 route로 보호한다', async () => {
     expect(Route.options.beforeLoad).toBe(redirectIfUnauthenticated)
-    expect(() => Route.options.beforeLoad?.({} as never)).toThrow()
+    await expect(Route.options.beforeLoad?.({} as never)).rejects.toMatchObject(
+      {
+        options: { to: '/login' },
+      },
+    )
   })
 
   it('인증된 접근은 project route에 머문다', () => {
-    useSessionStore.getState().setSession('token-1', {
+    useSessionStore.getState().setSession(createToken(2_000_000_000), {
       id: 'user-1',
       name: '테스터',
       email: 'user@in2white.team',
@@ -57,7 +71,7 @@ describe('project route', () => {
   })
 
   it('URL workspace ID를 페이지에 전달하고 workspace 변경도 project route로 이동한다', async () => {
-    useSessionStore.getState().setSession('token-1', {
+    useSessionStore.getState().setSession(createToken(2_000_000_000), {
       id: 'user-1',
       name: '테스터',
       email: 'user@in2white.team',

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { Info } from 'lucide-react'
 
 import { Input } from '@/shared/ui/input'
 
@@ -50,4 +51,12 @@ export const Invalid: Story = {
 
 export const Disabled: Story = {
   args: { value: '수정할 수 없는 값', disabled: true, readOnly: true },
+}
+
+export const WithEndAdornment: Story = {
+  args: {
+    endAdornment: <Info aria-hidden="true" className="size-4" />,
+    placeholder: '도움말 아이콘이 있는 입력',
+    'aria-label': '도움말 아이콘이 있는 입력',
+  },
 }

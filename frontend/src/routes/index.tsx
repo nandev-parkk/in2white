@@ -1,15 +1,10 @@
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
 import { useSessionStore } from '@/entities/session'
+import { redirectIfUnauthenticated } from '@/features/auth/model/route-guards'
 import { WorkspaceRedirectPage } from '@/pages/workspace-redirect'
 
-export function redirectIfUnauthenticated() {
-  const { accessToken, user } = useSessionStore.getState()
-
-  if (!accessToken || !user) {
-    throw redirect({ to: '/login' })
-  }
-}
+export { redirectIfUnauthenticated }
 
 export const Route = createFileRoute('/')({
   beforeLoad: redirectIfUnauthenticated,
