@@ -8,6 +8,11 @@ export const MESSAGES = {
   PASSWORD_MISSING_LETTER: '비밀번호는 영문을 포함해야 합니다',
   PASSWORD_MISSING_NUMBER: '비밀번호는 숫자를 포함해야 합니다',
   PASSWORD_MISSING_SPECIAL_CHAR: '비밀번호는 특수문자를 포함해야 합니다',
+  WORKSPACE_REDIRECT_FAILED: '워크스페이스로 이동하지 못했어요',
+  WORKSPACE_NOT_AVAILABLE: '이동할 워크스페이스가 없어요',
   WORKSPACE_NAME_REQUIRED: '워크스페이스 이름을 입력해주세요',
+  PROJECT_NAME_REQUIRED: '프로젝트 이름을 입력해주세요',
+  PROJECT_NAME_TOO_LONG: '프로젝트 이름은 50자 이하로 입력해주세요',
+  PROJECT_DESCRIPTION_TOO_LONG: '프로젝트 설명은 200자 이하로 입력해주세요',
   NETWORK_ERROR: '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요',
 } as const

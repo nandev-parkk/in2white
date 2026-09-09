@@ -1,0 +1,186 @@
+import { useState, type FormEvent } from 'react'
+
+import type { CreateProjectInput } from '@/entities/project'
+import { MESSAGES } from '@/shared/constants/messages'
+import { Button } from '@/shared/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogTitle,
+} from '@/shared/ui/dialog'
+import { Input } from '@/shared/ui/input'
+import { Textarea } from '@/shared/ui/textarea'
+
+type ProjectFormDialogProps = {
+  open: boolean
+  title: string
+  submitLabel: string
+  onOpenChange: (open: boolean) => void
+  onSubmit: (input: CreateProjectInput) => void
+  initialName?: string
+  initialDescription?: string | null
+  loading?: boolean
+  error?: string
+}
+
+type ValidationError = {
+  field: 'name' | 'description'
+  message: string
+}
+
+function ProjectFormDialog({
+  open,
+  title,
+  submitLabel,
+  onOpenChange,
+  onSubmit,
+  initialName = '',
+  initialDescription = null,
+  loading = false,
+  error,
+}: ProjectFormDialogProps) {
+  const [name, setName] = useState(initialName)
+  const [description, setDescription] = useState(initialDescription ?? '')
+  const [validationError, setValidationError] =
+    useState<ValidationError | null>(null)
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (loading) return
+
+    const trimmedName = name.trim()
+    if (!trimmedName) {
+      setValidationError({
+        field: 'name',
+        message: MESSAGES.PROJECT_NAME_REQUIRED,
+      })
+      return
+    }
+    if (trimmedName.length > 50) {
+      setValidationError({
+        field: 'name',
+        message: MESSAGES.PROJECT_NAME_TOO_LONG,
+      })
+      return
+    }
+
+    const trimmedDescription = description.trim()
+    if (trimmedDescription.length > 200) {
+      setValidationError({
+        field: 'description',
+        message: MESSAGES.PROJECT_DESCRIPTION_TOO_LONG,
+      })
+      return
+    }
+
+    setValidationError(null)
+    onSubmit({
+      name: trimmedName,
+      description: trimmedDescription || null,
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-90">
+        <DialogTitle>{title}</DialogTitle>
+        <form onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <label
+                className="text-label text-foreground-default"
+                htmlFor="project-name"
+              >
+                이름
+              </label>
+              <Input
+                id="project-name"
+                value={name}
+                disabled={loading}
+                onChange={(event) => {
+                  setName(event.target.value)
+                  if (validationError?.field === 'name')
+                    setValidationError(null)
+                }}
+                placeholder="예: 홈페이지 개편"
+                maxLength={50}
+                aria-invalid={validationError?.field === 'name'}
+                aria-describedby={
+                  validationError?.field === 'name'
+                    ? 'project-name-error'
+                    : undefined
+                }
+              />
+              {validationError?.field === 'name' && (
+                <p
+                  id="project-name-error"
+                  className="text-caption text-status-danger"
+                >
+                  {validationError.message}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <label
+                className="text-label text-foreground-default"
+                htmlFor="project-description"
+              >
+                설명 <span className="text-foreground-tertiary">(선택)</span>
+              </label>
+              <Textarea
+                id="project-description"
+                value={description}
+                disabled={loading}
+                onChange={(event) => {
+                  setDescription(event.target.value)
+                  if (validationError?.field === 'description') {
+                    setValidationError(null)
+                  }
+                }}
+                placeholder="프로젝트에 대한 설명을 입력해주세요"
+                maxLength={200}
+                rows={3}
+                aria-invalid={validationError?.field === 'description'}
+                aria-describedby={
+                  validationError?.field === 'description'
+                    ? 'project-description-error'
+                    : undefined
+                }
+              />
+              {validationError?.field === 'description' && (
+                <p
+                  id="project-description-error"
+                  className="text-caption text-status-danger"
+                >
+                  {validationError.message}
+                </p>
+              )}
+            </div>
+          </div>
+          {error && (
+            <p className="text-caption text-status-danger mt-3" role="alert">
+              {error}
+            </p>
+          )}
+          <DialogFooter className="mt-6">
+            <Button
+              type="button"
+              variant="tertiary"
+              disabled={loading}
+              onClick={() => onOpenChange(false)}
+            >
+              취소
+            </Button>
+            <Button type="submit" loading={loading}>
+              {submitLabel}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+export { ProjectFormDialog }
