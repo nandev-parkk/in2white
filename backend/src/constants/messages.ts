@@ -31,6 +31,8 @@ export const ERROR_MESSAGES = {
   PROJECT_UPDATE_FORBIDDEN: "프로젝트를 수정할 권한이 없습니다",
   PROJECT_DELETE_FORBIDDEN: "프로젝트를 삭제할 권한이 없습니다",
   PROJECT_UPDATE_FIELDS_REQUIRED: "수정할 프로젝트 정보를 입력해주세요",
+  WHITEBOARD_DOCUMENT_NAME_REQUIRED: "화이트보드 문서 이름을 입력해주세요",
+  WHITEBOARD_DOCUMENT_NAME_TOO_LONG: "화이트보드 문서 이름은 50자 이내로 입력해주세요",
   SEARCH_INVALID: "검색어는 문자열이어야 합니다",
   SEARCH_TOO_LONG: "검색어는 100자 이내로 입력해주세요",
   PAGE_INVALID: "페이지는 1 이상의 정수여야 합니다",
