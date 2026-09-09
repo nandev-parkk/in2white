@@ -15,12 +15,24 @@ export interface CreateWhiteboardDocumentInput {
   creatorId: string;
 }
 
+export type CreatedWhiteboardDocument = Pick<
+  typeof whiteboardDocuments.$inferSelect,
+  "id" | "projectId" | "name" | "creatorId" | "canvasContent" | "createdAt" | "updatedAt"
+>;
+
 export interface UpdateWhiteboardDocumentInput {
   workspaceId: string;
   projectId: string;
   documentId: string;
   userId: string;
   name: string;
+}
+
+export interface DeleteWhiteboardDocumentInput {
+  workspaceId: string;
+  projectId: string;
+  documentId: string;
+  userId: string;
 }
 
 export interface UpdatedWhiteboardDocument {
@@ -58,7 +70,7 @@ export async function createWhiteboardDocument({
   projectId,
   name,
   creatorId,
-}: CreateWhiteboardDocumentInput): Promise<typeof whiteboardDocuments.$inferSelect> {
+}: CreateWhiteboardDocumentInput): Promise<CreatedWhiteboardDocument> {
   return db.transaction(async (tx) => {
     const [membership] = await tx
       .select({ id: workspaceMemberships.id })
@@ -92,7 +104,15 @@ export async function createWhiteboardDocument({
     const [whiteboardDocument] = await tx
       .insert(whiteboardDocuments)
       .values({ projectId, name, creatorId })
-      .returning();
+      .returning({
+        id: whiteboardDocuments.id,
+        projectId: whiteboardDocuments.projectId,
+        name: whiteboardDocuments.name,
+        creatorId: whiteboardDocuments.creatorId,
+        canvasContent: whiteboardDocuments.canvasContent,
+        createdAt: whiteboardDocuments.createdAt,
+        updatedAt: whiteboardDocuments.updatedAt,
+      });
 
     if (!whiteboardDocument) {
       throw new Error("Whiteboard document insert returned no row");
@@ -143,7 +163,11 @@ export async function updateWhiteboardDocument({
       .select({ id: whiteboardDocuments.id, creatorId: whiteboardDocuments.creatorId })
       .from(whiteboardDocuments)
       .where(
-        and(eq(whiteboardDocuments.id, documentId), eq(whiteboardDocuments.projectId, projectId)),
+        and(
+          eq(whiteboardDocuments.id, documentId),
+          eq(whiteboardDocuments.projectId, projectId),
+          isNull(whiteboardDocuments.deletedAt),
+        ),
       );
 
     if (!whiteboardDocument) {
@@ -166,7 +190,11 @@ export async function updateWhiteboardDocument({
       .update(whiteboardDocuments)
       .set({ name, updatedAt: new Date() })
       .where(
-        and(eq(whiteboardDocuments.id, documentId), eq(whiteboardDocuments.projectId, projectId)),
+        and(
+          eq(whiteboardDocuments.id, documentId),
+          eq(whiteboardDocuments.projectId, projectId),
+          isNull(whiteboardDocuments.deletedAt),
+        ),
       )
       .returning({
         id: whiteboardDocuments.id,
@@ -225,6 +253,7 @@ export async function listWhiteboardDocuments({
 
   const whereCondition = and(
     eq(whiteboardDocuments.projectId, projectId),
+    isNull(whiteboardDocuments.deletedAt),
     search ? ilike(whiteboardDocuments.name, buildContainsSearchPattern(search)) : undefined,
   );
 
@@ -258,4 +287,90 @@ export async function listWhiteboardDocuments({
     whiteboardDocuments: whiteboardDocumentRows,
     pagination: createPaginationMeta({ page, limit, total }),
   };
+}
+
+export async function deleteWhiteboardDocument({
+  workspaceId,
+  projectId,
+  documentId,
+  userId,
+}: DeleteWhiteboardDocumentInput): Promise<void> {
+  return db.transaction(async (tx) => {
+    const [membership] = await tx
+      .select({ role: workspaceMemberships.role })
+      .from(workspaceMemberships)
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          eq(workspaceMemberships.userId, userId),
+        ),
+      );
+
+    if (!membership) {
+      throw new HttpError(404, "WORKSPACE_NOT_FOUND", ERROR_MESSAGES.WORKSPACE_NOT_FOUND);
+    }
+
+    const [project] = await tx
+      .select({ id: projects.id })
+      .from(projects)
+      .where(
+        and(
+          eq(projects.id, projectId),
+          eq(projects.workspaceId, workspaceId),
+          isNull(projects.deletedAt),
+        ),
+      );
+
+    if (!project) {
+      throw new HttpError(404, "PROJECT_NOT_FOUND", ERROR_MESSAGES.PROJECT_NOT_FOUND);
+    }
+
+    const [whiteboardDocument] = await tx
+      .select({ id: whiteboardDocuments.id, creatorId: whiteboardDocuments.creatorId })
+      .from(whiteboardDocuments)
+      .where(
+        and(
+          eq(whiteboardDocuments.id, documentId),
+          eq(whiteboardDocuments.projectId, projectId),
+          isNull(whiteboardDocuments.deletedAt),
+        ),
+      );
+
+    if (!whiteboardDocument) {
+      throw new HttpError(
+        404,
+        "WHITEBOARD_DOCUMENT_NOT_FOUND",
+        ERROR_MESSAGES.WHITEBOARD_DOCUMENT_NOT_FOUND,
+      );
+    }
+
+    if (membership.role !== "owner" && whiteboardDocument.creatorId !== userId) {
+      throw new HttpError(
+        403,
+        "WHITEBOARD_DOCUMENT_DELETE_FORBIDDEN",
+        ERROR_MESSAGES.WHITEBOARD_DOCUMENT_DELETE_FORBIDDEN,
+      );
+    }
+
+    const now = new Date();
+    const [deletedWhiteboardDocument] = await tx
+      .update(whiteboardDocuments)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(whiteboardDocuments.id, documentId),
+          eq(whiteboardDocuments.projectId, projectId),
+          isNull(whiteboardDocuments.deletedAt),
+        ),
+      )
+      .returning({ id: whiteboardDocuments.id });
+
+    if (!deletedWhiteboardDocument) {
+      throw new HttpError(
+        404,
+        "WHITEBOARD_DOCUMENT_NOT_FOUND",
+        ERROR_MESSAGES.WHITEBOARD_DOCUMENT_NOT_FOUND,
+      );
+    }
+  });
 }

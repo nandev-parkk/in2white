@@ -8,6 +8,7 @@ import {
 } from "@/schemas/whiteboard-document.schema";
 import {
   createWhiteboardDocument,
+  deleteWhiteboardDocument,
   listWhiteboardDocuments,
   updateWhiteboardDocument,
 } from "@/services/whiteboard-document.service";
@@ -46,6 +47,23 @@ export async function updateWhiteboardDocumentHandler(req: Request, res: Respons
   });
 
   res.status(200).json({ whiteboardDocument });
+}
+
+export async function deleteWhiteboardDocumentHandler(req: Request, res: Response) {
+  const user = requireUser(req);
+  const { workspaceId, projectId, documentId } = parseOrThrow(
+    whiteboardDocumentUpdateParamsSchema,
+    req.params,
+  );
+
+  await deleteWhiteboardDocument({
+    workspaceId,
+    projectId,
+    documentId,
+    userId: user.sub,
+  });
+
+  res.status(204).send();
 }
 
 export async function listWhiteboardDocumentsHandler(req: Request, res: Response) {

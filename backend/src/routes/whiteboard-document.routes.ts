@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createWhiteboardDocumentHandler,
+  deleteWhiteboardDocumentHandler,
   listWhiteboardDocumentsHandler,
   updateWhiteboardDocumentHandler,
 } from "@/controllers/whiteboard-document.controller";
@@ -15,4 +16,9 @@ whiteboardDocumentRouter.patch(
   "/:documentId",
   authenticate,
   asyncHandler(updateWhiteboardDocumentHandler),
+);
+whiteboardDocumentRouter.delete(
+  "/:documentId",
+  authenticate,
+  asyncHandler(deleteWhiteboardDocumentHandler),
 );

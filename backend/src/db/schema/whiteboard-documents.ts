@@ -15,6 +15,7 @@ export const whiteboardDocuments = pgTable("whiteboard_documents", {
   canvasContent: jsonb("canvas_content").notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export const insertWhiteboardDocumentSchema = createInsertSchema(whiteboardDocuments);

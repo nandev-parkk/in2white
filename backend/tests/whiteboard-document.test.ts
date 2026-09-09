@@ -26,6 +26,11 @@ const createdWhiteboardDocument = {
   updatedAt: new Date("2026-09-09T00:00:00.000Z"),
 };
 
+const createdWhiteboardDocumentRow = {
+  ...createdWhiteboardDocument,
+  deletedAt: null,
+};
+
 const updatedWhiteboardDocument = {
   id: createdWhiteboardDocument.id,
   name: "변경된 문서 이름",
@@ -48,7 +53,7 @@ async function createAccessToken(sub = "user-1") {
 function mockWhiteboardDocumentCreateTransaction({
   membershipRows = [{ id: "membership-1" }],
   projectRows = [{ id: projectId }],
-  documentRows = [createdWhiteboardDocument],
+  documentRows = [createdWhiteboardDocumentRow],
   membershipError,
   projectError,
   insertError,
@@ -76,7 +81,22 @@ function mockWhiteboardDocumentCreateTransaction({
     values: vi.fn().mockReturnThis(),
     returning: insertError
       ? vi.fn().mockRejectedValue(insertError)
-      : vi.fn().mockResolvedValue(documentRows),
+      : vi
+          .fn()
+          .mockImplementation((projection?: Record<string, unknown>) =>
+            Promise.resolve(
+              projection
+                ? documentRows.map((row) =>
+                    Object.fromEntries(
+                      Object.keys(projection).map((key) => [
+                        key,
+                        (row as Record<string, unknown>)[key],
+                      ]),
+                    ),
+                  )
+                : documentRows,
+            ),
+          ),
   };
   const transaction = {
     select: vi.fn().mockReturnValueOnce(membershipQuery).mockReturnValueOnce(projectQuery),
@@ -131,6 +151,64 @@ function mockWhiteboardDocumentUpdateTransaction({
     returning: updateError
       ? vi.fn().mockRejectedValue(updateError)
       : vi.fn().mockResolvedValue(updatedDocumentRows),
+  };
+  const transaction = {
+    select: vi
+      .fn()
+      .mockReturnValueOnce(membershipQuery)
+      .mockReturnValueOnce(projectQuery)
+      .mockReturnValueOnce(documentQuery),
+    update: vi.fn().mockReturnValue(documentUpdate),
+  };
+
+  vi.mocked(db.transaction).mockImplementation(async (callback) => callback(transaction as never));
+
+  return { membershipQuery, projectQuery, documentQuery, documentUpdate, transaction };
+}
+
+function mockWhiteboardDocumentDeleteTransaction({
+  membershipRows = [{ role: "owner" }],
+  projectRows = [{ id: projectId }],
+  documentRows = [{ id: createdWhiteboardDocument.id, creatorId: "user-2" }],
+  deletedDocumentRows = [{ id: createdWhiteboardDocument.id }],
+  membershipError,
+  projectError,
+  documentError,
+  deleteError,
+}: {
+  membershipRows?: unknown[];
+  projectRows?: unknown[];
+  documentRows?: unknown[];
+  deletedDocumentRows?: unknown[];
+  membershipError?: Error;
+  projectError?: Error;
+  documentError?: Error;
+  deleteError?: Error;
+} = {}) {
+  const membershipQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: membershipError
+      ? vi.fn().mockRejectedValue(membershipError)
+      : vi.fn().mockResolvedValue(membershipRows),
+  };
+  const projectQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: projectError
+      ? vi.fn().mockRejectedValue(projectError)
+      : vi.fn().mockResolvedValue(projectRows),
+  };
+  const documentQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: documentError
+      ? vi.fn().mockRejectedValue(documentError)
+      : vi.fn().mockResolvedValue(documentRows),
+  };
+  const documentUpdate = {
+    set: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    returning: deleteError
+      ? vi.fn().mockRejectedValue(deleteError)
+      : vi.fn().mockResolvedValue(deletedDocumentRows),
   };
   const transaction = {
     select: vi
@@ -230,6 +308,7 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
       createdAt: createdWhiteboardDocument.createdAt.toISOString(),
       updatedAt: createdWhiteboardDocument.updatedAt.toISOString(),
     });
+    expect(response.body.whiteboardDocument).not.toHaveProperty("deletedAt");
     expect(db.transaction).toHaveBeenCalledOnce();
     expect(transaction.select).toHaveBeenNthCalledWith(1, { id: workspaceMemberships.id });
     expect(membershipQuery.from).toHaveBeenCalledWith(workspaceMemberships);
@@ -253,6 +332,15 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
       projectId,
       name: "아이디어 스케치",
       creatorId: "user-1",
+    });
+    expect(documentInsert.returning).toHaveBeenCalledWith({
+      id: whiteboardDocuments.id,
+      projectId: whiteboardDocuments.projectId,
+      name: whiteboardDocuments.name,
+      creatorId: whiteboardDocuments.creatorId,
+      canvasContent: whiteboardDocuments.canvasContent,
+      createdAt: whiteboardDocuments.createdAt,
+      updatedAt: whiteboardDocuments.updatedAt,
     });
   });
 
@@ -512,10 +600,18 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
       ),
     );
     expect(countQuery.where).toHaveBeenCalledWith(
-      and(eq(whiteboardDocuments.projectId, projectId), ilike(whiteboardDocuments.name, "%Brand%")),
+      and(
+        eq(whiteboardDocuments.projectId, projectId),
+        isNull(whiteboardDocuments.deletedAt),
+        ilike(whiteboardDocuments.name, "%Brand%"),
+      ),
     );
     expect(documentQuery.where).toHaveBeenCalledWith(
-      and(eq(whiteboardDocuments.projectId, projectId), ilike(whiteboardDocuments.name, "%Brand%")),
+      and(
+        eq(whiteboardDocuments.projectId, projectId),
+        isNull(whiteboardDocuments.deletedAt),
+        ilike(whiteboardDocuments.name, "%Brand%"),
+      ),
     );
     expect(documentQuery.orderBy).toHaveBeenCalledWith(
       desc(whiteboardDocuments.updatedAt),
@@ -555,10 +651,10 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
       pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
     });
     expect(countQuery.where).toHaveBeenCalledWith(
-      and(eq(whiteboardDocuments.projectId, projectId)),
+      and(eq(whiteboardDocuments.projectId, projectId), isNull(whiteboardDocuments.deletedAt)),
     );
     expect(documentQuery.where).toHaveBeenCalledWith(
-      and(eq(whiteboardDocuments.projectId, projectId)),
+      and(eq(whiteboardDocuments.projectId, projectId), isNull(whiteboardDocuments.deletedAt)),
     );
     expect(documentQuery.limit).toHaveBeenCalledWith(20);
     expect(documentQuery.offset).toHaveBeenCalledWith(0);
@@ -580,12 +676,14 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
     expect(countQuery.where).toHaveBeenCalledWith(
       and(
         eq(whiteboardDocuments.projectId, projectId),
+        isNull(whiteboardDocuments.deletedAt),
         ilike(whiteboardDocuments.name, "%100\\%\\_done\\\\now%"),
       ),
     );
     expect(documentQuery.where).toHaveBeenCalledWith(
       and(
         eq(whiteboardDocuments.projectId, projectId),
+        isNull(whiteboardDocuments.deletedAt),
         ilike(whiteboardDocuments.name, "%100\\%\\_done\\\\now%"),
       ),
     );
@@ -764,6 +862,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
       and(
         eq(whiteboardDocuments.id, createdWhiteboardDocument.id),
         eq(whiteboardDocuments.projectId, projectId),
+        isNull(whiteboardDocuments.deletedAt),
       ),
     );
     expect(documentUpdate.set).toHaveBeenCalledWith({
@@ -774,6 +873,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
       and(
         eq(whiteboardDocuments.id, createdWhiteboardDocument.id),
         eq(whiteboardDocuments.projectId, projectId),
+        isNull(whiteboardDocuments.deletedAt),
       ),
     );
     expect(documentUpdate.returning).toHaveBeenCalledWith({
@@ -1029,6 +1129,213 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
     expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
     expect(documentUpdate.set).toHaveBeenCalledWith({
       name: "변경된 문서 이름",
+      updatedAt: expect.any(Date),
+    });
+  });
+});
+
+describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documents/:documentId", () => {
+  const deletePath = `/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents/${createdWhiteboardDocument.id}`;
+
+  it("Owner가 다른 Creator의 문서를 삭제하고 204를 반환한다", async () => {
+    const { documentQuery, documentUpdate, transaction } =
+      mockWhiteboardDocumentDeleteTransaction();
+
+    const response = await request(createApp())
+      .delete(deletePath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(204);
+    expect(response.body).toEqual({});
+    expect(transaction.select).toHaveBeenCalledTimes(3);
+    expect(documentQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(whiteboardDocuments.id, createdWhiteboardDocument.id),
+        eq(whiteboardDocuments.projectId, projectId),
+        isNull(whiteboardDocuments.deletedAt),
+      ),
+    );
+    expect(documentUpdate.set).toHaveBeenCalledWith({
+      deletedAt: expect.any(Date),
+      updatedAt: expect.any(Date),
+    });
+
+    const values = documentUpdate.set.mock.calls[0]?.[0] as {
+      deletedAt: Date;
+      updatedAt: Date;
+    };
+    expect(values.deletedAt).toEqual(values.updatedAt);
+    expect(documentUpdate.where).toHaveBeenCalledWith(
+      and(
+        eq(whiteboardDocuments.id, createdWhiteboardDocument.id),
+        eq(whiteboardDocuments.projectId, projectId),
+        isNull(whiteboardDocuments.deletedAt),
+      ),
+    );
+    expect(documentUpdate.returning).toHaveBeenCalledWith({ id: whiteboardDocuments.id });
+  });
+
+  it("문서 Creator인 Member가 자신의 문서를 삭제할 수 있다", async () => {
+    const { documentUpdate } = mockWhiteboardDocumentDeleteTransaction({
+      membershipRows: [{ role: "member" }],
+      documentRows: [{ id: createdWhiteboardDocument.id, creatorId: "user-1" }],
+    });
+
+    const response = await request(createApp())
+      .delete(deletePath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(204);
+    expect(documentUpdate.set).toHaveBeenCalledOnce();
+  });
+
+  it("인증이 없으면 401을 반환하고 transaction을 호출하지 않는다", async () => {
+    const response = await request(createApp()).delete(deletePath);
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHORIZED");
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      label: "workspaceId",
+      pathWorkspaceId: "not-a-uuid",
+      pathProjectId: projectId,
+      pathDocumentId: createdWhiteboardDocument.id,
+    },
+    {
+      label: "projectId",
+      pathWorkspaceId: workspaceId,
+      pathProjectId: "not-a-uuid",
+      pathDocumentId: createdWhiteboardDocument.id,
+    },
+    {
+      label: "documentId",
+      pathWorkspaceId: workspaceId,
+      pathProjectId: projectId,
+      pathDocumentId: "not-a-uuid",
+    },
+  ])(
+    "$label - UUID가 아니면 400을 반환하고 transaction을 호출하지 않는다",
+    async ({ pathWorkspaceId, pathProjectId, pathDocumentId }) => {
+      const response = await request(createApp())
+        .delete(
+          `/workspaces/${pathWorkspaceId}/projects/${pathProjectId}/whiteboard-documents/${pathDocumentId}`,
+        )
+        .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe("VALIDATION_ERROR");
+      expect(db.transaction).not.toHaveBeenCalled();
+    },
+  );
+
+  it("멤버십 rows가 비어 있으면 404 WORKSPACE_NOT_FOUND를 반환하고 이후 query를 실행하지 않는다", async () => {
+    const { projectQuery, documentQuery, documentUpdate, transaction } =
+      mockWhiteboardDocumentDeleteTransaction({
+        membershipRows: [],
+      });
+
+    const response = await request(createApp())
+      .delete(deletePath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(transaction.update).not.toHaveBeenCalled();
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("WORKSPACE_NOT_FOUND");
+    expect(projectQuery.from).not.toHaveBeenCalled();
+    expect(documentQuery.from).not.toHaveBeenCalled();
+    expect(documentUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it("project rows가 비어 있으면 404 PROJECT_NOT_FOUND를 반환하고 document/update query를 실행하지 않는다", async () => {
+    const { documentQuery, documentUpdate, transaction } = mockWhiteboardDocumentDeleteTransaction({
+      projectRows: [],
+    });
+
+    const response = await request(createApp())
+      .delete(deletePath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(transaction.update).not.toHaveBeenCalled();
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("PROJECT_NOT_FOUND");
+    expect(documentQuery.from).not.toHaveBeenCalled();
+    expect(documentUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it.each(["문서가 없을 때", "이미 삭제된 문서일 때"])(
+    "%s 404 WHITEBOARD_DOCUMENT_NOT_FOUND를 반환하고 update하지 않는다",
+    async () => {
+      const { documentQuery, documentUpdate, transaction } =
+        mockWhiteboardDocumentDeleteTransaction({
+          documentRows: [],
+        });
+
+      const response = await request(createApp())
+        .delete(deletePath)
+        .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+      expect(transaction.update).not.toHaveBeenCalled();
+      expect(response.status).toBe(404);
+      expect(response.body.error.code).toBe("WHITEBOARD_DOCUMENT_NOT_FOUND");
+      expect(documentQuery.where).toHaveBeenCalledWith(
+        and(
+          eq(whiteboardDocuments.id, createdWhiteboardDocument.id),
+          eq(whiteboardDocuments.projectId, projectId),
+          isNull(whiteboardDocuments.deletedAt),
+        ),
+      );
+      expect(documentUpdate.set).not.toHaveBeenCalled();
+    },
+  );
+
+  it("문서 Creator가 아닌 Member는 403을 반환하고 delete하지 않는다", async () => {
+    const { documentUpdate, transaction } = mockWhiteboardDocumentDeleteTransaction({
+      membershipRows: [{ role: "member" }],
+      documentRows: [{ id: createdWhiteboardDocument.id, creatorId: "user-2" }],
+    });
+
+    const response = await request(createApp())
+      .delete(deletePath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(transaction.update).not.toHaveBeenCalled();
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("WHITEBOARD_DOCUMENT_DELETE_FORBIDDEN");
+    expect(documentUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: "membership", options: { membershipError: new Error("membership query failed") } },
+    { label: "project", options: { projectError: new Error("project query failed") } },
+    { label: "document", options: { documentError: new Error("document query failed") } },
+    { label: "delete", options: { deleteError: new Error("document delete failed") } },
+  ])("$label query가 실패하면 500을 반환한다", async ({ options }) => {
+    mockWhiteboardDocumentDeleteTransaction(options);
+
+    const response = await request(createApp())
+      .delete(deletePath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+  });
+
+  it("delete returning row가 없으면 404 WHITEBOARD_DOCUMENT_NOT_FOUND를 반환한다", async () => {
+    const { documentUpdate } = mockWhiteboardDocumentDeleteTransaction({
+      deletedDocumentRows: [],
+    });
+
+    const response = await request(createApp())
+      .delete(deletePath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("WHITEBOARD_DOCUMENT_NOT_FOUND");
+    expect(documentUpdate.set).toHaveBeenCalledWith({
+      deletedAt: expect.any(Date),
       updatedAt: expect.any(Date),
     });
   });

@@ -13,4 +13,8 @@ describe("db schema", () => {
   it("projects schema exposes a nullable deletedAt column", () => {
     expect(schema.projects.deletedAt).toBeDefined();
   });
+
+  it("whiteboardDocuments schema exposes a nullable deletedAt column", () => {
+    expect(schema.whiteboardDocuments.deletedAt).toBeDefined();
+  });
 });
