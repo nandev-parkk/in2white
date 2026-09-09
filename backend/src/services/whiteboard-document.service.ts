@@ -15,6 +15,20 @@ export interface CreateWhiteboardDocumentInput {
   creatorId: string;
 }
 
+export interface UpdateWhiteboardDocumentInput {
+  workspaceId: string;
+  projectId: string;
+  documentId: string;
+  userId: string;
+  name: string;
+}
+
+export interface UpdatedWhiteboardDocument {
+  id: string;
+  name: string;
+  updatedAt: Date;
+}
+
 export interface ListWhiteboardDocumentsInput {
   workspaceId: string;
   projectId: string;
@@ -85,6 +99,90 @@ export async function createWhiteboardDocument({
     }
 
     return whiteboardDocument;
+  });
+}
+
+export async function updateWhiteboardDocument({
+  workspaceId,
+  projectId,
+  documentId,
+  userId,
+  name,
+}: UpdateWhiteboardDocumentInput): Promise<UpdatedWhiteboardDocument> {
+  return db.transaction(async (tx) => {
+    const [membership] = await tx
+      .select({ role: workspaceMemberships.role })
+      .from(workspaceMemberships)
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          eq(workspaceMemberships.userId, userId),
+        ),
+      );
+
+    if (!membership) {
+      throw new HttpError(404, "WORKSPACE_NOT_FOUND", ERROR_MESSAGES.WORKSPACE_NOT_FOUND);
+    }
+
+    const [project] = await tx
+      .select({ id: projects.id })
+      .from(projects)
+      .where(
+        and(
+          eq(projects.id, projectId),
+          eq(projects.workspaceId, workspaceId),
+          isNull(projects.deletedAt),
+        ),
+      );
+
+    if (!project) {
+      throw new HttpError(404, "PROJECT_NOT_FOUND", ERROR_MESSAGES.PROJECT_NOT_FOUND);
+    }
+
+    const [whiteboardDocument] = await tx
+      .select({ id: whiteboardDocuments.id, creatorId: whiteboardDocuments.creatorId })
+      .from(whiteboardDocuments)
+      .where(
+        and(eq(whiteboardDocuments.id, documentId), eq(whiteboardDocuments.projectId, projectId)),
+      );
+
+    if (!whiteboardDocument) {
+      throw new HttpError(
+        404,
+        "WHITEBOARD_DOCUMENT_NOT_FOUND",
+        ERROR_MESSAGES.WHITEBOARD_DOCUMENT_NOT_FOUND,
+      );
+    }
+
+    if (membership.role !== "owner" && whiteboardDocument.creatorId !== userId) {
+      throw new HttpError(
+        403,
+        "WHITEBOARD_DOCUMENT_UPDATE_FORBIDDEN",
+        ERROR_MESSAGES.WHITEBOARD_DOCUMENT_UPDATE_FORBIDDEN,
+      );
+    }
+
+    const [updatedWhiteboardDocument] = await tx
+      .update(whiteboardDocuments)
+      .set({ name, updatedAt: new Date() })
+      .where(
+        and(eq(whiteboardDocuments.id, documentId), eq(whiteboardDocuments.projectId, projectId)),
+      )
+      .returning({
+        id: whiteboardDocuments.id,
+        name: whiteboardDocuments.name,
+        updatedAt: whiteboardDocuments.updatedAt,
+      });
+
+    if (!updatedWhiteboardDocument) {
+      throw new HttpError(
+        404,
+        "WHITEBOARD_DOCUMENT_NOT_FOUND",
+        ERROR_MESSAGES.WHITEBOARD_DOCUMENT_NOT_FOUND,
+      );
+    }
+
+    return updatedWhiteboardDocument;
   });
 }
 

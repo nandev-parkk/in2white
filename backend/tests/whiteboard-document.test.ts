@@ -26,6 +26,12 @@ const createdWhiteboardDocument = {
   updatedAt: new Date("2026-09-09T00:00:00.000Z"),
 };
 
+const updatedWhiteboardDocument = {
+  id: createdWhiteboardDocument.id,
+  name: "변경된 문서 이름",
+  updatedAt: new Date("2026-09-09T00:05:00.000Z"),
+};
+
 beforeEach(() => {
   vi.mocked(db.transaction).mockReset();
   vi.mocked(db.select).mockReset();
@@ -80,6 +86,64 @@ function mockWhiteboardDocumentCreateTransaction({
   vi.mocked(db.transaction).mockImplementation(async (callback) => callback(transaction as never));
 
   return { membershipQuery, projectQuery, documentInsert, transaction };
+}
+
+function mockWhiteboardDocumentUpdateTransaction({
+  membershipRows = [{ role: "owner" }],
+  projectRows = [{ id: projectId }],
+  documentRows = [{ id: createdWhiteboardDocument.id, creatorId: "user-2" }],
+  updatedDocumentRows = [updatedWhiteboardDocument],
+  membershipError,
+  projectError,
+  documentError,
+  updateError,
+}: {
+  membershipRows?: unknown[];
+  projectRows?: unknown[];
+  documentRows?: unknown[];
+  updatedDocumentRows?: unknown[];
+  membershipError?: Error;
+  projectError?: Error;
+  documentError?: Error;
+  updateError?: Error;
+} = {}) {
+  const membershipQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: membershipError
+      ? vi.fn().mockRejectedValue(membershipError)
+      : vi.fn().mockResolvedValue(membershipRows),
+  };
+  const projectQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: projectError
+      ? vi.fn().mockRejectedValue(projectError)
+      : vi.fn().mockResolvedValue(projectRows),
+  };
+  const documentQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: documentError
+      ? vi.fn().mockRejectedValue(documentError)
+      : vi.fn().mockResolvedValue(documentRows),
+  };
+  const documentUpdate = {
+    set: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    returning: updateError
+      ? vi.fn().mockRejectedValue(updateError)
+      : vi.fn().mockResolvedValue(updatedDocumentRows),
+  };
+  const transaction = {
+    select: vi
+      .fn()
+      .mockReturnValueOnce(membershipQuery)
+      .mockReturnValueOnce(projectQuery)
+      .mockReturnValueOnce(documentQuery),
+    update: vi.fn().mockReturnValue(documentUpdate),
+  };
+
+  vi.mocked(db.transaction).mockImplementation(async (callback) => callback(transaction as never));
+
+  return { membershipQuery, projectQuery, documentQuery, documentUpdate, transaction };
 }
 
 function mockWhiteboardDocumentListQueries({
@@ -651,5 +715,321 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
 
     expect(countQuery.where).toHaveBeenCalledOnce();
     expect(documentQuery.where).toHaveBeenCalledOnce();
+  });
+});
+
+describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-documents/:documentId", () => {
+  const patchPath = `/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents/${createdWhiteboardDocument.id}`;
+
+  it("Owner가 다른 Creator의 문서 이름을 변경하고 최소 응답을 반환한다", async () => {
+    const { membershipQuery, projectQuery, documentQuery, documentUpdate, transaction } =
+      mockWhiteboardDocumentUpdateTransaction();
+
+    const response = await request(createApp())
+      .patch(patchPath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "  변경된 문서 이름  " });
+
+    expect(response.status).toBe(200);
+    expect(response.body.whiteboardDocument).toEqual({
+      id: updatedWhiteboardDocument.id,
+      name: updatedWhiteboardDocument.name,
+      updatedAt: updatedWhiteboardDocument.updatedAt.toISOString(),
+    });
+    expect(response.body.whiteboardDocument).not.toHaveProperty("canvasContent");
+    expect(db.transaction).toHaveBeenCalledOnce();
+    expect(transaction.select).toHaveBeenNthCalledWith(1, { role: workspaceMemberships.role });
+    expect(transaction.select).toHaveBeenNthCalledWith(2, { id: projects.id });
+    expect(transaction.select).toHaveBeenNthCalledWith(3, {
+      id: whiteboardDocuments.id,
+      creatorId: whiteboardDocuments.creatorId,
+    });
+    expect(membershipQuery.from).toHaveBeenCalledWith(workspaceMemberships);
+    expect(membershipQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, "user-1"),
+      ),
+    );
+    expect(projectQuery.from).toHaveBeenCalledWith(projects);
+    expect(projectQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(projects.id, projectId),
+        eq(projects.workspaceId, workspaceId),
+        isNull(projects.deletedAt),
+      ),
+    );
+    expect(documentQuery.from).toHaveBeenCalledWith(whiteboardDocuments);
+    expect(documentQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(whiteboardDocuments.id, createdWhiteboardDocument.id),
+        eq(whiteboardDocuments.projectId, projectId),
+      ),
+    );
+    expect(documentUpdate.set).toHaveBeenCalledWith({
+      name: "변경된 문서 이름",
+      updatedAt: expect.any(Date),
+    });
+    expect(documentUpdate.where).toHaveBeenCalledWith(
+      and(
+        eq(whiteboardDocuments.id, createdWhiteboardDocument.id),
+        eq(whiteboardDocuments.projectId, projectId),
+      ),
+    );
+    expect(documentUpdate.returning).toHaveBeenCalledWith({
+      id: whiteboardDocuments.id,
+      name: whiteboardDocuments.name,
+      updatedAt: whiteboardDocuments.updatedAt,
+    });
+  });
+
+  it("Member가 자신이 생성한 문서 이름을 변경할 수 있다", async () => {
+    const { documentUpdate } = mockWhiteboardDocumentUpdateTransaction({
+      membershipRows: [{ role: "member" }],
+      documentRows: [{ id: createdWhiteboardDocument.id, creatorId: "user-1" }],
+    });
+
+    const response = await request(createApp())
+      .patch(patchPath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "변경된 문서 이름" });
+
+    expect(response.status).toBe(200);
+    expect(documentUpdate.set).toHaveBeenCalledWith({
+      name: "변경된 문서 이름",
+      updatedAt: expect.any(Date),
+    });
+  });
+
+  it("이름을 trim하고 50자까지 허용한다", async () => {
+    const { documentUpdate } = mockWhiteboardDocumentUpdateTransaction();
+    const name = `  ${"a".repeat(50)}  `;
+
+    const response = await request(createApp())
+      .patch(patchPath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name });
+
+    expect(response.status).toBe(200);
+    expect(documentUpdate.set).toHaveBeenCalledWith({
+      name: name.trim(),
+      updatedAt: expect.any(Date),
+    });
+  });
+
+  it("인증이 없으면 401을 반환하고 transaction을 호출하지 않는다", async () => {
+    const response = await request(createApp()).patch(patchPath).send({ name: "변경된 문서 이름" });
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHORIZED");
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      label: "name이 없다",
+      pathWorkspaceId: workspaceId,
+      pathProjectId: projectId,
+      pathDocumentId: createdWhiteboardDocument.id,
+      body: {},
+    },
+    {
+      label: "name이 공백이다",
+      pathWorkspaceId: workspaceId,
+      pathProjectId: projectId,
+      pathDocumentId: createdWhiteboardDocument.id,
+      body: { name: "   " },
+    },
+    {
+      label: "name이 문자열이 아니다",
+      pathWorkspaceId: workspaceId,
+      pathProjectId: projectId,
+      pathDocumentId: createdWhiteboardDocument.id,
+      body: { name: 123 },
+    },
+    {
+      label: "name이 50자를 초과한다",
+      pathWorkspaceId: workspaceId,
+      pathProjectId: projectId,
+      pathDocumentId: createdWhiteboardDocument.id,
+      body: { name: "a".repeat(51) },
+    },
+    {
+      label: "workspaceId가 UUID가 아니다",
+      pathWorkspaceId: "not-a-uuid",
+      pathProjectId: projectId,
+      pathDocumentId: createdWhiteboardDocument.id,
+      body: { name: "변경된 문서 이름" },
+    },
+    {
+      label: "projectId가 UUID가 아니다",
+      pathWorkspaceId: workspaceId,
+      pathProjectId: "not-a-uuid",
+      pathDocumentId: createdWhiteboardDocument.id,
+      body: { name: "변경된 문서 이름" },
+    },
+    {
+      label: "documentId가 UUID가 아니다",
+      pathWorkspaceId: workspaceId,
+      pathProjectId: projectId,
+      pathDocumentId: "not-a-uuid",
+      body: { name: "변경된 문서 이름" },
+    },
+  ])(
+    "$label이면 400을 반환하고 transaction을 호출하지 않는다",
+    async ({ pathWorkspaceId, pathProjectId, pathDocumentId, body }) => {
+      const response = await request(createApp())
+        .patch(
+          `/workspaces/${pathWorkspaceId}/projects/${pathProjectId}/whiteboard-documents/${pathDocumentId}`,
+        )
+        .set("Authorization", `Bearer ${await createAccessToken()}`)
+        .send(body);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe("VALIDATION_ERROR");
+      expect(db.transaction).not.toHaveBeenCalled();
+    },
+  );
+
+  it("비멤버면 404 WORKSPACE_NOT_FOUND를 반환하고 이후 query를 실행하지 않는다", async () => {
+    const { projectQuery, documentQuery, documentUpdate } = mockWhiteboardDocumentUpdateTransaction(
+      {
+        membershipRows: [],
+      },
+    );
+
+    const response = await request(createApp())
+      .patch(patchPath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "변경된 문서 이름" });
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("WORKSPACE_NOT_FOUND");
+    expect(projectQuery.from).not.toHaveBeenCalled();
+    expect(documentQuery.from).not.toHaveBeenCalled();
+    expect(documentUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: "프로젝트가 없다", projectRows: [] },
+    { label: "다른 워크스페이스에 속한다", projectRows: [] },
+    { label: "삭제되었다", projectRows: [] },
+  ])(
+    "$label면 404 PROJECT_NOT_FOUND를 반환하고 문서 query를 실행하지 않는다",
+    async ({ projectRows }) => {
+      const { documentQuery, documentUpdate } = mockWhiteboardDocumentUpdateTransaction({
+        projectRows,
+      });
+
+      const response = await request(createApp())
+        .patch(patchPath)
+        .set("Authorization", `Bearer ${await createAccessToken()}`)
+        .send({ name: "변경된 문서 이름" });
+
+      expect(response.status).toBe(404);
+      expect(response.body.error.code).toBe("PROJECT_NOT_FOUND");
+      expect(documentQuery.from).not.toHaveBeenCalled();
+      expect(documentUpdate.set).not.toHaveBeenCalled();
+    },
+  );
+
+  it("문서가 없거나 다른 project에 속하면 404 WHITEBOARD_DOCUMENT_NOT_FOUND를 반환한다", async () => {
+    const { documentQuery, documentUpdate } = mockWhiteboardDocumentUpdateTransaction({
+      documentRows: [],
+    });
+
+    const response = await request(createApp())
+      .patch(patchPath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "변경된 문서 이름" });
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("WHITEBOARD_DOCUMENT_NOT_FOUND");
+    expect(documentQuery.where).toHaveBeenCalledOnce();
+    expect(documentUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it("문서 Creator가 아닌 Member는 403을 반환하고 update하지 않는다", async () => {
+    const { documentUpdate } = mockWhiteboardDocumentUpdateTransaction({
+      membershipRows: [{ role: "member" }],
+      documentRows: [{ id: createdWhiteboardDocument.id, creatorId: "user-2" }],
+    });
+
+    const response = await request(createApp())
+      .patch(patchPath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "변경된 문서 이름" });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("WHITEBOARD_DOCUMENT_UPDATE_FORBIDDEN");
+    expect(documentUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it("멤버십 query가 실패하면 500을 반환하고 project query를 실행하지 않는다", async () => {
+    const { projectQuery, documentQuery, documentUpdate } = mockWhiteboardDocumentUpdateTransaction(
+      {
+        membershipError: new Error("membership query failed"),
+      },
+    );
+
+    const response = await request(createApp())
+      .patch(patchPath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "변경된 문서 이름" });
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+    expect(projectQuery.from).not.toHaveBeenCalled();
+    expect(documentQuery.from).not.toHaveBeenCalled();
+    expect(documentUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it("project query가 실패하면 500을 반환하고 document query를 실행하지 않는다", async () => {
+    const { documentQuery, documentUpdate } = mockWhiteboardDocumentUpdateTransaction({
+      projectError: new Error("project query failed"),
+    });
+
+    const response = await request(createApp())
+      .patch(patchPath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "변경된 문서 이름" });
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+    expect(documentQuery.from).not.toHaveBeenCalled();
+    expect(documentUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it("document query가 실패하면 500을 반환하고 update하지 않는다", async () => {
+    const { documentUpdate } = mockWhiteboardDocumentUpdateTransaction({
+      documentError: new Error("document query failed"),
+    });
+
+    const response = await request(createApp())
+      .patch(patchPath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "변경된 문서 이름" });
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+    expect(documentUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it("document update query가 실패하면 500을 반환한다", async () => {
+    const { documentUpdate } = mockWhiteboardDocumentUpdateTransaction({
+      updateError: new Error("document update failed"),
+    });
+
+    const response = await request(createApp())
+      .patch(patchPath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "변경된 문서 이름" });
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+    expect(documentUpdate.set).toHaveBeenCalledWith({
+      name: "변경된 문서 이름",
+      updatedAt: expect.any(Date),
+    });
   });
 });
