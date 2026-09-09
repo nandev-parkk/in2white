@@ -1,7 +1,7 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 
 import { useSessionStore } from '@/entities/session'
-import { HomePage } from '@/pages/home'
+import { WorkspaceRedirectPage } from '@/pages/workspace-redirect'
 
 export function redirectIfUnauthenticated() {
   const { accessToken, user } = useSessionStore.getState()
@@ -13,5 +13,27 @@ export function redirectIfUnauthenticated() {
 
 export const Route = createFileRoute('/')({
   beforeLoad: redirectIfUnauthenticated,
-  component: HomePage,
+  component: RootRedirectRoute,
 })
+
+function RootRedirectRoute() {
+  const accessToken = useSessionStore((state) => state.accessToken)
+  const user = useSessionStore((state) => state.user)
+  const navigate = useNavigate()
+
+  if (!accessToken || !user) return null
+
+  return (
+    <WorkspaceRedirectPage
+      accessToken={accessToken}
+      user={user}
+      onNavigate={(workspaceId) =>
+        navigate({
+          to: '/workspaces/$workspaceId/projects',
+          params: { workspaceId },
+          replace: true,
+        })
+      }
+    />
+  )
+}

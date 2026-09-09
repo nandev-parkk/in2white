@@ -15,7 +15,7 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 
 vi.mock('@/shared/api', () => ({
-  axiosInstance: { post: vi.fn() },
+  axiosInstance: { get: vi.fn(), post: vi.fn() },
 }))
 
 vi.mock('@/shared/ui/toast', () => ({
@@ -37,6 +37,7 @@ function renderLoginForm() {
 describe('LoginForm', () => {
   beforeEach(() => {
     vi.mocked(axiosInstance.post).mockReset()
+    vi.mocked(axiosInstance.get).mockReset()
     vi.mocked(toast.error).mockReset()
     navigateMock.mockReset()
     useSessionStore.getState().clearSession()
@@ -72,11 +73,26 @@ describe('LoginForm', () => {
     expect(axiosInstance.post).not.toHaveBeenCalled()
   })
 
-  it('stores the session and navigates to / on success', async () => {
+  it('stores the session and navigates directly to the default workspace projects', async () => {
     vi.mocked(axiosInstance.post).mockResolvedValueOnce({
       data: {
         accessToken: 'token-1',
         user: { id: '1', name: '테스터', email: 'user@in2white.team' },
+      },
+    })
+    vi.mocked(axiosInstance.get).mockResolvedValueOnce({
+      data: {
+        workspaces: [
+          {
+            id: 'workspace-default',
+            name: 'My Workspace',
+            ownerId: '1',
+            isDefault: true,
+            createdAt: '2026-09-08T00:00:00.000Z',
+            updatedAt: '2026-09-08T00:00:00.000Z',
+            role: 'owner',
+          },
+        ],
       },
     })
 
@@ -86,8 +102,60 @@ describe('LoginForm', () => {
     await userEvent.type(screen.getByLabelText('비밀번호'), 'password123')
     await userEvent.click(screen.getByRole('button', { name: '로그인' }))
 
-    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: '/' }))
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/workspaces/$workspaceId/projects',
+        params: { workspaceId: 'workspace-default' },
+        replace: true,
+      }),
+    )
     expect(useSessionStore.getState().accessToken).toBe('token-1')
+  })
+
+  it('workspace 조회에 실패하면 project route로 이동하지 않는다', async () => {
+    vi.mocked(axiosInstance.post).mockResolvedValueOnce({
+      data: {
+        accessToken: 'token-1',
+        user: { id: '1', name: '테스터', email: 'user@in2white.team' },
+      },
+    })
+    vi.mocked(axiosInstance.get).mockRejectedValueOnce(new Error('failed'))
+
+    renderLoginForm()
+
+    await userEvent.type(screen.getByLabelText('이메일'), 'user@in2white.team')
+    await userEvent.type(screen.getByLabelText('비밀번호'), 'password123')
+    await userEvent.click(screen.getByRole('button', { name: '로그인' }))
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        '워크스페이스로 이동하지 못했어요',
+      ),
+    )
+    expect(navigateMock).not.toHaveBeenCalled()
+  })
+
+  it('workspace가 없으면 project route로 이동하지 않는다', async () => {
+    vi.mocked(axiosInstance.post).mockResolvedValueOnce({
+      data: {
+        accessToken: 'token-1',
+        user: { id: '1', name: '테스터', email: 'user@in2white.team' },
+      },
+    })
+    vi.mocked(axiosInstance.get).mockResolvedValueOnce({
+      data: { workspaces: [] },
+    })
+
+    renderLoginForm()
+
+    await userEvent.type(screen.getByLabelText('이메일'), 'user@in2white.team')
+    await userEvent.type(screen.getByLabelText('비밀번호'), 'password123')
+    await userEvent.click(screen.getByRole('button', { name: '로그인' }))
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('이동할 워크스페이스가 없어요'),
+    )
+    expect(navigateMock).not.toHaveBeenCalled()
   })
 
   it('shows the server error message on 401 and does not navigate', async () => {

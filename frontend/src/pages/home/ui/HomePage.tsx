@@ -1,34 +1,67 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-import { useSessionStore } from '@/entities/session'
-import type { WorkspaceSummary } from '@/entities/workspace'
+import { useSessionStore, type SessionUser } from '@/entities/session'
+import {
+  selectDefaultWorkspace,
+  type WorkspaceSummary,
+} from '@/entities/workspace'
 import { useCreateWorkspace, useWorkspaces } from '@/features/workspace'
+import { ProjectListContent } from '@/features/project/ui/ProjectListContent'
 import { WorkspaceCreateDialog } from '@/features/workspace/ui/WorkspaceCreateDialog'
+import { WorkspaceAccessDeniedPage } from '@/pages/workspace-access-denied'
 import { Button } from '@/shared/ui/button'
 import { Sidebar, type SidebarNavKey } from '@/shared/ui/sidebar'
 
-type SessionUser = NonNullable<
-  ReturnType<typeof useSessionStore.getState>['user']
->
+const COMPACT_SIDEBAR_MEDIA_QUERY = '(max-width: 639px)'
+
+function useCompactSidebar() {
+  const getMediaQuery = () => {
+    if (typeof window === 'undefined' || !window.matchMedia) return null
+    return window.matchMedia(COMPACT_SIDEBAR_MEDIA_QUERY)
+  }
+  const [isCompact, setIsCompact] = useState(
+    () => getMediaQuery()?.matches ?? false,
+  )
+
+  useEffect(() => {
+    const mediaQuery = getMediaQuery()
+    if (!mediaQuery) return
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsCompact(event.matches)
+    }
+    mediaQuery.addEventListener('change', handleChange)
+
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
+
+  return isCompact
+}
 
 function AuthenticatedHomePage({
   accessToken,
   user,
   onLogout,
+  workspaceId,
+  onWorkspaceChange,
 }: {
   accessToken: string
   user: SessionUser
   onLogout: () => void
+  workspaceId?: string
+  onWorkspaceChange?: (workspaceId: string) => void
 }) {
   const { data, isLoading, isError, refetch } = useWorkspaces(
     accessToken,
     user.id,
   )
   const createWorkspace = useCreateWorkspace(accessToken)
+  const compactSidebar = useCompactSidebar()
   const [collapsed, setCollapsed] = useState(false)
+  const isSidebarCollapsed = compactSidebar || collapsed
   const [activeNav, setActiveNav] = useState<SidebarNavKey>('projects')
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(
-    null,
+    workspaceId ?? null,
   )
   const [createdWorkspaceOverlay, setCreatedWorkspaceOverlay] = useState<{
     workspace: WorkspaceSummary
@@ -48,11 +81,15 @@ function AuthenticatedHomePage({
       : fetchedWorkspaces
   }, [createdWorkspaceOverlay, data])
   const [previousWorkspaces, setPreviousWorkspaces] = useState(workspaces)
-  const fallbackWorkspace =
-    workspaces.find(({ isDefault }) => isDefault) ?? workspaces[0] ?? null
+  const fallbackWorkspace = selectDefaultWorkspace(workspaces)
   const fallbackWorkspaceId = fallbackWorkspace?.id ?? null
-  const selectedWorkspace =
-    workspaces.find(({ id }) => id === selectedWorkspaceId) ?? fallbackWorkspace
+  const routeWorkspace = workspaceId
+    ? (workspaces.find(({ id }) => id === workspaceId) ?? null)
+    : null
+  const selectedWorkspace = workspaceId
+    ? routeWorkspace
+    : (workspaces.find(({ id }) => id === selectedWorkspaceId) ??
+      fallbackWorkspace)
   const resolvedSelectedWorkspaceId = selectedWorkspace?.id ?? null
 
   if (previousWorkspaces !== workspaces) {
@@ -78,6 +115,17 @@ function AuthenticatedHomePage({
     )
   }
 
+  if (!isLoading && workspaceId && !routeWorkspace) {
+    return (
+      <WorkspaceAccessDeniedPage
+        workspaceName={fallbackWorkspace?.name ?? '기본 워크스페이스'}
+        onReturn={() => {
+          if (fallbackWorkspaceId) onWorkspaceChange?.(fallbackWorkspaceId)
+        }}
+      />
+    )
+  }
+
   function handleCreateDialogOpenChange(open: boolean) {
     if (!open && createWorkspace.isPending) return
     if (!open) createWorkspace.reset()
@@ -88,24 +136,28 @@ function AuthenticatedHomePage({
     try {
       const workspace = await createWorkspace.mutateAsync(name)
       setCreatedWorkspaceOverlay({ workspace, sourceData: data })
-      setSelectedWorkspaceId(workspace.id)
       handleCreateDialogOpenChange(false)
     } catch {
       return
     }
   }
 
+  function handleWorkspaceChange(nextWorkspaceId: string) {
+    setSelectedWorkspaceId(nextWorkspaceId)
+    onWorkspaceChange?.(nextWorkspaceId)
+  }
+
   return (
     <div className="bg-background-canvas flex min-h-svh">
       <Sidebar
         className="min-h-svh shrink-0"
-        collapsed={collapsed}
+        collapsed={isSidebarCollapsed}
         onCollapsedChange={setCollapsed}
         workspaceLoading={isLoading}
         workspace={selectedWorkspace}
         workspaces={workspaces}
         selectedWorkspaceId={resolvedSelectedWorkspaceId}
-        onWorkspaceChange={setSelectedWorkspaceId}
+        onWorkspaceChange={handleWorkspaceChange}
         onCreateWorkspace={() => handleCreateDialogOpenChange(true)}
         workspaceMembers={[{ id: user.id, name: user.name, presenceIndex: 1 }]}
         activeNav={activeNav}
@@ -115,18 +167,22 @@ function AuthenticatedHomePage({
         userEmail={user.email}
       />
 
-      <main className="flex min-w-0 flex-1 flex-col gap-2 p-8">
+      <main className="flex min-w-0 flex-1 flex-col px-5 py-6">
         {isLoading ? (
           <p className="text-body text-foreground-secondary">
             워크스페이스 불러오는 중
           </p>
+        ) : workspaceId || resolvedSelectedWorkspaceId ? (
+          <ProjectListContent
+            accessToken={accessToken}
+            workspaceId={workspaceId ?? resolvedSelectedWorkspaceId!}
+            userId={user.id}
+            workspaceRole={selectedWorkspace?.role}
+          />
         ) : (
-          <>
-            <h1 className="text-heading1 text-foreground-strong">프로젝트</h1>
-            <p className="text-body text-foreground-secondary">
-              {selectedWorkspace?.name ?? '워크스페이스 없음'}
-            </p>
-          </>
+          <p className="text-body text-foreground-secondary">
+            워크스페이스 없음
+          </p>
         )}
       </main>
 
@@ -143,7 +199,13 @@ function AuthenticatedHomePage({
   )
 }
 
-export function HomePage() {
+export function HomePage({
+  workspaceId,
+  onWorkspaceChange,
+}: {
+  workspaceId?: string
+  onWorkspaceChange?: (workspaceId: string) => void
+} = {}) {
   const accessToken = useSessionStore((state) => state.accessToken)
   const user = useSessionStore((state) => state.user)
   const clearSession = useSessionStore((state) => state.clearSession)
@@ -161,6 +223,8 @@ export function HomePage() {
       accessToken={accessToken}
       user={user}
       onLogout={clearSession}
+      workspaceId={workspaceId}
+      onWorkspaceChange={onWorkspaceChange}
     />
   )
 }

@@ -1,9 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
 import { isAxiosError } from 'axios'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
+import {
+  listWorkspacesRequest,
+  selectDefaultWorkspace,
+} from '@/entities/workspace'
 import { MESSAGES } from '@/shared/constants/messages'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
@@ -38,6 +43,7 @@ function getErrorMessage(error: unknown): string {
 export function LoginForm() {
   const navigate = useNavigate()
   const login = useLogin()
+  const [isResolvingWorkspace, setIsResolvingWorkspace] = useState(false)
   const {
     register,
     handleSubmit,
@@ -46,15 +52,36 @@ export function LoginForm() {
     resolver: zodResolver(loginSchema),
   })
 
-  const onSubmit = (values: LoginFormValues) => {
-    login.mutate(values, {
-      onSuccess: () => {
-        navigate({ to: '/' })
-      },
-      onError: (error) => {
-        toast.error(getErrorMessage(error))
-      },
-    })
+  const onSubmit = async (values: LoginFormValues) => {
+    setIsResolvingWorkspace(true)
+
+    try {
+      const { accessToken } = await login.mutateAsync(values)
+      let workspaces
+
+      try {
+        workspaces = await listWorkspacesRequest(accessToken)
+      } catch {
+        toast.error(MESSAGES.WORKSPACE_REDIRECT_FAILED)
+        return
+      }
+
+      const workspace = selectDefaultWorkspace(workspaces)
+      if (!workspace) {
+        toast.error(MESSAGES.WORKSPACE_NOT_AVAILABLE)
+        return
+      }
+
+      navigate({
+        to: '/workspaces/$workspaceId/projects',
+        params: { workspaceId: workspace.id },
+        replace: true,
+      })
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    } finally {
+      setIsResolvingWorkspace(false)
+    }
   }
 
   return (
@@ -120,7 +147,7 @@ export function LoginForm() {
         type="submit"
         size="large"
         className="w-full"
-        loading={login.isPending}
+        loading={login.isPending || isResolvingWorkspace}
       >
         로그인
       </Button>
