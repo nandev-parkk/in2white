@@ -5,14 +5,15 @@ import { createApp } from "@/app";
 import { db } from "@/db/client";
 import { users, workspaceMemberships } from "@/db/schema";
 import { signAccessToken } from "@/lib/jwt";
-import { memberParamsSchema } from "@/schemas/member.schema";
-import { listMembers } from "@/services/member.service";
+import { addMemberBodySchema, memberParamsSchema } from "@/schemas/member.schema";
+import { addMember, listMembers } from "@/services/member.service";
 
 vi.mock("@/db/client", () => ({
-  db: { select: vi.fn() },
+  db: { select: vi.fn(), transaction: vi.fn() },
 }));
 
 const workspaceId = "550e8400-e29b-41d4-a716-446655440000";
+const targetUserId = "550e8400-e29b-41d4-a716-446655440001";
 
 async function createAccessToken(sub = "user-1") {
   return signAccessToken({
@@ -24,6 +25,7 @@ async function createAccessToken(sub = "user-1") {
 
 beforeEach(() => {
   vi.mocked(db.select).mockReset();
+  vi.mocked(db.transaction).mockReset();
 });
 
 function mockMemberListQueries({
@@ -73,10 +75,253 @@ function mockMemberListQueries({
   return { membershipQuery, countQuery, memberQuery };
 }
 
+function mockAddMemberTransaction({
+  requesterRows = [{ role: "owner" }],
+  userRows = [{ id: targetUserId, name: "Kim Member", email: "member@example.com" }],
+  existingRows = [],
+  membershipRows = [
+    {
+      role: "member",
+      joinedAt: new Date("2026-09-10T00:00:00.000Z"),
+    },
+  ],
+  requesterError,
+  userError,
+  existingError,
+  insertError,
+}: {
+  requesterRows?: unknown[];
+  userRows?: unknown[];
+  existingRows?: unknown[];
+  membershipRows?: unknown[];
+  requesterError?: Error;
+  userError?: Error;
+  existingError?: Error;
+  insertError?: Error;
+} = {}) {
+  const requesterQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: requesterError
+      ? vi.fn().mockRejectedValue(requesterError)
+      : vi.fn().mockResolvedValue(requesterRows),
+  };
+  const userQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: userError ? vi.fn().mockRejectedValue(userError) : vi.fn().mockResolvedValue(userRows),
+  };
+  const existingQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: existingError
+      ? vi.fn().mockRejectedValue(existingError)
+      : vi.fn().mockResolvedValue(existingRows),
+  };
+  const membershipInsert = {
+    values: vi.fn().mockReturnThis(),
+    returning: insertError
+      ? vi.fn().mockRejectedValue(insertError)
+      : vi.fn().mockResolvedValue(membershipRows),
+  };
+  const transaction = {
+    select: vi
+      .fn()
+      .mockReturnValueOnce(requesterQuery)
+      .mockReturnValueOnce(userQuery)
+      .mockReturnValueOnce(existingQuery),
+    insert: vi.fn().mockReturnValue(membershipInsert),
+  };
+
+  vi.mocked(db.transaction).mockImplementation(async (callback) => callback(transaction as never));
+
+  return { requesterQuery, userQuery, existingQuery, membershipInsert, transaction };
+}
+
 describe("memberParamsSchema", () => {
   it("워크스페이스 UUID를 검증한다", () => {
     expect(memberParamsSchema.parse({ workspaceId })).toEqual({ workspaceId });
     expect(() => memberParamsSchema.parse({ workspaceId: "not-a-uuid" })).toThrow();
+  });
+});
+
+describe("addMemberBodySchema", () => {
+  const targetUserId = "550e8400-e29b-41d4-a716-446655440001";
+
+  it("userId UUID를 허용한다", () => {
+    expect(addMemberBodySchema.parse({ userId: targetUserId })).toEqual({
+      userId: targetUserId,
+    });
+  });
+
+  it("userId가 없거나 UUID가 아니면 거부한다", () => {
+    expect(() => addMemberBodySchema.parse({})).toThrow();
+    expect(() => addMemberBodySchema.parse({ userId: "not-a-uuid" })).toThrow();
+  });
+
+  it("userId 외의 body 필드를 거부한다", () => {
+    expect(() => addMemberBodySchema.parse({ userId: targetUserId, role: "owner" })).toThrow();
+  });
+});
+
+describe("addMember", () => {
+  it("Owner가 존재하는 사용자를 멤버로 추가한다", async () => {
+    const joinedAt = new Date("2026-09-10T00:00:00.000Z");
+    const { requesterQuery, userQuery, existingQuery, membershipInsert, transaction } =
+      mockAddMemberTransaction({ membershipRows: [{ role: "member", joinedAt }] });
+
+    await expect(
+      addMember({
+        workspaceId,
+        requesterId: "owner-1",
+        userId: targetUserId,
+      }),
+    ).resolves.toEqual({
+      userId: targetUserId,
+      name: "Kim Member",
+      email: "member@example.com",
+      role: "member",
+      joinedAt,
+    });
+
+    expect(db.transaction).toHaveBeenCalledOnce();
+    expect(transaction.select).toHaveBeenNthCalledWith(1, { role: workspaceMemberships.role });
+    expect(transaction.select).toHaveBeenNthCalledWith(2, {
+      id: users.id,
+      name: users.name,
+      email: users.email,
+    });
+    expect(transaction.select).toHaveBeenNthCalledWith(3, { id: workspaceMemberships.id });
+    expect(requesterQuery.from).toHaveBeenCalledWith(workspaceMemberships);
+    expect(requesterQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, "owner-1"),
+      ),
+    );
+    expect(userQuery.from).toHaveBeenCalledWith(users);
+    expect(userQuery.where).toHaveBeenCalledWith(eq(users.id, targetUserId));
+    expect(existingQuery.from).toHaveBeenCalledWith(workspaceMemberships);
+    expect(existingQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, targetUserId),
+      ),
+    );
+    expect(membershipInsert.values).toHaveBeenCalledWith({
+      workspaceId,
+      userId: targetUserId,
+      role: "member",
+    });
+  });
+
+  it("비멤버는 워크스페이스를 찾을 수 없음으로 거부하고 대상 조회를 시작하지 않는다", async () => {
+    const { transaction, userQuery, membershipInsert } = mockAddMemberTransaction({
+      requesterRows: [],
+    });
+
+    await expect(
+      addMember({ workspaceId, requesterId: "outsider", userId: targetUserId }),
+    ).rejects.toMatchObject({
+      status: 404,
+      code: "WORKSPACE_NOT_FOUND",
+      message: "워크스페이스를 찾을 수 없습니다",
+    });
+
+    expect(transaction.select).toHaveBeenCalledOnce();
+    expect(userQuery.where).not.toHaveBeenCalled();
+    expect(membershipInsert.values).not.toHaveBeenCalled();
+  });
+
+  it("일반 Member는 멤버를 추가할 수 없다", async () => {
+    const { transaction, userQuery, membershipInsert } = mockAddMemberTransaction({
+      requesterRows: [{ role: "member" }],
+    });
+
+    await expect(
+      addMember({ workspaceId, requesterId: "member-1", userId: targetUserId }),
+    ).rejects.toMatchObject({
+      status: 403,
+      code: "MEMBER_ADD_FORBIDDEN",
+      message: "멤버를 추가할 권한이 없습니다",
+    });
+
+    expect(transaction.select).toHaveBeenCalledOnce();
+    expect(userQuery.where).not.toHaveBeenCalled();
+    expect(membershipInsert.values).not.toHaveBeenCalled();
+  });
+
+  it("존재하지 않는 대상 사용자는 추가할 수 없다", async () => {
+    const { transaction, existingQuery, membershipInsert } = mockAddMemberTransaction({
+      userRows: [],
+    });
+
+    await expect(
+      addMember({ workspaceId, requesterId: "owner-1", userId: targetUserId }),
+    ).rejects.toMatchObject({
+      status: 404,
+      code: "USER_NOT_FOUND",
+      message: "사용자를 찾을 수 없습니다",
+    });
+
+    expect(transaction.select).toHaveBeenCalledTimes(2);
+    expect(existingQuery.where).not.toHaveBeenCalled();
+    expect(membershipInsert.values).not.toHaveBeenCalled();
+  });
+
+  it("이미 멤버인 사용자는 중복으로 거부한다", async () => {
+    const { membershipInsert } = mockAddMemberTransaction({
+      existingRows: [{ id: "membership-1" }],
+    });
+
+    await expect(
+      addMember({ workspaceId, requesterId: "owner-1", userId: targetUserId }),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "MEMBER_ALREADY_EXISTS",
+      message: "이미 워크스페이스 멤버입니다",
+    });
+
+    expect(membershipInsert.values).not.toHaveBeenCalled();
+  });
+
+  it("멤버십 unique 오류를 중복 오류로 변환한다", async () => {
+    const uniqueError = Object.assign(new Error("duplicate membership"), { code: "23505" });
+    mockAddMemberTransaction({ insertError: uniqueError });
+
+    await expect(
+      addMember({ workspaceId, requesterId: "owner-1", userId: targetUserId }),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "MEMBER_ALREADY_EXISTS",
+      message: "이미 워크스페이스 멤버입니다",
+    });
+  });
+
+  it.each([
+    {
+      label: "요청자 멤버십",
+      options: { requesterError: new Error("requester membership failed") },
+      expectedMessage: "requester membership failed",
+    },
+    {
+      label: "대상 사용자",
+      options: { userError: new Error("target user failed") },
+      expectedMessage: "target user failed",
+    },
+    {
+      label: "기존 멤버십",
+      options: { existingError: new Error("existing membership failed") },
+      expectedMessage: "existing membership failed",
+    },
+    {
+      label: "멤버십 insert",
+      options: { insertError: new Error("membership insert failed") },
+      expectedMessage: "membership insert failed",
+    },
+  ])("$label DB 오류를 전파한다", async ({ options, expectedMessage }) => {
+    mockAddMemberTransaction(options);
+
+    await expect(
+      addMember({ workspaceId, requesterId: "owner-1", userId: targetUserId }),
+    ).rejects.toThrow(expectedMessage);
   });
 });
 
@@ -384,6 +629,120 @@ describe("GET /workspaces/:workspaceId/members", () => {
     const response = await request(createApp())
       .get(`/workspaces/${workspaceId}/members`)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+  });
+});
+
+describe("POST /workspaces/:workspaceId/members", () => {
+  it("Owner가 사용자를 멤버로 추가하고 생성된 멤버를 반환한다", async () => {
+    const joinedAt = new Date("2026-09-10T00:00:00.000Z");
+    mockAddMemberTransaction({
+      membershipRows: [{ role: "member", joinedAt }],
+    });
+
+    const response = await request(createApp())
+      .post(`/workspaces/${workspaceId}/members`)
+      .set("Authorization", `Bearer ${await createAccessToken("owner-1")}`)
+      .send({ userId: targetUserId });
+
+    expect(response.status).toBe(201);
+    expect(response.body).toEqual({
+      member: {
+        userId: targetUserId,
+        name: "Kim Member",
+        email: "member@example.com",
+        role: "member",
+        joinedAt: joinedAt.toISOString(),
+      },
+    });
+  });
+
+  it("인증되지 않은 요청은 401이며 transaction을 호출하지 않는다", async () => {
+    const response = await request(createApp())
+      .post(`/workspaces/${workspaceId}/members`)
+      .send({ userId: targetUserId });
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHORIZED");
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { pathWorkspaceId: "not-a-uuid", body: { userId: targetUserId } },
+    { pathWorkspaceId: workspaceId, body: {} },
+    { pathWorkspaceId: workspaceId, body: { userId: "not-a-uuid" } },
+    { pathWorkspaceId: workspaceId, body: { userId: targetUserId, role: "owner" } },
+  ])(
+    "잘못된 path 또는 body는 400이며 transaction을 호출하지 않는다",
+    async ({ pathWorkspaceId, body }) => {
+      const response = await request(createApp())
+        .post(`/workspaces/${pathWorkspaceId}/members`)
+        .set("Authorization", `Bearer ${await createAccessToken("owner-1")}`)
+        .send(body);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe("VALIDATION_ERROR");
+      expect(db.transaction).not.toHaveBeenCalled();
+    },
+  );
+
+  it("비멤버 요청자는 404를 반환한다", async () => {
+    mockAddMemberTransaction({ requesterRows: [] });
+
+    const response = await request(createApp())
+      .post(`/workspaces/${workspaceId}/members`)
+      .set("Authorization", `Bearer ${await createAccessToken("outsider")}`)
+      .send({ userId: targetUserId });
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("WORKSPACE_NOT_FOUND");
+  });
+
+  it("일반 Member 요청자는 403을 반환한다", async () => {
+    mockAddMemberTransaction({ requesterRows: [{ role: "member" }] });
+
+    const response = await request(createApp())
+      .post(`/workspaces/${workspaceId}/members`)
+      .set("Authorization", `Bearer ${await createAccessToken("member-1")}`)
+      .send({ userId: targetUserId });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("MEMBER_ADD_FORBIDDEN");
+  });
+
+  it("존재하지 않는 대상 사용자는 404를 반환한다", async () => {
+    mockAddMemberTransaction({ userRows: [] });
+
+    const response = await request(createApp())
+      .post(`/workspaces/${workspaceId}/members`)
+      .set("Authorization", `Bearer ${await createAccessToken("owner-1")}`)
+      .send({ userId: targetUserId });
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("USER_NOT_FOUND");
+  });
+
+  it("이미 멤버인 대상 사용자는 409를 반환한다", async () => {
+    mockAddMemberTransaction({ existingRows: [{ id: "membership-1" }] });
+
+    const response = await request(createApp())
+      .post(`/workspaces/${workspaceId}/members`)
+      .set("Authorization", `Bearer ${await createAccessToken("owner-1")}`)
+      .send({ userId: targetUserId });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe("MEMBER_ALREADY_EXISTS");
+  });
+
+  it("예상하지 못한 DB 오류는 공통 500 응답으로 변환된다", async () => {
+    mockAddMemberTransaction({ insertError: new Error("membership insert failed") });
+
+    const response = await request(createApp())
+      .post(`/workspaces/${workspaceId}/members`)
+      .set("Authorization", `Bearer ${await createAccessToken("owner-1")}`)
+      .send({ userId: targetUserId });
 
     expect(response.status).toBe(500);
     expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");

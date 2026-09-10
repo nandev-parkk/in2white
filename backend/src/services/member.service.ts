@@ -28,6 +28,89 @@ export interface ListMembersResult {
   pagination: PaginationMeta;
 }
 
+export interface AddMemberInput {
+  workspaceId: string;
+  requesterId: string;
+  userId: string;
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
+}
+
+export async function addMember({
+  workspaceId,
+  requesterId,
+  userId,
+}: AddMemberInput): Promise<MemberListItem> {
+  return db.transaction(async (tx) => {
+    const [requesterMembership] = await tx
+      .select({ role: workspaceMemberships.role })
+      .from(workspaceMemberships)
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          eq(workspaceMemberships.userId, requesterId),
+        ),
+      );
+
+    if (!requesterMembership) {
+      throw new HttpError(404, "WORKSPACE_NOT_FOUND", ERROR_MESSAGES.WORKSPACE_NOT_FOUND);
+    }
+
+    if (requesterMembership.role !== "owner") {
+      throw new HttpError(403, "MEMBER_ADD_FORBIDDEN", ERROR_MESSAGES.MEMBER_ADD_FORBIDDEN);
+    }
+
+    const [targetUser] = await tx
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (!targetUser) {
+      throw new HttpError(404, "USER_NOT_FOUND", ERROR_MESSAGES.USER_NOT_FOUND);
+    }
+
+    const [existingMembership] = await tx
+      .select({ id: workspaceMemberships.id })
+      .from(workspaceMemberships)
+      .where(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          eq(workspaceMemberships.userId, userId),
+        ),
+      );
+
+    if (existingMembership) {
+      throw new HttpError(409, "MEMBER_ALREADY_EXISTS", ERROR_MESSAGES.MEMBER_ALREADY_EXISTS);
+    }
+
+    try {
+      const [membership] = await tx
+        .insert(workspaceMemberships)
+        .values({ workspaceId, userId, role: "member" })
+        .returning({ role: workspaceMemberships.role, joinedAt: workspaceMemberships.createdAt });
+
+      if (!membership) {
+        throw new Error("Member insert returned no row");
+      }
+
+      return {
+        userId: targetUser.id,
+        name: targetUser.name,
+        email: targetUser.email,
+        ...membership,
+      };
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new HttpError(409, "MEMBER_ALREADY_EXISTS", ERROR_MESSAGES.MEMBER_ALREADY_EXISTS);
+      }
+
+      throw error;
+    }
+  });
+}
+
 export async function listMembers({
   workspaceId,
   requesterId,

@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { listQuerySchema } from "@/schemas/list-query.schema";
-import { memberParamsSchema } from "@/schemas/member.schema";
-import { listMembers } from "@/services/member.service";
+import { addMemberBodySchema, memberParamsSchema } from "@/schemas/member.schema";
+import { addMember, listMembers } from "@/services/member.service";
 import { parseOrThrow } from "@/utils/parse-or-throw";
 import { requireUser } from "@/utils/require-user";
 
@@ -19,4 +19,18 @@ export async function listMembersHandler(req: Request, res: Response) {
   });
 
   res.status(200).json(result);
+}
+
+export async function addMemberHandler(req: Request, res: Response) {
+  const user = requireUser(req);
+  const { workspaceId } = parseOrThrow(memberParamsSchema, req.params);
+  const { userId } = parseOrThrow(addMemberBodySchema, req.body);
+
+  const member = await addMember({
+    workspaceId,
+    requesterId: user.sub,
+    userId,
+  });
+
+  res.status(201).json({ member });
 }
