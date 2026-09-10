@@ -5,8 +5,12 @@ import { createApp } from "@/app";
 import { db } from "@/db/client";
 import { users, workspaceMemberships } from "@/db/schema";
 import { signAccessToken } from "@/lib/jwt";
-import { addMemberBodySchema, memberParamsSchema } from "@/schemas/member.schema";
-import { addMember, listMembers } from "@/services/member.service";
+import {
+  addMemberBodySchema,
+  memberParamsSchema,
+  memberRemoveParamsSchema,
+} from "@/schemas/member.schema";
+import { addMember, listMembers, removeMember } from "@/services/member.service";
 
 vi.mock("@/db/client", () => ({
   db: { select: vi.fn(), transaction: vi.fn() },
@@ -14,6 +18,8 @@ vi.mock("@/db/client", () => ({
 
 const workspaceId = "550e8400-e29b-41d4-a716-446655440000";
 const targetUserId = "550e8400-e29b-41d4-a716-446655440001";
+const memberUserId = "550e8400-e29b-41d4-a716-446655440002";
+const ownerUserId = "550e8400-e29b-41d4-a716-446655440003";
 
 async function createAccessToken(sub = "user-1") {
   return signAccessToken({
@@ -135,10 +141,59 @@ function mockAddMemberTransaction({
   return { requesterQuery, userQuery, existingQuery, membershipInsert, transaction };
 }
 
+function mockRemoveMemberTransaction({
+  requesterRows = [{ role: "owner" }],
+  deletedRows = [{ id: "membership-2" }],
+  requesterError,
+  deleteError,
+}: {
+  requesterRows?: unknown[];
+  deletedRows?: unknown[];
+  requesterError?: Error;
+  deleteError?: Error;
+} = {}) {
+  const requesterQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: requesterError
+      ? vi.fn().mockRejectedValue(requesterError)
+      : vi.fn().mockResolvedValue(requesterRows),
+  };
+  const membershipDelete = {
+    where: vi.fn().mockReturnThis(),
+    returning: deleteError
+      ? vi.fn().mockRejectedValue(deleteError)
+      : vi.fn().mockResolvedValue(deletedRows),
+  };
+  const transaction = {
+    select: vi.fn().mockReturnValue(requesterQuery),
+    delete: vi.fn().mockReturnValue(membershipDelete),
+  };
+
+  vi.mocked(db.transaction).mockImplementation(async (callback) => callback(transaction as never));
+
+  return { requesterQuery, membershipDelete, transaction };
+}
+
 describe("memberParamsSchema", () => {
   it("워크스페이스 UUID를 검증한다", () => {
     expect(memberParamsSchema.parse({ workspaceId })).toEqual({ workspaceId });
     expect(() => memberParamsSchema.parse({ workspaceId: "not-a-uuid" })).toThrow();
+  });
+});
+
+describe("memberRemoveParamsSchema", () => {
+  it("workspaceId와 userId UUID를 허용한다", () => {
+    expect(memberRemoveParamsSchema.parse({ workspaceId, userId: targetUserId })).toEqual({
+      workspaceId,
+      userId: targetUserId,
+    });
+  });
+
+  it.each([
+    { workspaceId: "not-a-uuid", userId: targetUserId },
+    { workspaceId, userId: "not-a-uuid" },
+  ])("UUID가 아닌 path parameter를 거부한다", (params) => {
+    expect(() => memberRemoveParamsSchema.parse(params)).toThrow();
   });
 });
 
@@ -321,6 +376,133 @@ describe("addMember", () => {
 
     await expect(
       addMember({ workspaceId, requesterId: "owner-1", userId: targetUserId }),
+    ).rejects.toThrow(expectedMessage);
+  });
+});
+
+describe("removeMember", () => {
+  it("Owner가 다른 멤버를 내보낸다", async () => {
+    const { membershipDelete, transaction } = mockRemoveMemberTransaction();
+
+    await expect(
+      removeMember({ workspaceId, requesterId: "owner-1", userId: targetUserId }),
+    ).resolves.toBeUndefined();
+
+    expect(transaction.delete).toHaveBeenCalledWith(workspaceMemberships);
+    expect(membershipDelete.where).toHaveBeenCalledWith(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, targetUserId),
+      ),
+    );
+  });
+
+  it("Member가 자기 자신을 탈퇴한다", async () => {
+    const { membershipDelete, transaction } = mockRemoveMemberTransaction({
+      requesterRows: [{ role: "member" }],
+    });
+
+    await expect(
+      removeMember({ workspaceId, requesterId: "member-1", userId: "member-1" }),
+    ).resolves.toBeUndefined();
+
+    expect(transaction.delete).toHaveBeenCalledWith(workspaceMemberships);
+    expect(membershipDelete.where).toHaveBeenCalledWith(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, "member-1"),
+      ),
+    );
+  });
+
+  it("비멤버 요청자는 워크스페이스 없음으로 거부하고 삭제하지 않는다", async () => {
+    const { membershipDelete } = mockRemoveMemberTransaction({ requesterRows: [] });
+
+    await expect(
+      removeMember({ workspaceId, requesterId: "outsider", userId: targetUserId }),
+    ).rejects.toMatchObject({
+      status: 404,
+      code: "WORKSPACE_NOT_FOUND",
+    });
+
+    expect(membershipDelete.where).not.toHaveBeenCalled();
+  });
+
+  it("Member가 다른 멤버를 내보낼 수 없다", async () => {
+    const { membershipDelete } = mockRemoveMemberTransaction({
+      requesterRows: [{ role: "member" }],
+    });
+
+    await expect(
+      removeMember({ workspaceId, requesterId: "member-1", userId: targetUserId }),
+    ).rejects.toMatchObject({
+      status: 403,
+      code: "MEMBER_REMOVE_FORBIDDEN",
+    });
+
+    expect(membershipDelete.where).not.toHaveBeenCalled();
+  });
+
+  it("Owner가 자기 자신을 내보낼 수 없다", async () => {
+    const { membershipDelete } = mockRemoveMemberTransaction();
+
+    await expect(
+      removeMember({ workspaceId, requesterId: "owner-1", userId: "owner-1" }),
+    ).rejects.toMatchObject({
+      status: 403,
+      code: "MEMBER_SELF_REMOVE_FORBIDDEN",
+    });
+
+    expect(membershipDelete.where).not.toHaveBeenCalled();
+  });
+
+  it("대소문자만 다른 유효 UUID의 Owner 자기 탈퇴를 차단한다", async () => {
+    const uppercaseOwnerId = workspaceId.toUpperCase();
+    const { requesterQuery, membershipDelete } = mockRemoveMemberTransaction();
+
+    await expect(
+      removeMember({ workspaceId, requesterId: uppercaseOwnerId, userId: workspaceId }),
+    ).rejects.toMatchObject({
+      status: 403,
+      code: "MEMBER_SELF_REMOVE_FORBIDDEN",
+    });
+
+    expect(requesterQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, workspaceId),
+      ),
+    );
+    expect(membershipDelete.where).not.toHaveBeenCalled();
+  });
+
+  it("대상 멤버십이 없으면 MEMBER_NOT_FOUND를 반환한다", async () => {
+    mockRemoveMemberTransaction({ deletedRows: [] });
+
+    await expect(
+      removeMember({ workspaceId, requesterId: "owner-1", userId: targetUserId }),
+    ).rejects.toMatchObject({
+      status: 404,
+      code: "MEMBER_NOT_FOUND",
+    });
+  });
+
+  it.each([
+    {
+      label: "요청자 멤버십",
+      options: { requesterError: new Error("requester membership removal failed") },
+      expectedMessage: "requester membership removal failed",
+    },
+    {
+      label: "멤버십 삭제",
+      options: { deleteError: new Error("membership deletion failed") },
+      expectedMessage: "membership deletion failed",
+    },
+  ])("$label DB 오류를 전파한다", async ({ options, expectedMessage }) => {
+    mockRemoveMemberTransaction(options);
+
+    await expect(
+      removeMember({ workspaceId, requesterId: "owner-1", userId: targetUserId }),
     ).rejects.toThrow(expectedMessage);
   });
 });
@@ -743,6 +925,101 @@ describe("POST /workspaces/:workspaceId/members", () => {
       .post(`/workspaces/${workspaceId}/members`)
       .set("Authorization", `Bearer ${await createAccessToken("owner-1")}`)
       .send({ userId: targetUserId });
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+  });
+});
+
+describe("DELETE /workspaces/:workspaceId/members/:userId", () => {
+  it("Owner가 다른 멤버를 내보내고 204를 반환한다", async () => {
+    const { membershipDelete } = mockRemoveMemberTransaction();
+
+    const response = await request(createApp())
+      .delete("/workspaces/" + workspaceId + "/members/" + targetUserId)
+      .set("Authorization", "Bearer " + (await createAccessToken("owner-1")));
+
+    expect(response.status).toBe(204);
+    expect(response.body).toEqual({});
+    expect(membershipDelete.where).toHaveBeenCalledOnce();
+  });
+
+  it("Member가 자기 자신을 탈퇴하고 204를 반환한다", async () => {
+    mockRemoveMemberTransaction({ requesterRows: [{ role: "member" }] });
+
+    const response = await request(createApp())
+      .delete("/workspaces/" + workspaceId + "/members/" + memberUserId)
+      .set("Authorization", "Bearer " + (await createAccessToken(memberUserId)));
+
+    expect(response.status).toBe(204);
+  });
+
+  it("인증되지 않은 요청은 401을 반환한다", async () => {
+    const response = await request(createApp()).delete(
+      "/workspaces/" + workspaceId + "/members/" + targetUserId,
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHORIZED");
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("Member의 타인 내보내기는 403을 반환한다", async () => {
+    const { membershipDelete } = mockRemoveMemberTransaction({
+      requesterRows: [{ role: "member" }],
+    });
+
+    const response = await request(createApp())
+      .delete("/workspaces/" + workspaceId + "/members/" + targetUserId)
+      .set("Authorization", "Bearer " + (await createAccessToken("member-1")));
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("MEMBER_REMOVE_FORBIDDEN");
+    expect(membershipDelete.where).not.toHaveBeenCalled();
+  });
+
+  it("Owner 자기 탈퇴는 403을 반환한다", async () => {
+    const { membershipDelete } = mockRemoveMemberTransaction();
+
+    const response = await request(createApp())
+      .delete("/workspaces/" + workspaceId + "/members/" + ownerUserId)
+      .set("Authorization", "Bearer " + (await createAccessToken(ownerUserId)));
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("MEMBER_SELF_REMOVE_FORBIDDEN");
+    expect(membershipDelete.where).not.toHaveBeenCalled();
+  });
+
+  it.each(["not-a-uuid/members/" + targetUserId, workspaceId + "/members/not-a-uuid"])(
+    "잘못된 path parameter는 400이고 transaction을 호출하지 않는다",
+    async (path) => {
+      const response = await request(createApp())
+        .delete("/workspaces/" + path)
+        .set("Authorization", "Bearer " + (await createAccessToken("owner-1")));
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe("VALIDATION_ERROR");
+      expect(db.transaction).not.toHaveBeenCalled();
+    },
+  );
+
+  it("대상 멤버십이 없으면 404 MEMBER_NOT_FOUND를 반환한다", async () => {
+    mockRemoveMemberTransaction({ deletedRows: [] });
+
+    const response = await request(createApp())
+      .delete("/workspaces/" + workspaceId + "/members/" + targetUserId)
+      .set("Authorization", "Bearer " + (await createAccessToken("owner-1")));
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("MEMBER_NOT_FOUND");
+  });
+
+  it("DB 오류는 500 INTERNAL_SERVER_ERROR로 변환한다", async () => {
+    mockRemoveMemberTransaction({ deleteError: new Error("membership delete failed") });
+
+    const response = await request(createApp())
+      .delete("/workspaces/" + workspaceId + "/members/" + targetUserId)
+      .set("Authorization", "Bearer " + (await createAccessToken("owner-1")));
 
     expect(response.status).toBe(500);
     expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
