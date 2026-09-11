@@ -37,6 +37,7 @@ export const ERROR_MESSAGES = {
   WHITEBOARD_DOCUMENT_NOT_FOUND: "화이트보드 문서를 찾을 수 없습니다",
   WHITEBOARD_DOCUMENT_UPDATE_FORBIDDEN: "화이트보드 문서를 수정할 권한이 없습니다",
   WHITEBOARD_DOCUMENT_DELETE_FORBIDDEN: "화이트보드 문서를 삭제할 권한이 없습니다",
+  CONTENT_INTEGRITY_ERROR: "화이트보드 문서 내용이 올바르게 저장되어 있지 않습니다",
   SEARCH_INVALID: "검색어는 문자열이어야 합니다",
   SEARCH_TOO_LONG: "검색어는 100자 이내로 입력해주세요",
   PAGE_INVALID: "페이지는 1 이상의 정수여야 합니다",

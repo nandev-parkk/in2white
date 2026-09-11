@@ -19,4 +19,10 @@ describe("createApp", () => {
     expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
     expect(response.headers["access-control-allow-credentials"]).toBe("true");
   });
+
+  it("does not store the whiteboard deletion hook in app.locals", () => {
+    const app = createApp({ onWhiteboardDocumentDeleted: () => undefined });
+
+    expect(app.locals.onWhiteboardDocumentDeleted).toBeUndefined();
+  });
 });

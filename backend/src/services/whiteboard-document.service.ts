@@ -1,12 +1,24 @@
 import { and, asc, count, desc, eq, ilike, isNull } from "drizzle-orm";
 import { ERROR_MESSAGES } from "@/constants/messages";
 import { db } from "@/db/client";
-import { projects, users, whiteboardDocuments, workspaceMemberships } from "@/db/schema";
+import {
+  projects,
+  users,
+  whiteboardDocumentContents,
+  whiteboardDocuments,
+  workspaceMemberships,
+} from "@/db/schema";
+import {
+  EMPTY_CANVAS_CONTENT,
+  normalizeCanvasContent,
+} from "@/services/whiteboard-document-content.service";
 import { HttpError } from "@/utils/http-error";
+import { logger } from "@/utils/logger";
 import { createPaginationMeta, getPaginationOffset } from "@/utils/pagination";
 import { buildContainsSearchPattern } from "@/utils/search";
 
 import type { PaginationMeta } from "@/utils/pagination";
+import type { CanvasContent } from "@/types/whiteboard";
 
 export interface CreateWhiteboardDocumentInput {
   workspaceId: string;
@@ -17,8 +29,28 @@ export interface CreateWhiteboardDocumentInput {
 
 export type CreatedWhiteboardDocument = Pick<
   typeof whiteboardDocuments.$inferSelect,
-  "id" | "projectId" | "name" | "creatorId" | "canvasContent" | "createdAt" | "updatedAt"
->;
+  "id" | "projectId" | "name" | "creatorId" | "createdAt" | "updatedAt"
+> & {
+  canvasContent: CanvasContent;
+  revision: number;
+  lastSavedAt: Date;
+};
+
+export interface GetWhiteboardDocumentInput {
+  workspaceId: string;
+  projectId: string;
+  documentId: string;
+  userId: string;
+}
+
+export type WhiteboardDocumentDetail = Pick<
+  typeof whiteboardDocuments.$inferSelect,
+  "id" | "projectId" | "name" | "creatorId" | "createdAt" | "updatedAt"
+> & {
+  canvasContent: CanvasContent;
+  revision: number;
+  lastSavedAt: Date;
+};
 
 export interface UpdateWhiteboardDocumentInput {
   workspaceId: string;
@@ -109,7 +141,6 @@ export async function createWhiteboardDocument({
         projectId: whiteboardDocuments.projectId,
         name: whiteboardDocuments.name,
         creatorId: whiteboardDocuments.creatorId,
-        canvasContent: whiteboardDocuments.canvasContent,
         createdAt: whiteboardDocuments.createdAt,
         updatedAt: whiteboardDocuments.updatedAt,
       });
@@ -118,8 +149,116 @@ export async function createWhiteboardDocument({
       throw new Error("Whiteboard document insert returned no row");
     }
 
-    return whiteboardDocument;
+    const [content] = await tx
+      .insert(whiteboardDocumentContents)
+      .values({
+        documentId: whiteboardDocument.id,
+        canvasContent: EMPTY_CANVAS_CONTENT,
+        revision: 0,
+      })
+      .returning({ updatedAt: whiteboardDocumentContents.updatedAt });
+
+    if (!content) {
+      throw new Error("Whiteboard document content insert returned no row");
+    }
+
+    return {
+      ...whiteboardDocument,
+      canvasContent: EMPTY_CANVAS_CONTENT,
+      revision: 0,
+      lastSavedAt: content.updatedAt,
+    };
   });
+}
+
+export async function getWhiteboardDocument({
+  workspaceId,
+  projectId,
+  documentId,
+  userId,
+}: GetWhiteboardDocumentInput): Promise<WhiteboardDocumentDetail> {
+  const [membership] = await db
+    .select({ id: workspaceMemberships.id })
+    .from(workspaceMemberships)
+    .where(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, userId),
+      ),
+    );
+
+  if (!membership) {
+    throw new HttpError(404, "WORKSPACE_NOT_FOUND", ERROR_MESSAGES.WORKSPACE_NOT_FOUND);
+  }
+
+  const [project] = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(
+      and(
+        eq(projects.id, projectId),
+        eq(projects.workspaceId, workspaceId),
+        isNull(projects.deletedAt),
+      ),
+    );
+
+  if (!project) {
+    throw new HttpError(404, "PROJECT_NOT_FOUND", ERROR_MESSAGES.PROJECT_NOT_FOUND);
+  }
+
+  const [whiteboardDocument] = await db
+    .select({
+      id: whiteboardDocuments.id,
+      projectId: whiteboardDocuments.projectId,
+      name: whiteboardDocuments.name,
+      creatorId: whiteboardDocuments.creatorId,
+      createdAt: whiteboardDocuments.createdAt,
+      updatedAt: whiteboardDocuments.updatedAt,
+      canvasContent: whiteboardDocumentContents.canvasContent,
+      revision: whiteboardDocumentContents.revision,
+      lastSavedAt: whiteboardDocumentContents.updatedAt,
+    })
+    .from(whiteboardDocuments)
+    .leftJoin(
+      whiteboardDocumentContents,
+      eq(whiteboardDocumentContents.documentId, whiteboardDocuments.id),
+    )
+    .where(
+      and(
+        eq(whiteboardDocuments.id, documentId),
+        eq(whiteboardDocuments.projectId, projectId),
+        isNull(whiteboardDocuments.deletedAt),
+      ),
+    );
+
+  if (!whiteboardDocument) {
+    throw new HttpError(
+      404,
+      "WHITEBOARD_DOCUMENT_NOT_FOUND",
+      ERROR_MESSAGES.WHITEBOARD_DOCUMENT_NOT_FOUND,
+    );
+  }
+
+  if (
+    whiteboardDocument.canvasContent === null ||
+    whiteboardDocument.revision === null ||
+    whiteboardDocument.lastSavedAt === null
+  ) {
+    logger.error({ documentId }, "Whiteboard document content row is missing");
+    throw new HttpError(500, "CONTENT_INTEGRITY_ERROR", ERROR_MESSAGES.CONTENT_INTEGRITY_ERROR);
+  }
+
+  return {
+    id: whiteboardDocument.id,
+    projectId: whiteboardDocument.projectId,
+    name: whiteboardDocument.name,
+    creatorId: whiteboardDocument.creatorId,
+    canvasContent: normalizeCanvasContent(whiteboardDocument.canvasContent),
+    revision: whiteboardDocument.revision,
+    lastSavedAt: whiteboardDocument.lastSavedAt,
+    createdAt: whiteboardDocument.createdAt,
+    updatedAt: whiteboardDocument.updatedAt,
+  };
 }
 
 export async function updateWhiteboardDocument({

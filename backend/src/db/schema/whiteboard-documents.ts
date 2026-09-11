@@ -1,4 +1,4 @@
-import { jsonb, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { users } from "@/db/schema/users";
 import { projects } from "@/db/schema/projects";
@@ -12,7 +12,6 @@ export const whiteboardDocuments = pgTable("whiteboard_documents", {
   creatorId: uuid("creator_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  canvasContent: jsonb("canvas_content").notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),

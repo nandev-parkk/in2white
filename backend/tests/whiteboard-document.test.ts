@@ -3,7 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { and, asc, count, desc, eq, ilike, isNull } from "drizzle-orm";
 import { createApp } from "@/app";
 import { db } from "@/db/client";
-import { projects, users, whiteboardDocuments, workspaceMemberships } from "@/db/schema";
+import {
+  projects,
+  users,
+  whiteboardDocumentContents,
+  whiteboardDocuments,
+  workspaceMemberships,
+} from "@/db/schema";
 import { signAccessToken } from "@/lib/jwt";
 
 vi.mock("@/db/client", () => ({
@@ -21,7 +27,7 @@ const createdWhiteboardDocument = {
   projectId,
   name: "아이디어 스케치",
   creatorId: "user-1",
-  canvasContent: {},
+  canvasContent: { elements: [] },
   createdAt: new Date("2026-09-09T00:00:00.000Z"),
   updatedAt: new Date("2026-09-09T00:00:00.000Z"),
 };
@@ -57,6 +63,7 @@ function mockWhiteboardDocumentCreateTransaction({
   membershipError,
   projectError,
   insertError,
+  contentInsertError,
 }: {
   membershipRows?: unknown[];
   projectRows?: unknown[];
@@ -64,6 +71,7 @@ function mockWhiteboardDocumentCreateTransaction({
   membershipError?: Error;
   projectError?: Error;
   insertError?: Error;
+  contentInsertError?: Error;
 } = {}) {
   const membershipQuery = {
     from: vi.fn().mockReturnThis(),
@@ -98,14 +106,24 @@ function mockWhiteboardDocumentCreateTransaction({
             ),
           ),
   };
+  const contentInsert = {
+    values: vi.fn().mockReturnThis(),
+    returning: contentInsertError
+      ? vi.fn().mockRejectedValue(contentInsertError)
+      : vi
+          .fn()
+          .mockResolvedValue(
+            documentRows.map((row) => ({ updatedAt: (row as Record<string, unknown>).updatedAt })),
+          ),
+  };
   const transaction = {
     select: vi.fn().mockReturnValueOnce(membershipQuery).mockReturnValueOnce(projectQuery),
-    insert: vi.fn().mockReturnValue(documentInsert),
+    insert: vi.fn().mockReturnValueOnce(documentInsert).mockReturnValueOnce(contentInsert),
   };
 
   vi.mocked(db.transaction).mockImplementation(async (callback) => callback(transaction as never));
 
-  return { membershipQuery, projectQuery, documentInsert, transaction };
+  return { membershipQuery, projectQuery, documentInsert, contentInsert, transaction };
 }
 
 function mockWhiteboardDocumentUpdateTransaction({
@@ -292,9 +310,58 @@ function mockWhiteboardDocumentListQueries({
   return { membershipQuery, projectQuery, countQuery, documentQuery };
 }
 
+function mockWhiteboardDocumentDetailQueries({
+  membershipRows = [{ id: "membership-1" }],
+  projectRows = [{ id: projectId }],
+  documentRows = [
+    {
+      ...createdWhiteboardDocumentRow,
+      revision: 0,
+      lastSavedAt: createdWhiteboardDocument.updatedAt,
+    },
+  ],
+  membershipError,
+  projectError,
+  documentError,
+}: {
+  membershipRows?: unknown[];
+  projectRows?: unknown[];
+  documentRows?: unknown[];
+  membershipError?: Error;
+  projectError?: Error;
+  documentError?: Error;
+} = {}) {
+  const membershipQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: membershipError
+      ? vi.fn().mockRejectedValue(membershipError)
+      : vi.fn().mockResolvedValue(membershipRows),
+  };
+  const projectQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: projectError
+      ? vi.fn().mockRejectedValue(projectError)
+      : vi.fn().mockResolvedValue(projectRows),
+  };
+  const documentQuery = {
+    from: vi.fn().mockReturnThis(),
+    leftJoin: vi.fn().mockReturnThis(),
+    where: documentError
+      ? vi.fn().mockRejectedValue(documentError)
+      : vi.fn().mockResolvedValue(documentRows),
+  };
+
+  vi.mocked(db.select)
+    .mockReturnValueOnce(membershipQuery as never)
+    .mockReturnValueOnce(projectQuery as never)
+    .mockReturnValueOnce(documentQuery as never);
+
+  return { membershipQuery, projectQuery, documentQuery };
+}
+
 describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents", () => {
   it("creates a whiteboard document for a workspace member and returns 201", async () => {
-    const { membershipQuery, projectQuery, documentInsert, transaction } =
+    const { membershipQuery, projectQuery, documentInsert, contentInsert, transaction } =
       mockWhiteboardDocumentCreateTransaction();
 
     const response = await request(createApp())
@@ -305,6 +372,8 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
     expect(response.status).toBe(201);
     expect(response.body.whiteboardDocument).toEqual({
       ...createdWhiteboardDocument,
+      revision: 0,
+      lastSavedAt: createdWhiteboardDocument.updatedAt.toISOString(),
       createdAt: createdWhiteboardDocument.createdAt.toISOString(),
       updatedAt: createdWhiteboardDocument.updatedAt.toISOString(),
     });
@@ -338,9 +407,17 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
       projectId: whiteboardDocuments.projectId,
       name: whiteboardDocuments.name,
       creatorId: whiteboardDocuments.creatorId,
-      canvasContent: whiteboardDocuments.canvasContent,
       createdAt: whiteboardDocuments.createdAt,
       updatedAt: whiteboardDocuments.updatedAt,
+    });
+    expect(transaction.insert).toHaveBeenNthCalledWith(2, whiteboardDocumentContents);
+    expect(contentInsert.values).toHaveBeenCalledWith({
+      documentId: createdWhiteboardDocument.id,
+      canvasContent: { elements: [] },
+      revision: 0,
+    });
+    expect(contentInsert.returning).toHaveBeenCalledWith({
+      updatedAt: whiteboardDocumentContents.updatedAt,
     });
   });
 
@@ -523,6 +600,22 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
 
     expect(response.status).toBe(500);
     expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+  });
+
+  it("returns 500 when the content insert fails so the transaction can roll back both rows", async () => {
+    const { documentInsert, contentInsert } = mockWhiteboardDocumentCreateTransaction({
+      contentInsertError: new Error("content insert failed"),
+    });
+
+    const response = await request(createApp())
+      .post(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "아이디어 스케치" });
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+    expect(documentInsert.values).toHaveBeenCalledOnce();
+    expect(contentInsert.values).toHaveBeenCalledOnce();
   });
 });
 
@@ -814,6 +907,198 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
     expect(countQuery.where).toHaveBeenCalledOnce();
     expect(documentQuery.where).toHaveBeenCalledOnce();
   });
+});
+
+describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents/:documentId", () => {
+  const detailPath = `/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents/${createdWhiteboardDocument.id}`;
+
+  it("상세 조회 성공 시 canvasContent·revision·lastSavedAt을 반환한다", async () => {
+    const { documentQuery } = mockWhiteboardDocumentDetailQueries();
+
+    const response = await request(createApp())
+      .get(detailPath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.whiteboardDocument).toEqual({
+      id: createdWhiteboardDocument.id,
+      projectId,
+      name: createdWhiteboardDocument.name,
+      creatorId: createdWhiteboardDocument.creatorId,
+      canvasContent: createdWhiteboardDocument.canvasContent,
+      revision: 0,
+      lastSavedAt: createdWhiteboardDocument.updatedAt.toISOString(),
+      createdAt: createdWhiteboardDocument.createdAt.toISOString(),
+      updatedAt: createdWhiteboardDocument.updatedAt.toISOString(),
+    });
+    expect(response.body.whiteboardDocument).not.toHaveProperty("deletedAt");
+    expect(documentQuery.from).toHaveBeenCalledWith(whiteboardDocuments);
+    expect(documentQuery.leftJoin).toHaveBeenCalledWith(
+      whiteboardDocumentContents,
+      eq(whiteboardDocumentContents.documentId, whiteboardDocuments.id),
+    );
+    expect(documentQuery.where).toHaveBeenCalledOnce();
+    expect(db.select).toHaveBeenNthCalledWith(3, {
+      id: whiteboardDocuments.id,
+      projectId: whiteboardDocuments.projectId,
+      name: whiteboardDocuments.name,
+      creatorId: whiteboardDocuments.creatorId,
+      createdAt: whiteboardDocuments.createdAt,
+      updatedAt: whiteboardDocuments.updatedAt,
+      canvasContent: whiteboardDocumentContents.canvasContent,
+      revision: whiteboardDocumentContents.revision,
+      lastSavedAt: whiteboardDocumentContents.updatedAt,
+    });
+    expect(db.select).toHaveBeenCalledTimes(3);
+  });
+
+  it("content row가 없으면 500 CONTENT_INTEGRITY_ERROR를 반환한다", async () => {
+    mockWhiteboardDocumentDetailQueries({
+      documentRows: [
+        {
+          ...createdWhiteboardDocumentRow,
+          canvasContent: null,
+          revision: null,
+          lastSavedAt: null,
+        },
+      ],
+    });
+
+    const response = await request(createApp())
+      .get(detailPath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(500);
+    expect(response.body.error.code).toBe("CONTENT_INTEGRITY_ERROR");
+    expect(db.select).toHaveBeenCalledTimes(3);
+  });
+
+  it("인증이 없으면 401을 반환하고 DB를 조회하지 않는다", async () => {
+    const response = await request(createApp()).get(detailPath);
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHORIZED");
+    expect(db.select).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      label: "workspaceId",
+      pathWorkspaceId: "not-a-uuid",
+      pathProjectId: projectId,
+      pathDocumentId: createdWhiteboardDocument.id,
+    },
+    {
+      label: "projectId",
+      pathWorkspaceId: workspaceId,
+      pathProjectId: "not-a-uuid",
+      pathDocumentId: createdWhiteboardDocument.id,
+    },
+    {
+      label: "documentId",
+      pathWorkspaceId: workspaceId,
+      pathProjectId: projectId,
+      pathDocumentId: "not-a-uuid",
+    },
+  ])(
+    "$label가 UUID가 아니면 400 VALIDATION_ERROR를 반환하고 DB를 조회하지 않는다",
+    async ({ pathWorkspaceId, pathProjectId, pathDocumentId }) => {
+      const response = await request(createApp())
+        .get(
+          `/workspaces/${pathWorkspaceId}/projects/${pathProjectId}/whiteboard-documents/${pathDocumentId}`,
+        )
+        .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe("VALIDATION_ERROR");
+      expect(db.select).not.toHaveBeenCalled();
+    },
+  );
+
+  it("멤버십이 없으면 404 WORKSPACE_NOT_FOUND를 반환하고 이후 query를 실행하지 않는다", async () => {
+    const { projectQuery, documentQuery } = mockWhiteboardDocumentDetailQueries({
+      membershipRows: [],
+    });
+
+    const response = await request(createApp())
+      .get(detailPath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("WORKSPACE_NOT_FOUND");
+    expect(projectQuery.where).not.toHaveBeenCalled();
+    expect(documentQuery.where).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: "프로젝트가 없다", projectRows: [] },
+    { label: "다른 workspace에 속한다", projectRows: [] },
+    { label: "삭제되었다", projectRows: [] },
+  ])(
+    "$label면 404 PROJECT_NOT_FOUND를 반환하고 document query를 실행하지 않는다",
+    async ({ projectRows }) => {
+      const { documentQuery } = mockWhiteboardDocumentDetailQueries({ projectRows });
+
+      const response = await request(createApp())
+        .get(detailPath)
+        .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body.error.code).toBe("PROJECT_NOT_FOUND");
+      expect(documentQuery.where).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { label: "없다", documentRows: [] },
+    { label: "다른 project에 속한다", documentRows: [] },
+    { label: "삭제되었다", documentRows: [] },
+  ])("$label면 404 WHITEBOARD_DOCUMENT_NOT_FOUND를 반환한다", async ({ documentRows }) => {
+    const { documentQuery } = mockWhiteboardDocumentDetailQueries({ documentRows });
+
+    const response = await request(createApp())
+      .get(detailPath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("WHITEBOARD_DOCUMENT_NOT_FOUND");
+    expect(documentQuery.where).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { label: "멤버십", options: { membershipError: new Error("membership query failed") } },
+    { label: "project", options: { projectError: new Error("project query failed") } },
+    { label: "document", options: { documentError: new Error("document query failed") } },
+  ])(
+    "$label query가 실패하면 500을 반환하고 실패한 query까지만 실행한다",
+    async ({ label, options }) => {
+      const { membershipQuery, projectQuery, documentQuery } =
+        mockWhiteboardDocumentDetailQueries(options);
+
+      const response = await request(createApp())
+        .get(detailPath)
+        .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+      expect(response.status).toBe(500);
+      expect(response.body.error.code).toBe("INTERNAL_SERVER_ERROR");
+      expect(membershipQuery.where).toHaveBeenCalledOnce();
+
+      if (label === "멤버십") {
+        expect(projectQuery.where).not.toHaveBeenCalled();
+        expect(documentQuery.where).not.toHaveBeenCalled();
+        return;
+      }
+
+      expect(projectQuery.where).toHaveBeenCalledOnce();
+
+      if (label === "project") {
+        expect(documentQuery.where).not.toHaveBeenCalled();
+        return;
+      }
+
+      expect(documentQuery.where).toHaveBeenCalledOnce();
+    },
+  );
 });
 
 describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-documents/:documentId", () => {
@@ -1140,13 +1425,15 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documen
   it("Owner가 다른 Creator의 문서를 삭제하고 204를 반환한다", async () => {
     const { documentQuery, documentUpdate, transaction } =
       mockWhiteboardDocumentDeleteTransaction();
+    const onWhiteboardDocumentDeleted = vi.fn();
 
-    const response = await request(createApp())
+    const response = await request(createApp({ onWhiteboardDocumentDeleted }))
       .delete(deletePath)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
     expect(response.status).toBe(204);
     expect(response.body).toEqual({});
+    expect(onWhiteboardDocumentDeleted).toHaveBeenCalledWith(createdWhiteboardDocument.id);
     expect(transaction.select).toHaveBeenCalledTimes(3);
     expect(documentQuery.where).toHaveBeenCalledWith(
       and(
@@ -1187,6 +1474,32 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documen
 
     expect(response.status).toBe(204);
     expect(documentUpdate.set).toHaveBeenCalledOnce();
+  });
+
+  it("커밋 후 realtime hook이 실패해도 204를 반환한다", async () => {
+    mockWhiteboardDocumentDeleteTransaction();
+    const onWhiteboardDocumentDeleted = vi.fn(() => {
+      throw new Error("socket cleanup failed");
+    });
+
+    const response = await request(createApp({ onWhiteboardDocumentDeleted }))
+      .delete(deletePath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(204);
+    expect(onWhiteboardDocumentDeleted).toHaveBeenCalledWith(createdWhiteboardDocument.id);
+  });
+
+  it("DB delete가 실패하면 realtime hook을 호출하지 않는다", async () => {
+    mockWhiteboardDocumentDeleteTransaction({ deleteError: new Error("delete failed") });
+    const onWhiteboardDocumentDeleted = vi.fn();
+
+    const response = await request(createApp({ onWhiteboardDocumentDeleted }))
+      .delete(deletePath)
+      .set("Authorization", `Bearer ${await createAccessToken()}`);
+
+    expect(response.status).toBe(500);
+    expect(onWhiteboardDocumentDeleted).not.toHaveBeenCalled();
   });
 
   it("인증이 없으면 401을 반환하고 transaction을 호출하지 않는다", async () => {

@@ -7,6 +7,7 @@ export interface AccessTokenPayload {
   email: string;
   sid: string;
   type: "access";
+  exp: number;
 }
 
 export interface RefreshTokenPayload {
@@ -44,12 +45,19 @@ export async function verifyAccessToken(token: string): Promise<AccessTokenPaylo
     typeof payload.sub !== "string" ||
     typeof payload.email !== "string" ||
     typeof payload.sid !== "string" ||
-    payload.type !== "access"
+    payload.type !== "access" ||
+    typeof payload.exp !== "number"
   ) {
     throw new Error("Invalid access token payload");
   }
 
-  return { sub: payload.sub, email: payload.email, sid: payload.sid, type: "access" };
+  return {
+    sub: payload.sub,
+    email: payload.email,
+    sid: payload.sid,
+    type: "access",
+    exp: payload.exp,
+  };
 }
 
 export async function signRefreshToken(payload: { sub: string; sid: string }): Promise<string> {
