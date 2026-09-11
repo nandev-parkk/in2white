@@ -26,6 +26,29 @@ export async function getUserById(id: string) {
   });
 }
 
+export async function updateUserName({ userId, name }: { userId: string; name: string }) {
+  const [user] = await db.update(users).set({ name }).where(eq(users.id, userId)).returning();
+  return user;
+}
+
+export async function updateUserPasswordAndIncrementSessionVersion({
+  userId,
+  passwordHash,
+}: {
+  userId: string;
+  passwordHash: string;
+}) {
+  const [user] = await db
+    .update(users)
+    .set({
+      passwordHash,
+      sessionVersion: sql`${users.sessionVersion} + 1`,
+    })
+    .where(eq(users.id, userId))
+    .returning();
+  return user;
+}
+
 export async function upsertUserWithDefaultWorkspace({
   email,
   name,

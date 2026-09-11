@@ -86,6 +86,7 @@ const seededUser = {
   id: "user-1",
   name: "Test User",
   email: "user@example.com",
+  sessionVersion: 0,
   createdAt: new Date(),
 };
 

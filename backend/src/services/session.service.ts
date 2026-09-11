@@ -55,3 +55,23 @@ export async function rotateRefreshSession(
 export async function deleteRefreshSession(userId: string, sid: string): Promise<void> {
   await valkey.del(sessionKey(userId, sid));
 }
+
+export async function deleteOtherRefreshSessions(userId: string, keepSid: string): Promise<void> {
+  let cursor = "0";
+  const keepKey = sessionKey(userId, keepSid);
+
+  do {
+    const [nextCursor, keys] = await valkey.scan(
+      cursor,
+      "MATCH",
+      `refresh:${userId}:*`,
+      "COUNT",
+      100,
+    );
+    const staleKeys = keys.filter((key) => key !== keepKey);
+    if (staleKeys.length > 0) {
+      await valkey.del(...staleKeys);
+    }
+    cursor = nextCursor;
+  } while (cursor !== "0");
+}

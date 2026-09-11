@@ -5,29 +5,11 @@ import { login, logout, refresh } from "@/services/auth.service";
 import { HttpError } from "@/utils/http-error";
 import { ERROR_MESSAGES } from "@/constants/messages";
 import { requireUser } from "@/utils/require-user";
-
-const REFRESH_TOKEN_COOKIE = "refreshToken";
-const REFRESH_TOKEN_COOKIE_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
-
-function refreshTokenCookieOptions() {
-  return {
-    httpOnly: true,
-    secure: getEnv().NODE_ENV === "production",
-    sameSite: "lax" as const,
-    path: "/auth/refresh",
-  };
-}
-
-function setRefreshTokenCookie(res: Response, token: string) {
-  res.cookie(REFRESH_TOKEN_COOKIE, token, {
-    ...refreshTokenCookieOptions(),
-    maxAge: REFRESH_TOKEN_COOKIE_MAX_AGE_MS,
-  });
-}
-
-function clearRefreshTokenCookie(res: Response) {
-  res.clearCookie(REFRESH_TOKEN_COOKIE, refreshTokenCookieOptions());
-}
+import {
+  clearRefreshTokenCookie,
+  REFRESH_TOKEN_COOKIE,
+  setRefreshTokenCookie,
+} from "@/utils/auth-cookie";
 
 export async function loginHandler(req: Request, res: Response) {
   const parsed = loginSchema.safeParse(req.body);

@@ -16,9 +16,13 @@ import { PROJECTS_ROUTE, Route } from './projects'
 vi.mock('@/pages/home', () => ({
   HomePage: ({
     workspaceId,
+    onNavChange,
+    onUserClick,
     onWorkspaceChange,
   }: {
     workspaceId?: string
+    onNavChange?: (key: 'settings', workspaceId: string | null) => void
+    onUserClick?: (workspaceId: string | null) => void
     onWorkspaceChange?: (workspaceId: string) => void
   }) => (
     <div data-testid="workspace-projects-route" data-workspace-id={workspaceId}>
@@ -28,8 +32,21 @@ vi.mock('@/pages/home', () => ({
       >
         다른 워크스페이스
       </button>
+      <button
+        type="button"
+        onClick={() => onNavChange?.('settings', 'workspace-current')}
+      >
+        설정
+      </button>
+      <button type="button" onClick={() => onUserClick?.('workspace-current')}>
+        사용자 정보
+      </button>
     </div>
   ),
+}))
+
+vi.mock('@/pages/account', () => ({
+  AccountPage: () => <div data-testid="account-route" />,
 }))
 
 describe('project route', () => {
@@ -104,6 +121,54 @@ describe('project route', () => {
     expect(screen.getByTestId('workspace-projects-route')).toHaveAttribute(
       'data-workspace-id',
       'workspace-next',
+    )
+  })
+
+  it('사이드바 하단 사용자 정보는 현재 workspace context를 보존한 account route로 이동한다', async () => {
+    useSessionStore.getState().setSession(createToken(2_000_000_000), {
+      id: 'user-1',
+      name: '테스터',
+      email: 'user@in2white.team',
+    })
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/workspaces/workspace-current/projects'],
+      }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: '사용자 정보' }),
+    )
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/account'))
+    expect(router.state.location.search).toEqual({
+      workspaceId: 'workspace-current',
+    })
+  })
+
+  it('사이드바 설정은 account route로 이동하지 않는다', async () => {
+    useSessionStore.getState().setSession(createToken(2_000_000_000), {
+      id: 'user-1',
+      name: '테스터',
+      email: 'user@in2white.team',
+    })
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/workspaces/workspace-current/projects'],
+      }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await userEvent.click(await screen.findByRole('button', { name: '설정' }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(router.state.location.pathname).toBe(
+      '/workspaces/workspace-current/projects',
     )
   })
 })

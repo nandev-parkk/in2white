@@ -40,6 +40,7 @@ const sidebarFixture = {
   onNavChange: vi.fn(),
   onWorkspaceChange: vi.fn(),
   onCreateWorkspace: vi.fn(),
+  onUserClick: vi.fn(),
   onLogout: vi.fn(),
   userName: '테스터',
   userEmail: 'user@in2white.team',
@@ -922,14 +923,16 @@ describe('Sidebar', () => {
     ).toBeInTheDocument()
   })
 
-  it('기존 내비게이션과 로그아웃 동작을 유지한다', async () => {
+  it('기존 내비게이션, 사용자 정보, 로그아웃 동작을 유지한다', async () => {
     const user = userEvent.setup()
     const onNavChange = vi.fn()
+    const onUserClick = vi.fn()
     const onLogout = vi.fn()
     render(
       <Sidebar
         {...sidebarFixture}
         onNavChange={onNavChange}
+        onUserClick={onUserClick}
         onLogout={onLogout}
       />,
     )
@@ -937,11 +940,13 @@ describe('Sidebar', () => {
     await user.click(screen.getByRole('button', { name: '프로젝트' }))
     await user.click(screen.getByRole('button', { name: '멤버' }))
     await user.click(screen.getByRole('button', { name: '설정' }))
+    await user.click(screen.getByRole('button', { name: /사용자 정보/ }))
     await user.click(screen.getByRole('button', { name: '로그아웃' }))
 
     expect(onNavChange).toHaveBeenNthCalledWith(1, 'projects')
     expect(onNavChange).toHaveBeenNthCalledWith(2, 'members')
     expect(onNavChange).toHaveBeenNthCalledWith(3, 'settings')
+    expect(onUserClick).toHaveBeenCalledOnce()
     expect(onLogout).toHaveBeenCalledOnce()
   })
 })

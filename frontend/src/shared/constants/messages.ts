@@ -14,5 +14,12 @@ export const MESSAGES = {
   PROJECT_NAME_REQUIRED: '프로젝트 이름을 입력해주세요',
   PROJECT_NAME_TOO_LONG: '프로젝트 이름은 50자 이하로 입력해주세요',
   PROJECT_DESCRIPTION_TOO_LONG: '프로젝트 설명은 200자 이하로 입력해주세요',
+  ACCOUNT_NAME_REQUIRED: '이름을 입력해주세요',
+  ACCOUNT_NAME_TOO_LONG: '이름은 255자 이내로 입력해주세요',
+  PASSWORD_CONFIRM_REQUIRED: '비밀번호 확인을 입력해주세요',
+  PASSWORD_CONFIRM_MISMATCH: '새 비밀번호가 일치하지 않습니다',
+  ACCOUNT_UPDATED: '이름을 저장했어요',
+  PASSWORD_UPDATED: '비밀번호를 변경했어요',
+  ACCOUNT_LOAD_FAILED: '계정 정보를 불러오지 못했어요',
   NETWORK_ERROR: '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요',
 } as const

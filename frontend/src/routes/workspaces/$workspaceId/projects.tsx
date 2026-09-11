@@ -25,6 +25,14 @@ function WorkspaceProjectsRoute() {
           params: { workspaceId: nextWorkspaceId },
         })
       }
+      onUserClick={(selectedWorkspaceId) => {
+        void navigate({
+          to: '/account',
+          search: {
+            workspaceId: selectedWorkspaceId ?? workspaceId,
+          },
+        })
+      }}
     />
   )
 }
