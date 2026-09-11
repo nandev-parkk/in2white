@@ -1,11 +1,5 @@
 import { useState } from 'react'
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 
@@ -68,15 +62,18 @@ function emitSidebarWidth(width: number) {
   }
 
   act(() => {
-    resizeObserverCallback?.([
-      {
-        borderBoxSize: [{ inlineSize: width, blockSize: 800 }],
-        contentBoxSize: [{ inlineSize: width, blockSize: 800 }],
-        contentRect: { width } as DOMRectReadOnly,
-        devicePixelContentBoxSize: [{ inlineSize: width, blockSize: 800 }],
-        target: document.body,
-      } as unknown as ResizeObserverEntry,
-    ], {} as ResizeObserver)
+    resizeObserverCallback?.(
+      [
+        {
+          borderBoxSize: [{ inlineSize: width, blockSize: 800 }],
+          contentBoxSize: [{ inlineSize: width, blockSize: 800 }],
+          contentRect: { width } as DOMRectReadOnly,
+          devicePixelContentBoxSize: [{ inlineSize: width, blockSize: 800 }],
+          target: document.body,
+        } as unknown as ResizeObserverEntry,
+      ],
+      {} as ResizeObserver,
+    )
   })
 }
 
@@ -90,12 +87,24 @@ describe('Sidebar', () => {
     })
     const toggle = screen.getByRole('button', { name: '사이드바 접기' })
     const logo = screen.getByRole('img', { name: 'in2white' })
+    const resizeHandle = screen.getByRole('separator', {
+      name: '사이드바 크기 조절',
+    })
     const workspaceTrigger = screen.getByRole('button', {
       name: 'My Workspace',
     })
 
     expect(logo).toHaveClass('size-8')
     expect(toggle).toHaveClass('text-foreground-strong')
+    expect(sidebar).toHaveClass(
+      'sticky',
+      'top-0',
+      'h-svh',
+      'max-h-svh',
+      'overflow-visible',
+    )
+    expect(sidebar).not.toHaveClass('overflow-y-auto')
+    expect(resizeHandle).toHaveClass('z-10', 'cursor-col-resize')
     expect(workspaceTrigger.parentElement?.parentElement).not.toHaveClass(
       'pr-8',
     )
@@ -105,22 +114,37 @@ describe('Sidebar', () => {
 
     const workspaceName = screen.getByText('My Workspace')
     const chevron = workspaceTrigger.querySelector('.lucide-chevrons-up-down')
-    expect(workspaceName.parentElement).toHaveAttribute(
-      'data-slot',
-      'workspace-name-row',
+    const workspaceNameRow = workspaceTrigger.querySelector(
+      '[data-slot="workspace-name-row"]',
     )
-    expect(chevron?.parentElement).toBe(workspaceName.parentElement)
+    expect(workspaceNameRow).toHaveClass('text-left')
+    expect(workspaceName).toHaveAttribute('data-slot', 'workspace-name')
+    expect(workspaceName).toHaveClass('text-left')
+    expect(chevron).toHaveAttribute('data-slot', 'workspace-chevron')
+    expect(chevron?.parentElement).not.toBe(workspaceNameRow)
+    expect(chevron?.parentElement).toBe(
+      workspaceTrigger.querySelector('[data-slot="workspace-trigger-label"]')
+        ?.parentElement,
+    )
+    expect(chevron?.parentElement).toHaveClass('items-center')
+    expect(workspaceName.parentElement).not.toBe(chevron?.parentElement)
 
     await user.click(workspaceTrigger)
 
     const searchbox = screen.getByRole('searchbox', {
       name: '워크스페이스 검색',
     })
-    expect(searchbox).toHaveClass(
-      'border-transparent',
+    expect(searchbox).toHaveAttribute('type', 'text')
+    expect(searchbox.parentElement).toHaveClass(
       'bg-background-subtle',
       'rounded-full',
-      'pl-9',
+    )
+    expect(screen.getByRole('listbox').parentElement).toHaveClass('gap-3')
+    expect(screen.getByRole('listbox')).toHaveClass('gap-1.5')
+    expect(screen.getByRole('option', { name: /My Workspace/ })).toHaveClass(
+      'h-[58px]',
+      'min-h-[58px]',
+      'shrink-0',
     )
     expect(
       screen.getByRole('button', { name: '새 워크스페이스 생성' })
@@ -130,6 +154,48 @@ describe('Sidebar', () => {
       screen.getByRole('button', { name: '로그아웃' }).nextElementSibling,
     ).toHaveClass('bg-border')
     expect(sidebar).toBeInTheDocument()
+  })
+
+  it('워크스페이스 목록이 길어져도 Figma 셀 높이를 유지한다', async () => {
+    const user = userEvent.setup()
+    const workspaces = Array.from({ length: 10 }, (_, index) => ({
+      ...workspaceFixture,
+      id: `workspace-${index + 1}`,
+      name: `워크스페이스 ${index + 1}`,
+    }))
+
+    render(
+      <Sidebar
+        {...sidebarFixture}
+        workspace={workspaces[0]}
+        workspaces={workspaces}
+        selectedWorkspaceId={workspaces[0].id}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: workspaces[0].name }))
+
+    for (const option of screen.getAllByRole('option')) {
+      expect(option).toHaveClass('h-[58px]', 'min-h-[58px]', 'shrink-0')
+    }
+  })
+
+  it('검색 결과가 없으면 간소화된 빈 상태를 목록 중앙에 표시한다', async () => {
+    const user = userEvent.setup()
+    render(<Sidebar {...sidebarFixture} />)
+
+    await user.click(screen.getByRole('button', { name: 'My Workspace' }))
+    const searchbox = screen.getByRole('searchbox', {
+      name: '워크스페이스 검색',
+    })
+    await user.type(searchbox, '없는 워크스페이스')
+
+    const emptyState = screen.getByText('검색 결과가 없어요').parentElement
+    expect(emptyState).toHaveClass('items-center', 'justify-center')
+    expect(screen.getByRole('listbox')).toHaveAttribute(
+      'data-scrollbar-hidden',
+      'true',
+    )
   })
 
   it('접힌 사이드바의 로고와 외부 토글을 상단에 배치한다', async () => {
@@ -150,15 +216,20 @@ describe('Sidebar', () => {
     expect(sidebar).toHaveClass('transition-[width]')
     expect(logo.parentElement).not.toHaveClass('relative')
     expect(toggle).toHaveClass(
-      'left-[calc(100%+1px)]',
-      'top-3',
+      'left-full',
+      '-translate-x-1/2',
+      'top-4',
       'bg-background-default',
       'border-sidebar-border',
-      'rounded-l-none',
-      'rounded-r-md',
-      'border-l-0',
-      'h-8',
+      'border',
+      'h-6',
       'w-6',
+      'rounded-full',
+      'z-40',
+      'cursor-default',
+    )
+    expect(toggle.querySelector('.lucide-chevron-left')).toHaveClass(
+      'rotate-180',
     )
     expect(logo.parentElement).toHaveClass('h-8', 'pl-1')
     expect(logo.parentElement).not.toHaveClass('justify-center')
@@ -181,7 +252,11 @@ describe('Sidebar', () => {
     expect(workspaceTriggerLabel).toHaveClass('max-w-0')
     expect(workspaceTriggerLabel?.querySelector('.text-label')).toHaveClass(
       'truncate',
+      'whitespace-nowrap',
     )
+    expect(
+      workspaceTriggerLabel?.querySelector('.text-foreground-tertiary'),
+    ).toHaveClass('whitespace-nowrap')
   })
 
   it('접기 전환 중에는 메뉴 기준점을 유지하고 폭 전환 후에만 접힌다', async () => {
@@ -243,21 +318,70 @@ describe('Sidebar', () => {
 
     expect(toggle).toHaveClass(
       'top-4',
-      'left-[calc(100%-36px)]',
+      'left-[calc(100%-40px)]',
       'h-6',
       'w-6',
-      'transition-[left,top,height,border-radius,background-color,transform]',
+      'rounded-full',
+      'transition-[left,top,height,border-radius,background-color,box-shadow,transform]',
       'duration-300',
       'ease-in-out',
     )
+    expect(toggle.querySelector('.lucide-chevron-left')).not.toHaveClass(
+      'rotate-180',
+    )
+    expect(toggle).not.toHaveClass('hover:bg-action-secondary-hover')
+    expect(toggle).toHaveClass('hover:bg-background-default')
+    expect(toggle).toHaveClass('hover:shadow-sm')
 
     fireEvent.click(toggle)
 
-    expect(toggle).toHaveClass('top-4', 'left-[calc(100%-36px)]', 'h-6')
+    expect(toggle).toHaveClass('top-4', 'left-[calc(100%-40px)]', 'h-6')
 
     fireEvent.transitionEnd(sidebar, { propertyName: 'width' })
 
-    expect(toggle).toHaveClass('top-3', 'left-[calc(100%+1px)]', 'h-8')
+    expect(toggle).toHaveClass(
+      'top-4',
+      'left-full',
+      '-translate-x-1/2',
+      'h-6',
+      'w-6',
+    )
+  })
+
+  it('선택된 하단 워크스페이스를 팝오버를 열 때 중앙으로 스크롤한다', async () => {
+    const user = userEvent.setup()
+    const workspaces = Array.from({ length: 10 }, (_, index) => ({
+      ...workspaceFixture,
+      id: `workspace-${index + 1}`,
+      name: `워크스페이스 ${index + 1}`,
+    }))
+    const scrollIntoView = vi.fn()
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = scrollIntoView
+
+    try {
+      render(
+        <Sidebar
+          {...sidebarFixture}
+          workspace={workspaces[7]}
+          workspaces={workspaces}
+          selectedWorkspaceId={workspaces[7].id}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: workspaces[7].name }))
+
+      expect(
+        screen.getByRole('option', { name: /워크스페이스 8/ }),
+      ).toHaveAttribute('aria-selected', 'true')
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        behavior: 'auto',
+        block: 'center',
+        inline: 'nearest',
+      })
+    } finally {
+      HTMLElement.prototype.scrollIntoView = originalScrollIntoView
+    }
   })
 
   it('콜랩스 버튼 위치를 실제 사이드바 폭 기준으로 전환한다', () => {
@@ -265,13 +389,13 @@ describe('Sidebar', () => {
     const toggle = screen.getByRole('button', { name: '사이드바 접기' })
 
     fireEvent.click(toggle)
-    expect(toggle).toHaveClass('left-[calc(100%-36px)]')
+    expect(toggle).toHaveClass('left-[calc(100%-40px)]')
 
     emitSidebarWidth(121)
-    expect(toggle).toHaveClass('left-[calc(100%-36px)]')
+    expect(toggle).toHaveClass('left-[calc(100%-40px)]')
 
     emitSidebarWidth(120)
-    expect(toggle).toHaveClass('left-[calc(100%+1px)]')
+    expect(toggle).toHaveClass('left-full')
 
     unmount()
     render(<Sidebar {...sidebarFixture} collapsed />)
@@ -280,13 +404,13 @@ describe('Sidebar', () => {
       name: '사이드바 펼치기',
     })
     fireEvent.click(expandToggle)
-    expect(expandToggle).toHaveClass('left-[calc(100%+1px)]')
+    expect(expandToggle).toHaveClass('left-full')
 
     emitSidebarWidth(95)
-    expect(expandToggle).toHaveClass('left-[calc(100%+1px)]')
+    expect(expandToggle).toHaveClass('left-full')
 
     emitSidebarWidth(104)
-    expect(expandToggle).toHaveClass('left-[calc(100%-36px)]')
+    expect(expandToggle).toHaveClass('left-[calc(100%-40px)]')
   })
 
   it('접힌 상태에서 워크스페이스 도형이 버튼 안에서 잘리지 않는다', () => {
@@ -297,12 +421,11 @@ describe('Sidebar', () => {
     })
     const workspaceMark = workspaceTrigger.querySelector('.size-6')
 
-    expect(workspaceTrigger).toHaveClass(
-      'w-full',
-      'justify-start',
-      'px-1.5',
-    )
+    expect(workspaceTrigger).toHaveClass('w-full', 'justify-start', 'px-1.5')
     expect(workspaceMark).toHaveClass('size-6', 'shrink-0')
+    expect(
+      workspaceTrigger.querySelector('[data-slot="workspace-name"]'),
+    ).toHaveClass('whitespace-nowrap')
   })
 
   it('워크스페이스 참여 유저 영역을 유지한 채 부드럽게 숨기고 표시한다', async () => {
@@ -320,6 +443,7 @@ describe('Sidebar', () => {
       'h-5',
       'opacity-100',
       'transition-[opacity,transform]',
+      'pl-1.5',
     )
     expect(workspaceMembers).not.toHaveClass('opacity-0')
 
@@ -359,10 +483,7 @@ describe('Sidebar', () => {
 
     fireEvent.pointerMove(document, { clientX: 240 })
 
-    expect(screen.getByText('프로젝트')).toHaveClass(
-      'max-w-32',
-      'opacity-100',
-    )
+    expect(screen.getByText('프로젝트')).toHaveClass('max-w-32', 'opacity-100')
   })
 
   it('사이드바 리사이즈 핸들로 64px에서 240px 사이의 폭을 조절한다', () => {
@@ -434,7 +555,9 @@ describe('Sidebar', () => {
 
     expect(toggle).toHaveClass(
       'border-sidebar-border',
-      'left-[calc(100%+1px)]',
+      'left-full',
+      '-translate-x-1/2',
+      'w-6',
     )
 
     fireEvent.pointerDown(resizeHandle, { clientX: 64 })
@@ -442,18 +565,18 @@ describe('Sidebar', () => {
 
     fireEvent.pointerMove(document, { clientX: 80 })
     expect(sidebar).toHaveStyle({ width: '80px' })
-    expect(toggle).toHaveClass('left-[calc(100%+1px)]')
+    expect(toggle).toHaveClass('left-full', '-translate-x-1/2')
     expect(toggle).not.toHaveClass('right-3')
 
     fireEvent.pointerMove(document, { clientX: 96 })
     expect(sidebar).toHaveStyle({ width: '96px' })
-    expect(toggle).toHaveClass('left-[calc(100%+1px)]')
+    expect(toggle).toHaveClass('left-full', '-translate-x-1/2')
     expect(toggle).not.toHaveClass('right-3')
 
     fireEvent.pointerMove(document, { clientX: 128 })
     expect(sidebar).toHaveStyle({ width: '128px' })
-    expect(toggle).toHaveClass('left-[calc(100%-36px)]')
-    expect(toggle).not.toHaveClass('left-[calc(100%+1px)]')
+    expect(toggle).toHaveClass('left-[calc(100%-40px)]')
+    expect(toggle).not.toHaveClass('left-full')
   })
 
   it('접힘과 펼침 전환에서 메뉴와 주요 아이콘의 가로 기준점을 유지한다', async () => {
@@ -516,21 +639,21 @@ describe('Sidebar', () => {
       '[data-slot="sidebar-workspace-members"]',
     ) as HTMLElement
 
-    expect(toggle).toHaveClass('left-[calc(100%+1px)]')
+    expect(toggle).toHaveClass('left-full', '-translate-x-1/2')
     expect(workspaceMembers).toHaveClass('opacity-0', 'pointer-events-none')
     expect(
       screen.getByRole('button', { name: '프로젝트' }).firstElementChild,
     ).not.toHaveClass('justify-center')
 
     fireEvent.pointerDown(resizeHandle, { clientX: 64 })
-    expect(toggle).toHaveClass('left-[calc(100%+1px)]')
+    expect(toggle).toHaveClass('left-full', '-translate-x-1/2')
     expect(workspaceMembers).toHaveClass('opacity-0', 'pointer-events-none')
     expect(
       screen.getByRole('button', { name: '프로젝트' }).firstElementChild,
     ).not.toHaveClass('justify-center')
 
     fireEvent.pointerUp(document)
-    expect(toggle).toHaveClass('left-[calc(100%+1px)]')
+    expect(toggle).toHaveClass('left-full', '-translate-x-1/2')
     expect(workspaceMembers).toHaveClass('opacity-0', 'pointer-events-none')
     expect(
       screen.getByRole('button', { name: '프로젝트' }).firstElementChild,
@@ -557,7 +680,8 @@ describe('Sidebar', () => {
     ).not.toHaveClass('justify-center')
     expect(screen.getByText('테스터')).toBeVisible()
     expect(screen.getByRole('button', { name: '사이드바 접기' })).toHaveClass(
-      'left-[calc(100%+1px)]',
+      'left-full',
+      '-translate-x-1/2',
     )
 
     fireEvent.transitionEnd(sidebar, { propertyName: 'width' })
@@ -566,7 +690,7 @@ describe('Sidebar', () => {
     expect(screen.getByText('테스터')).toBeVisible()
     expect(screen.getByRole('button', { name: '사이드바 접기' })).toHaveClass(
       'top-4',
-      'left-[calc(100%-36px)]',
+      'left-[calc(100%-40px)]',
     )
   })
 

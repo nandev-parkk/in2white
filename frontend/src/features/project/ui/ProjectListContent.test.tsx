@@ -41,7 +41,7 @@ function projectQuery(overrides: Record<string, unknown> = {}) {
   return {
     data: {
       projects: [projectFixture, secondProjectFixture],
-      pagination: { page: 1, limit: 6, total: 2, totalPages: 1 },
+      pagination: { page: 1, limit: 12, total: 2, totalPages: 1 },
     },
     isLoading: false,
     isError: false,
@@ -93,6 +93,17 @@ describe('ProjectListContent', () => {
       'aria-pressed',
       'true',
     )
+    expect(screen.getByRole('button', { name: '카드 보기' })).toHaveClass(
+      'aria-pressed:ring-1',
+      'aria-pressed:ring-border',
+      'aria-pressed:shadow-sm',
+    )
+    expect(screen.getByRole('button', { name: '프로젝트 생성' })).toHaveClass(
+      'h-9',
+    )
+    expect(
+      screen.getByRole('group', { name: '프로젝트 보기 방식' }),
+    ).toHaveClass('h-9', 'rounded-lg', 'p-1')
     expect(screen.getByTestId('project-grid')).toHaveClass(
       'grid-cols-[repeat(auto-fit,minmax(min(100%,280px),1fr))]',
       'min-[1360px]:grid-cols-4',
@@ -103,7 +114,7 @@ describe('ProjectListContent', () => {
     )
     expect(mockUseProjects).toHaveBeenLastCalledWith('token-1', 'workspace-1', {
       page: 1,
-      limit: 6,
+      limit: 12,
       search: '',
     })
   })
@@ -122,9 +133,76 @@ describe('ProjectListContent', () => {
 
     expect(mockUseProjects).toHaveBeenLastCalledWith('token-1', 'workspace-1', {
       page: 1,
-      limit: 6,
+      limit: 12,
       search: '브랜드',
     })
+
+    await userEvent.click(screen.getByRole('button', { name: '검색어 지우기' }))
+    expect(screen.getByRole('searchbox')).toHaveValue('')
+  })
+
+  it('프로젝트가 없으면 Figma 기준 빈 상태와 생성 버튼을 중앙에 표시한다', () => {
+    mockUseProjects.mockReturnValue(
+      projectQuery({
+        data: {
+          projects: [],
+          pagination: { page: 1, limit: 12, total: 0, totalPages: 1 },
+        },
+      }),
+    )
+
+    render(
+      <ProjectListContent
+        accessToken="token-1"
+        workspaceId="workspace-1"
+        userId="user-1"
+        workspaceRole="owner"
+      />,
+    )
+
+    const emptyState = screen.getByText('아직 프로젝트가 없어요').parentElement
+    expect(emptyState).toHaveClass('flex-1', 'items-center', 'justify-center')
+    expect(screen.getByText('아직 프로젝트가 없어요')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        '새 프로젝트를 만들어 팀과 화이트보드로 협업을 시작해보세요',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '새 프로젝트 만들기' }),
+    ).toHaveAttribute('data-size', 'large')
+  })
+
+  it('검색 결과가 없으면 초기화 버튼이 있는 중앙 빈 상태를 표시한다', async () => {
+    mockUseProjects.mockReturnValue(
+      projectQuery({
+        data: {
+          projects: [],
+          pagination: { page: 1, limit: 12, total: 0, totalPages: 1 },
+        },
+      }),
+    )
+
+    render(
+      <ProjectListContent
+        accessToken="token-1"
+        workspaceId="workspace-1"
+        userId="user-1"
+        workspaceRole="owner"
+      />,
+    )
+
+    await userEvent.type(screen.getByRole('searchbox'), '없는 프로젝트')
+
+    const emptyState = screen.getByText('검색 결과가 없어요').parentElement
+    expect(emptyState).toHaveClass('flex-1', 'items-center', 'justify-center')
+    expect(screen.getByText('검색 결과가 없어요')).toBeInTheDocument()
+    expect(
+      screen.getByText('다른 검색어로 다시 시도해보세요'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '검색 결과 초기화' }),
+    ).toBeInTheDocument()
   })
 
   it('목록 보기로 전환하고 페이지를 이동한다', async () => {
@@ -132,7 +210,12 @@ describe('ProjectListContent', () => {
       projectQuery({
         data: {
           projects: [projectFixture],
-          pagination: { page: params.page, limit: 6, total: 12, totalPages: 2 },
+          pagination: {
+            page: params.page,
+            limit: 12,
+            total: 24,
+            totalPages: 2,
+          },
         },
       }),
     )
@@ -147,13 +230,22 @@ describe('ProjectListContent', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '목록 보기' }))
     expect(screen.getByRole('table')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '목록 보기' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getByRole('button', { name: '목록 보기' })).toHaveClass(
+      'aria-pressed:ring-1',
+      'aria-pressed:ring-border',
+      'aria-pressed:shadow-sm',
+    )
 
     await userEvent.click(screen.getByRole('button', { name: '2' }))
     await waitFor(() =>
       expect(mockUseProjects).toHaveBeenLastCalledWith(
         'token-1',
         'workspace-1',
-        { page: 2, limit: 6, search: '' },
+        { page: 2, limit: 12, search: '' },
       ),
     )
   })
@@ -166,7 +258,12 @@ describe('ProjectListContent', () => {
       projectQuery({
         data: {
           projects: [projectFixture],
-          pagination: { page: params.page, limit: 6, total: 7, totalPages: 2 },
+          pagination: {
+            page: params.page,
+            limit: 12,
+            total: 13,
+            totalPages: 2,
+          },
         },
       }),
     )
@@ -190,7 +287,7 @@ describe('ProjectListContent', () => {
       expect(mockUseProjects).toHaveBeenLastCalledWith(
         'token-1',
         'workspace-1',
-        { page: 1, limit: 6, search: '' },
+        { page: 1, limit: 12, search: '' },
       ),
     )
   })

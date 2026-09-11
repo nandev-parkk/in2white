@@ -17,7 +17,6 @@ function WorkspaceProjectsRoute() {
 
   return (
     <HomePage
-      key={workspaceId}
       workspaceId={workspaceId}
       onWorkspaceChange={(nextWorkspaceId) =>
         navigate({

@@ -12,6 +12,7 @@ import { WorkspaceCreateDialog } from '@/features/workspace/ui/WorkspaceCreateDi
 import { WorkspaceAccessDeniedPage } from '@/pages/workspace-access-denied'
 import { Button } from '@/shared/ui/button'
 import { Sidebar, type SidebarNavKey } from '@/shared/ui/sidebar'
+import { toast } from '@/shared/ui/toast'
 
 const COMPACT_SIDEBAR_MEDIA_QUERY = '(max-width: 639px)'
 
@@ -173,6 +174,7 @@ function WorkspaceLayoutContent({
     try {
       const workspace = await createWorkspace.mutateAsync(name)
       setCreatedWorkspaceOverlay({ workspace, sourceData: data })
+      toast.success('워크스페이스를 만들었어요')
       handleCreateDialogOpenChange(false)
     } catch {
       return
@@ -211,7 +213,7 @@ function WorkspaceLayoutContent({
         userEmail={user.email}
       />
 
-      <main className="flex min-w-0 flex-1 flex-col px-5 py-6">
+      <main className="flex min-w-0 flex-1 flex-col px-5 pt-6 pb-12">
         {!isWorkspaceOptional && isLoading ? (
           <p className="text-body text-foreground-secondary">
             워크스페이스 불러오는 중

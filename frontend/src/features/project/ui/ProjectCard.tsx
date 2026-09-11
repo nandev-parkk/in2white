@@ -52,7 +52,7 @@ function ProjectCard({
   canManage = true,
 }: ProjectCardProps) {
   return (
-    <article className="border-border-subtle bg-background-default flex h-[204px] min-w-0 flex-col rounded-md border p-4">
+    <article className="border-border bg-background-default flex min-h-[204px] min-w-0 flex-col rounded-md border p-4">
       <div className="flex items-center justify-between gap-2">
         <Folder className="text-foreground-default size-4" />
         {canManage && (
@@ -60,11 +60,11 @@ function ProjectCard({
         )}
       </div>
 
-      <div className="mt-3 min-w-0 flex-1">
+      <div className="mt-3 min-w-0 flex-1 pb-3">
         <h2 className="text-card-title text-foreground-strong truncate">
           {project.name}
         </h2>
-        <p className="text-body text-foreground-secondary mt-1 line-clamp-2 min-h-10">
+        <p className="text-body text-foreground-secondary mt-1 line-clamp-2">
           {project.description || '설명 없음'}
         </p>
         <div className="text-caption text-foreground-tertiary mt-3 flex flex-col gap-1">
@@ -79,7 +79,7 @@ function ProjectCard({
         </div>
       </div>
 
-      <div className="border-border-subtle flex items-center justify-end gap-2 border-t pt-2">
+      <div className="border-border-subtle flex items-center justify-end gap-2 border-t pt-3">
         <Avatar size="small">
           <AvatarFallback size="small">
             {project.creator.name.slice(0, 1)}

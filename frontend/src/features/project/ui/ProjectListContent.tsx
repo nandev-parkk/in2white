@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LayoutGrid, List } from 'lucide-react'
+import { Folder, LayoutGrid, List, Search as SearchIcon } from 'lucide-react'
 
 import type { Project } from '@/entities/project'
 import type { WorkspaceRole } from '@/entities/workspace'
@@ -25,7 +25,7 @@ import { ProjectDeleteDialog } from './ProjectDeleteDialog'
 import { ProjectFormDialog } from './ProjectFormDialog'
 import { ProjectTable } from './ProjectTable'
 
-const PROJECTS_PER_PAGE = 6
+const PROJECTS_PER_PAGE = 12
 
 type ProjectView = 'grid' | 'table'
 
@@ -153,7 +153,7 @@ function ProjectListContent({
   }
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col gap-5">
+    <section className="flex min-w-0 flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-heading1 text-foreground-strong">프로젝트</h1>
       </div>
@@ -163,12 +163,13 @@ function ProjectListContent({
           aria-label="프로젝트 검색"
           placeholder="프로젝트 이름으로 검색"
           value={search}
+          onClear={() => handleSearchChange('')}
           onChange={(event) => handleSearchChange(event.target.value)}
           className="w-full max-w-80"
         />
         <div className="flex items-center gap-2">
           <div
-            className="border-border-subtle flex items-center gap-0.5 rounded-md border p-0.5"
+            className="bg-background-subtle flex h-9 items-center gap-0.5 rounded-lg p-1"
             role="group"
             aria-label="프로젝트 보기 방식"
           >
@@ -177,7 +178,7 @@ function ProjectListContent({
               aria-label="카드 보기"
               aria-pressed={view === 'grid'}
               onClick={() => setView('grid')}
-              className="focus-visible:ring-action-focus-ring aria-pressed:bg-action-secondary flex size-7 items-center justify-center rounded-sm outline-none focus-visible:ring-3"
+              className="focus-visible:ring-action-focus-ring aria-pressed:bg-background-default aria-pressed:ring-border flex size-7 items-center justify-center rounded-md outline-none focus-visible:ring-3 aria-pressed:shadow-sm aria-pressed:ring-1"
             >
               <LayoutGrid className="size-3.5" />
             </button>
@@ -186,12 +187,14 @@ function ProjectListContent({
               aria-label="목록 보기"
               aria-pressed={view === 'table'}
               onClick={() => setView('table')}
-              className="focus-visible:ring-action-focus-ring aria-pressed:bg-action-secondary flex size-7 items-center justify-center rounded-sm outline-none focus-visible:ring-3"
+              className="focus-visible:ring-action-focus-ring aria-pressed:bg-background-default aria-pressed:ring-border flex size-7 items-center justify-center rounded-md outline-none focus-visible:ring-3 aria-pressed:shadow-sm aria-pressed:ring-1"
             >
               <List className="size-3.5" />
             </button>
           </div>
-          <Button onClick={openCreateDialog}>프로젝트 생성</Button>
+          <Button className="h-9" onClick={openCreateDialog}>
+            프로젝트 생성
+          </Button>
         </div>
       </div>
 
@@ -219,17 +222,31 @@ function ProjectListContent({
         !projectsQuery.isError &&
         projects.length === 0 && (
           <EmptyState
-            icon={<LayoutGrid className="size-8" />}
+            className="flex-1 py-8"
+            icon={
+              hasSearch ? (
+                <SearchIcon className="size-8" />
+              ) : (
+                <Folder className="size-8" />
+              )
+            }
             title={hasSearch ? '검색 결과가 없어요' : '아직 프로젝트가 없어요'}
             description={
               hasSearch
-                ? '다른 검색어로 다시 시도해보세요.'
-                : '첫 프로젝트를 만들어 워크스페이스를 시작해보세요.'
+                ? '다른 검색어로 다시 시도해보세요'
+                : '새 프로젝트를 만들어 팀과 화이트보드로 협업을 시작해보세요'
             }
             action={
-              !hasSearch && (
-                <Button variant="secondary" onClick={openCreateDialog}>
-                  첫 프로젝트 만들기
+              hasSearch ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => handleSearchChange('')}
+                >
+                  검색 결과 초기화
+                </Button>
+              ) : (
+                <Button size="large" onClick={openCreateDialog}>
+                  새 프로젝트 만들기
                 </Button>
               )
             }
@@ -265,7 +282,7 @@ function ProjectListContent({
             )}
 
             {pagination && pagination.totalPages > 1 && (
-              <Pagination className="justify-center pt-2">
+              <Pagination className="justify-center">
                 <PaginationPrevious
                   disabled={page <= 1}
                   onClick={() => setPage((current) => Math.max(1, current - 1))}

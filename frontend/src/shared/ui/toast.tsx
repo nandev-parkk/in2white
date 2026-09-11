@@ -29,9 +29,10 @@ function Toaster({
         classNames: {
           ...toastOptions?.classNames,
           toast: cn(
-            'text-body text-foreground-strong flex !w-fit items-center gap-2.5 rounded-md px-4 py-3 shadow-sm',
+            'text-body text-foreground-strong flex w-80 max-w-[calc(100vw-3rem)] min-w-0 items-center gap-2.5 rounded-md px-4 py-3 break-words shadow-sm',
             toastOptions?.classNames?.toast,
           ),
+          content: cn('min-w-0', toastOptions?.classNames?.content),
           success: cn(
             'bg-status-success-subtle-bg',
             toastOptions?.classNames?.success,
