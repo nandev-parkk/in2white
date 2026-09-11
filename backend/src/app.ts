@@ -5,13 +5,17 @@ import compression from "compression";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import { getEnv } from "@/config/env";
-import { router } from "@/routes/index";
+import { createRouter } from "@/routes/index";
 import { rateLimitMiddleware } from "@/middlewares/rate-limit.middleware";
 import { notFoundMiddleware } from "@/middlewares/not-found.middleware";
 import { errorHandlerMiddleware } from "@/middlewares/error-handler.middleware";
 import { logger } from "@/utils/logger";
 
-export function createApp() {
+export interface AppOptions {
+  onWhiteboardDocumentDeleted?: (documentId: string) => void;
+}
+
+export function createApp(options: AppOptions = {}) {
   const app = express();
 
   app.use(helmet());
@@ -27,7 +31,11 @@ export function createApp() {
   );
   app.use(rateLimitMiddleware);
 
-  app.use(router);
+  app.use(
+    createRouter({
+      onDocumentDeleted: options.onWhiteboardDocumentDeleted,
+    }),
+  );
 
   app.use(notFoundMiddleware);
   app.use(errorHandlerMiddleware);

@@ -23,6 +23,8 @@ describe("access token", () => {
     expect(payload.sid).toBe("sid-1");
     expect(payload.ver).toBe(3);
     expect(payload.type).toBe("access");
+    expect(payload.exp).toEqual(expect.any(Number));
+    expect(payload.exp).toBeGreaterThan(Math.floor(Date.now() / 1000));
   });
 
   it("rejects a tampered token", async () => {

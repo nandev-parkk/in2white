@@ -4,6 +4,7 @@ import { workspaces } from "@/db/schema/workspaces";
 import { workspaceMemberships } from "@/db/schema/workspace-memberships";
 import { projects } from "@/db/schema/projects";
 import { whiteboardDocuments } from "@/db/schema/whiteboard-documents";
+import { whiteboardDocumentContents } from "@/db/schema/whiteboard-document-contents";
 
 export const usersRelations = relations(users, ({ many }) => ({
   ownedWorkspaces: many(workspaces),
@@ -53,4 +54,18 @@ export const whiteboardDocumentsRelations = relations(whiteboardDocuments, ({ on
     fields: [whiteboardDocuments.creatorId],
     references: [users.id],
   }),
+  content: one(whiteboardDocumentContents, {
+    fields: [whiteboardDocuments.id],
+    references: [whiteboardDocumentContents.documentId],
+  }),
 }));
+
+export const whiteboardDocumentContentsRelations = relations(
+  whiteboardDocumentContents,
+  ({ one }) => ({
+    document: one(whiteboardDocuments, {
+      fields: [whiteboardDocumentContents.documentId],
+      references: [whiteboardDocuments.id],
+    }),
+  }),
+);
