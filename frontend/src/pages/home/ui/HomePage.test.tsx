@@ -5,6 +5,7 @@ import { afterEach, vi } from 'vitest'
 
 import { useSessionStore } from '@/entities/session'
 import type { WorkspaceSummary } from '@/entities/workspace'
+import { toast } from '@/shared/ui/toast'
 
 import { HomePage } from './HomePage'
 
@@ -60,6 +61,10 @@ vi.mock('@/features/project/ui/ProjectListContent', () => ({
   ProjectListContent: () => <div data-testid="project-list-content" />,
 }))
 
+vi.mock('@/shared/ui/toast', () => ({
+  toast: { success: vi.fn() },
+}))
+
 function renderHomePage() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -89,6 +94,7 @@ describe('HomePage', () => {
     mockUseCreateWorkspace.mockReset()
     mockNavigate.mockReset()
     mockLogoutRequest.mockReset()
+    vi.mocked(toast.success).mockReset()
     mockLogoutRequest.mockResolvedValue(undefined)
   })
 
@@ -431,6 +437,7 @@ describe('HomePage', () => {
       ).toBeInTheDocument(),
     )
     expect(mutateAsync).toHaveBeenCalledWith('새 팀')
+    expect(toast.success).toHaveBeenCalledWith('워크스페이스를 만들었어요')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
     expect(screen.getByRole('option', { name: /새 팀/ })).toBeInTheDocument()

@@ -46,6 +46,37 @@ describe('WorkspaceCreateDialog', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
+  it('취소 후 다시 열면 입력한 이름을 초기화한다', async () => {
+    const onOpenChange = vi.fn()
+    const view = render(
+      <WorkspaceCreateDialog
+        open
+        onOpenChange={onOpenChange}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    await userEvent.type(screen.getByLabelText('이름'), '임시 워크스페이스')
+    await userEvent.click(screen.getByRole('button', { name: '취소' }))
+
+    view.rerender(
+      <WorkspaceCreateDialog
+        open={false}
+        onOpenChange={onOpenChange}
+        onSubmit={vi.fn()}
+      />,
+    )
+    view.rerender(
+      <WorkspaceCreateDialog
+        open
+        onOpenChange={onOpenChange}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByLabelText('이름')).toHaveValue('')
+  })
+
   it('생성 중에는 버튼을 비활성화한다', () => {
     const onSubmit = vi.fn()
     render(
