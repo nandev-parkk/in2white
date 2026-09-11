@@ -5,6 +5,7 @@ import {
 } from '@tanstack/react-router'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { vi } from 'vitest'
 
 import { useSessionStore } from '@/entities/session'
@@ -13,6 +14,8 @@ import { routeTree } from '@/routeTree.gen'
 import { redirectIfUnauthenticated } from '../../index'
 import { PROJECTS_ROUTE, Route } from './projects'
 
+const homePageInstance = vi.hoisted(() => ({ nextId: 0 }))
+
 vi.mock('@/pages/home', () => ({
   HomePage: ({
     workspaceId,
@@ -20,16 +23,24 @@ vi.mock('@/pages/home', () => ({
   }: {
     workspaceId?: string
     onWorkspaceChange?: (workspaceId: string) => void
-  }) => (
-    <div data-testid="workspace-projects-route" data-workspace-id={workspaceId}>
-      <button
-        type="button"
-        onClick={() => onWorkspaceChange?.('workspace-next')}
+  }) => {
+    const [instanceId] = useState(() => ++homePageInstance.nextId)
+
+    return (
+      <div
+        data-testid="workspace-projects-route"
+        data-workspace-id={workspaceId}
+        data-instance-id={instanceId}
       >
-        다른 워크스페이스
-      </button>
-    </div>
-  ),
+        <button
+          type="button"
+          onClick={() => onWorkspaceChange?.('workspace-next')}
+        >
+          다른 워크스페이스
+        </button>
+      </div>
+    )
+  },
 }))
 
 describe('project route', () => {
@@ -45,6 +56,7 @@ describe('project route', () => {
 
   afterEach(() => {
     useSessionStore.getState().clearSession()
+    homePageInstance.nextId = 0
   })
 
   it('canonical project route는 복수형 resource 경로를 사용한다', () => {
@@ -91,6 +103,9 @@ describe('project route', () => {
         'workspace-current',
       ),
     )
+    const initialInstanceId = screen
+      .getByTestId('workspace-projects-route')
+      .getAttribute('data-instance-id')
 
     await userEvent.click(
       screen.getByRole('button', { name: '다른 워크스페이스' }),
@@ -104,6 +119,10 @@ describe('project route', () => {
     expect(screen.getByTestId('workspace-projects-route')).toHaveAttribute(
       'data-workspace-id',
       'workspace-next',
+    )
+    expect(screen.getByTestId('workspace-projects-route')).toHaveAttribute(
+      'data-instance-id',
+      initialInstanceId,
     )
   })
 })

@@ -36,7 +36,7 @@ describe('ProjectTable', () => {
 
     const table = screen.getByRole('table')
     expect(table).toBeInTheDocument()
-    expect(table).toHaveClass('min-w-[720px]')
+    expect(table).toHaveClass('min-w-[1008px]')
     expect(table.parentElement).toHaveClass('overflow-x-auto')
     expect(
       screen.getByRole('columnheader', { name: '이름' }),
@@ -50,6 +50,18 @@ describe('ProjectTable', () => {
     expect(
       screen.getByRole('columnheader', { name: '수정일' }),
     ).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: '이름' })).toHaveClass(
+      'w-[420px]',
+    )
+    expect(screen.getByRole('columnheader', { name: '생성자' })).toHaveClass(
+      'w-[180px]',
+    )
+    expect(screen.getByRole('columnheader', { name: '생성일' })).toHaveClass(
+      'w-[180px]',
+    )
+    expect(screen.getByRole('columnheader', { name: '수정일' })).toHaveClass(
+      'w-[180px]',
+    )
     expect(screen.getByText(projectFixture.name)).toBeInTheDocument()
     expect(screen.getByText(secondProjectFixture.name)).toBeInTheDocument()
   })
