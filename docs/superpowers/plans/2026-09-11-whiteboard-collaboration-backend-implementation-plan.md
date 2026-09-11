@@ -31,6 +31,7 @@
 ### Task 1: 협업 의존성과 content 스키마·migration 추가
 
 **Files:**
+
 - Modify: `backend/package.json`
 - Modify: `backend/pnpm-lock.yaml`
 - Create: `backend/src/types/whiteboard.ts`
@@ -43,6 +44,7 @@
 - Modify: `backend/tests/db-schema.test.ts`
 
 **Interfaces:**
+
 - Consumes: 기존 `whiteboardDocuments` parent schema와 현재 `canvas_content` JSONB
 - Produces: `CanvasContent`, `WhiteboardElement`, `WhiteboardSnapshot` 타입과 `whiteboardDocumentContents` Drizzle table export
 
@@ -100,17 +102,22 @@ export interface WhiteboardSnapshot {
 `backend/src/db/schema/whiteboard-document-contents.ts`에는 다음 table을 추가한다.
 
 ```ts
-export const whiteboardDocumentContents = pgTable("whiteboard_document_contents", {
-  documentId: uuid("document_id")
-    .primaryKey()
-    .references(() => whiteboardDocuments.id, { onDelete: "cascade" }),
-  canvasContent: jsonb("canvas_content")
-    .$type<CanvasContent>()
-    .notNull()
-    .default({ elements: [] }),
-  revision: bigint("revision", { mode: "number" }).notNull().default(0),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+export const whiteboardDocumentContents = pgTable(
+  "whiteboard_document_contents",
+  {
+    documentId: uuid("document_id")
+      .primaryKey()
+      .references(() => whiteboardDocuments.id, { onDelete: "cascade" }),
+    canvasContent: jsonb("canvas_content")
+      .$type<CanvasContent>()
+      .notNull()
+      .default({ elements: [] }),
+    revision: bigint("revision", { mode: "number" }).notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+);
 ```
 
 `whiteboard-documents.ts`에서는 `jsonb` import와 `canvasContent` column을 삭제한다. `schema/index.ts`에서 새 table을 export하고, relations에는 `whiteboardDocumentsRelations.content`와 `whiteboardDocumentContentsRelations.document` one-to-one 관계를 추가한다.
@@ -175,6 +182,7 @@ Expected: schema export, nullable soft-delete, 기존 모든 DB schema 테스트
 ### Task 2: content persistence module과 기존 REST 상세·생성 흐름 연결
 
 **Files:**
+
 - Create: `backend/src/services/whiteboard-document-content.service.ts`
 - Modify: `backend/src/services/whiteboard-document.service.ts`
 - Modify: `backend/src/controllers/whiteboard-document.controller.ts` only if response mapping needs the new fields
@@ -182,6 +190,7 @@ Expected: schema export, nullable soft-delete, 기존 모든 DB schema 테스트
 - Create: `backend/tests/whiteboard-document-content.test.ts`
 
 **Interfaces:**
+
 - Consumes: `whiteboardDocumentContents`, `CanvasContent`, existing workspace/project/document access checks
 - Produces: `normalizeCanvasContent`, `getWhiteboardDocumentContent`, `saveWhiteboardDocumentContent`, detail response with `revision`·`lastSavedAt`
 
@@ -195,8 +204,15 @@ it("normalizes an empty legacy object to an empty element scene", () => {
 });
 
 it("preserves elements and files from a valid canvas content object", () => {
-  const element = { id: "element-1", version: 1, versionNonce: 10, isDeleted: false };
-  expect(normalizeCanvasContent({ elements: [element], files: { "file-1": {} } })).toEqual({
+  const element = {
+    id: "element-1",
+    version: 1,
+    versionNonce: 10,
+    isDeleted: false,
+  };
+  expect(
+    normalizeCanvasContent({ elements: [element], files: { "file-1": {} } }),
+  ).toEqual({
     elements: [element],
     files: { "file-1": {} },
   });
@@ -294,12 +310,14 @@ Expected: content persistence, 생성 transaction, 상세 response, 기존 목�
 ### Task 3: Excalidraw 최소 요소 계약과 deterministic merge module 구현
 
 **Files:**
+
 - Create: `backend/src/realtime/whiteboard-element-merge.ts`
 - Create: `backend/tests/whiteboard-element-merge.test.ts`
 - Create: `backend/src/realtime/whiteboard-protocol.schema.ts`
 - Create: `backend/tests/whiteboard-protocol.test.ts`
 
 **Interfaces:**
+
 - Consumes: `WhiteboardElement`, `CanvasContent`
 - Produces: `mergeWhiteboardElements`, join/scene/presence Zod schemas와 parsed payload type
 
@@ -310,7 +328,10 @@ Expected: content persistence, 생성 transaction, 상세 response, 기존 목�
 ```ts
 it("keeps independent changes from both users", () => {
   const current = [element("a", 1), element("b", 1)];
-  const result = mergeWhiteboardElements(current, [element("a", 2), element("c", 1)]);
+  const result = mergeWhiteboardElements(current, [
+    element("a", 2),
+    element("c", 1),
+  ]);
 
   expect(result.elements.map((item) => item.id)).toEqual(["a", "b", "c"]);
   expect(result.appliedElements.map((item) => item.id)).toEqual(["a", "c"]);
@@ -318,14 +339,20 @@ it("keeps independent changes from both users", () => {
 
 it("uses version and then versionNonce for the same element", () => {
   const current = [element("a", 3, 10)];
-  expect(mergeWhiteboardElements(current, [element("a", 2, 99)]).elements[0]).toEqual(
-    current[0],
-  );
-  expect(mergeWhiteboardElements(current, [element("a", 3, 11)]).elements[0].versionNonce).toBe(11);
+  expect(
+    mergeWhiteboardElements(current, [element("a", 2, 99)]).elements[0],
+  ).toEqual(current[0]);
+  expect(
+    mergeWhiteboardElements(current, [element("a", 3, 11)]).elements[0]
+      .versionNonce,
+  ).toBe(11);
 });
 
 it("keeps delete tombstones when they win", () => {
-  const result = mergeWhiteboardElements([element("a", 1)], [element("a", 2, 1, true)]);
+  const result = mergeWhiteboardElements(
+    [element("a", 1)],
+    [element("a", 2, 1, true)],
+  );
   expect(result.elements[0].isDeleted).toBe(true);
 });
 ```
@@ -398,8 +425,12 @@ export const whiteboardPresenceUpdatePayloadSchema = z.object({
 });
 
 export type WhiteboardJoinPayload = z.infer<typeof whiteboardJoinPayloadSchema>;
-export type WhiteboardSceneUpdatePayload = z.infer<typeof whiteboardSceneUpdatePayloadSchema>;
-export type WhiteboardPresenceUpdatePayload = z.infer<typeof whiteboardPresenceUpdatePayloadSchema>;
+export type WhiteboardSceneUpdatePayload = z.infer<
+  typeof whiteboardSceneUpdatePayloadSchema
+>;
+export type WhiteboardPresenceUpdatePayload = z.infer<
+  typeof whiteboardPresenceUpdatePayloadSchema
+>;
 ```
 
 element object는 `.passthrough()`로 Excalidraw type-specific fields를 보존하되, 전체 Socket.IO server의 `maxHttpBufferSize`는 1 MiB로 설정한다.
@@ -417,12 +448,14 @@ Expected: merge 충돌 규칙과 payload validation 테스트가 통과한다.
 ### Task 4: JWT 만료 정보와 in-memory Room manager 구현
 
 **Files:**
+
 - Modify: `backend/src/lib/jwt.ts`
 - Modify: `backend/tests/jwt.test.ts`
 - Create: `backend/src/realtime/whiteboard-room-manager.ts`
 - Create: `backend/tests/whiteboard-room-manager.test.ts`
 
 **Interfaces:**
+
 - Consumes: `WhiteboardSnapshot`, `mergeWhiteboardElements`, `saveWhiteboardDocumentContent`
 - Produces: `WhiteboardRoomManager.join`, `updateScene`, `updatePresence`, `leave`, `closeDocument`, `close`
 
@@ -452,7 +485,9 @@ Room manager 외부 dependency는 다음 형태로 주입한다.
 ```ts
 interface WhiteboardRoomManagerDependencies {
   loadSnapshot: (documentId: string) => Promise<WhiteboardSnapshot>;
-  saveSnapshot: (input: SaveWhiteboardDocumentContentInput) => Promise<SaveWhiteboardDocumentContentResult>;
+  saveSnapshot: (
+    input: SaveWhiteboardDocumentContentInput,
+  ) => Promise<SaveWhiteboardDocumentContentResult>;
   setTimeout?: typeof setTimeout;
   clearTimeout?: typeof clearTimeout;
 }
@@ -497,6 +532,7 @@ Expected: exp 검증과 Room lifecycle·merge·debounce 테스트가 통과한�
 ### Task 5: Socket.IO collaboration adapter와 인증·이벤트 전파 연결
 
 **Files:**
+
 - Create: `backend/src/realtime/whiteboard-collaboration.ts`
 - Create: `backend/tests/whiteboard-collaboration.test.ts`
 - Modify: `backend/src/app.ts`
@@ -505,6 +541,7 @@ Expected: exp 검증과 Room lifecycle·merge·debounce 테스트가 통과한�
 - Modify: `backend/tests/whiteboard-document.test.ts`
 
 **Interfaces:**
+
 - Consumes: Socket.IO Server, JWT verification, existing `getWhiteboardDocument`, `getUserById`, content save service, `WhiteboardRoomManager`
 - Produces: `createWhiteboardCollaborationServer(httpServer, dependencies?)`, `closeDocument(documentId)`, `close()`와 공개 Socket.IO events
 
@@ -539,8 +576,12 @@ interface AuthorizedWhiteboardJoin {
 }
 
 interface WhiteboardCollaborationDependencies {
-  authorizeJoin: (input: WhiteboardJoinPayload & { userId: string }) => Promise<AuthorizedWhiteboardJoin>;
-  saveSnapshot: (input: SaveWhiteboardDocumentContentInput) => Promise<SaveWhiteboardDocumentContentResult>;
+  authorizeJoin: (
+    input: WhiteboardJoinPayload & { userId: string },
+  ) => Promise<AuthorizedWhiteboardJoin>;
+  saveSnapshot: (
+    input: SaveWhiteboardDocumentContentInput,
+  ) => Promise<SaveWhiteboardDocumentContentResult>;
   loadSnapshot: (documentId: string) => Promise<WhiteboardSnapshot>;
 }
 
@@ -598,7 +639,8 @@ manager callback 또는 adapter event 결과를 사용해 join/leave, scene, pre
 ```ts
 let collaborationServer: WhiteboardCollaborationServer | undefined;
 const app = createApp({
-  onWhiteboardDocumentDeleted: (documentId) => collaborationServer?.closeDocument(documentId),
+  onWhiteboardDocumentDeleted: (documentId) =>
+    collaborationServer?.closeDocument(documentId),
 });
 const httpServer = createServer(app);
 collaborationServer = createWhiteboardCollaborationServer(httpServer);
@@ -617,12 +659,14 @@ Expected: auth, join, scene broadcast, presence, deleted Room close와 기존 RE
 ### Task 6: HTTP server lifecycle·graceful shutdown과 migration 검증
 
 **Files:**
+
 - Modify: `backend/src/server.ts`
 - Modify: `backend/tests/app.test.ts` if app option behavior needs direct coverage
 - Modify: `backend/tests/db-client.test.ts` only if new schema import changes the test fixture
 - Modify: `backend/src/realtime/whiteboard-collaboration.ts` if close lifecycle needs finalization
 
 **Interfaces:**
+
 - Consumes: `createWhiteboardCollaborationServer`, `WhiteboardDocumentDeleted` callback
 - Produces: Socket.IO가 붙은 Node HTTP server와 graceful close path
 
@@ -660,11 +704,13 @@ Expected: 기존 테스트와 신규 content·merge·Room·Socket.IO 테스트�
 ### Task 7: 최종 품질 검증과 계획 문서 결과 기록
 
 **Files:**
+
 - Modify: `docs/superpowers/plans/2026-09-11-whiteboard-collaboration-backend-implementation-plan.md`
 - Modify: `docs/superpowers/specs/2026-09-10-whiteboard-document-detail-read-design.md` only to add a follow-up link if the historical scope needs clarification
 - Modify: `docs/superpowers/plans/2026-09-10-whiteboard-document-detail-read-implementation-plan.md` only to add a follow-up link if the historical scope needs clarification
 
 **Interfaces:**
+
 - Consumes: 모든 구현 task의 테스트·lint·build·migration 결과
 - Produces: 실제 구현 결과와 남은 후속 작업이 기록된 계획 문서
 
@@ -766,4 +812,4 @@ unrelated change가 포함되지 않았는지 확인하고 사용자가 요청�
 - 이미지·파일 규모 증가 시 object storage 또는 별도 file table로 분리
 - multi-instance 운영 시 Valkey Pub/Sub 또는 Socket.IO adapter 연결 및 부하 테스트
 - offline sync, history/restore, CRDT 수준의 장기 충돌 해결
-- 배포 환경에서 `0004_greedy_shriek.sql` migration 적용 및 rollback 운영 절차 확정
+- 배포 환경에서 `dev` 병합 후 번호가 조정된 `0005_greedy_shriek.sql` migration 적용 및 rollback 운영 절차 확정

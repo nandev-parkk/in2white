@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { healthRouter } from "@/routes/health.routes";
 import { authRouter } from "@/routes/auth.routes";
+import { accountRouter } from "@/routes/account.routes";
 import { projectRouter } from "@/routes/project.routes";
 import {
   createWhiteboardDocumentRouter,
@@ -12,6 +13,7 @@ export function createRouter(dependencies: WhiteboardDocumentRouteDependencies =
   const router = Router();
   router.use("/health", healthRouter);
   router.use("/auth", authRouter);
+  router.use("/account", accountRouter);
   router.use("/workspaces/:workspaceId/projects", projectRouter);
   router.use(
     "/workspaces/:workspaceId/projects/:projectId/whiteboard-documents",

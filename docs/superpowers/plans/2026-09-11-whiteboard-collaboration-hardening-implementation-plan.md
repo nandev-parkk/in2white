@@ -774,8 +774,8 @@ Expected: 삭제 callback, 조립 순서, 중복 signal, 자원 종료 테스트
 - Modify: `backend/pnpm-lock.yaml`
 - Modify: `backend/tests/db-schema.test.ts`
 - Create: `backend/tests/whiteboard-migration.integration.test.ts`
-- Verify: `backend/src/db/migrations/0004_greedy_shriek.sql`
-- Verify: `backend/src/db/migrations/meta/0004_snapshot.json`
+- Verify: `backend/src/db/migrations/0005_greedy_shriek.sql`
+- Verify: `backend/src/db/migrations/meta/0005_snapshot.json`
 - Verify: `backend/src/db/migrations/meta/_journal.json`
 
 **Interfaces:**
@@ -952,6 +952,7 @@ Expected: lint/build/format/diff check가 PASS하고 `db:generate` 후 의도하
 - Drizzle 생성 metadata가 기존 `0000_snapshot.json`을 포함해 Prettier 전체 검사에 실패해 `backend/.prettierignore`에서 migration metadata JSON을 제외했다. 일반 source/test/README/package 파일은 전부 검사한다.
 - 기본 Testcontainers 이미지 `postgres:17-alpine` pull은 현재 Docker credential/registry 경로에서 120초 timeout 됐다. 테스트 기본값은 유지하고 `TEST_POSTGRES_IMAGE` override를 추가해 로컬 PostgreSQL 18 이미지에서 실제 migration을 검증했다.
 - 후속 리뷰에서 저장 장애 유형이 교차하면 blocked가 풀리던 상태 전이, Room drain 뒤에야 Socket.IO/HTTP를 닫던 종료 순서, 초기·rebase snapshot이 Room 한도를 우회하던 문제를 확인했다. 각 경로의 RED 테스트를 추가하고 저장 성공만 blocked를 해제하도록 변경했으며, 종료 작업을 병렬 시작하고 persisted snapshot을 무결성 오류로 명시했다.
+- PR 준비 중 `dev`의 사용자 session-version migration과 번호가 겹쳐 최종 migration 순서를 `0003_silly_echo` → `0004_misty_zarda` → `0005_greedy_shriek`로 재구성했다. 각 snapshot의 `prevId`를 다시 연결하고 실제 PostgreSQL backfill 테스트로 검증한다.
 
 ### 검증 결과
 

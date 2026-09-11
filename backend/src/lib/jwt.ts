@@ -6,6 +6,7 @@ export interface AccessTokenPayload {
   sub: string;
   email: string;
   sid: string;
+  ver: number;
   type: "access";
   exp: number;
 }
@@ -13,6 +14,7 @@ export interface AccessTokenPayload {
 export interface RefreshTokenPayload {
   sub: string;
   sid: string;
+  ver: number;
   type: "refresh";
 }
 
@@ -28,8 +30,9 @@ export async function signAccessToken(payload: {
   sub: string;
   email: string;
   sid: string;
+  ver: number;
 }): Promise<string> {
-  return new SignJWT({ email: payload.email, sid: payload.sid, type: "access" })
+  return new SignJWT({ email: payload.email, sid: payload.sid, ver: payload.ver, type: "access" })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(payload.sub)
     .setJti(randomUUID())
@@ -51,17 +54,27 @@ export async function verifyAccessToken(token: string): Promise<AccessTokenPaylo
     throw new Error("Invalid access token payload");
   }
 
+  const ver = payload.ver ?? 0;
+  if (typeof ver !== "number" || !Number.isInteger(ver) || ver < 0) {
+    throw new Error("Invalid token session version");
+  }
+
   return {
     sub: payload.sub,
     email: payload.email,
     sid: payload.sid,
+    ver,
     type: "access",
     exp: payload.exp,
   };
 }
 
-export async function signRefreshToken(payload: { sub: string; sid: string }): Promise<string> {
-  return new SignJWT({ sid: payload.sid, type: "refresh" })
+export async function signRefreshToken(payload: {
+  sub: string;
+  sid: string;
+  ver: number;
+}): Promise<string> {
+  return new SignJWT({ sid: payload.sid, ver: payload.ver, type: "refresh" })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(payload.sub)
     .setJti(randomUUID())
@@ -81,5 +94,10 @@ export async function verifyRefreshToken(token: string): Promise<RefreshTokenPay
     throw new Error("Invalid refresh token payload");
   }
 
-  return { sub: payload.sub, sid: payload.sid, type: "refresh" };
+  const ver = payload.ver ?? 0;
+  if (typeof ver !== "number" || !Number.isInteger(ver) || ver < 0) {
+    throw new Error("Invalid token session version");
+  }
+
+  return { sub: payload.sub, sid: payload.sid, ver, type: "refresh" };
 }

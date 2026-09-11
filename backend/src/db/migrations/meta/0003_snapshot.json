@@ -1,5 +1,5 @@
 {
-  "id": "7cc02f45-6be9-4cc7-8a17-92719678a4d9",
+  "id": "87a3cb23-b1bf-45a5-af17-b9a012023ec6",
   "prevId": "36f29305-f235-410f-9f26-2e743ddc9f73",
   "version": "7",
   "dialect": "postgresql",
@@ -32,6 +32,13 @@
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
+        },
+        "session_version": {
+          "name": "session_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "created_at": {
           "name": "created_at",
@@ -321,12 +328,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},

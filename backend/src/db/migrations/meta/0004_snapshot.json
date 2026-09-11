@@ -1,6 +1,6 @@
 {
-  "id": "4258e233-8d3f-4dec-882f-470d5176e553",
-  "prevId": "7cc02f45-6be9-4cc7-8a17-92719678a4d9",
+  "id": "f82b07b4-35ff-43e4-83b1-69cd5ff4a5a0",
+  "prevId": "87a3cb23-b1bf-45a5-af17-b9a012023ec6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -32,6 +32,13 @@
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
+        },
+        "session_version": {
+          "name": "session_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "created_at": {
           "name": "created_at",
@@ -326,6 +333,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "canvas_content": {
+          "name": "canvas_content",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -368,60 +382,6 @@
           "tableTo": "users",
           "columnsFrom": [
             "creator_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.whiteboard_document_contents": {
-      "name": "whiteboard_document_contents",
-      "schema": "",
-      "columns": {
-        "document_id": {
-          "name": "document_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "canvas_content": {
-          "name": "canvas_content",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{\"elements\":[]}'::jsonb"
-        },
-        "revision": {
-          "name": "revision",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "whiteboard_document_contents_document_id_whiteboard_documents_id_fk": {
-          "name": "whiteboard_document_contents_document_id_whiteboard_documents_id_fk",
-          "tableFrom": "whiteboard_document_contents",
-          "tableTo": "whiteboard_documents",
-          "columnsFrom": [
-            "document_id"
           ],
           "columnsTo": [
             "id"

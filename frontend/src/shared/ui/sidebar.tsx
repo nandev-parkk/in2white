@@ -2,10 +2,10 @@ import * as React from 'react'
 import { cn } from 'cn'
 import {
   Check,
+  ChevronLeft,
   ChevronsUpDown,
   Folder,
   LogOut,
-  PanelLeft,
   Plus,
   Search,
   SlidersHorizontal,
@@ -14,9 +14,11 @@ import {
 } from 'lucide-react'
 import type { WorkspaceSummary } from '@/entities/workspace'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/avatar'
-import { Input } from '@/shared/ui/input'
+import { CompactEmptyState } from '@/shared/ui/compact-empty-state'
+import { Search as SearchField } from '@/shared/ui/search'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 import type { PresenceUser } from '@/shared/ui/presence-avatar-stack'
+import { useScrollActiveItem } from '@/shared/hooks/use-scroll-active-item'
 
 type SidebarNavKey = 'projects' | 'members' | 'settings'
 
@@ -42,6 +44,7 @@ type SidebarProps = React.ComponentProps<'div'> & {
   workspaceMembers: PresenceUser[]
   activeNav: SidebarNavKey
   onNavChange: (key: SidebarNavKey) => void
+  onUserClick?: () => void
   onInviteMember?: () => void
   onLogout?: () => void
   userName: string
@@ -80,7 +83,14 @@ function WorkspaceSwitcher({
   const [query, setQuery] = React.useState('')
   const containerRef = React.useRef<HTMLDivElement>(null)
   const triggerRef = React.useRef<HTMLButtonElement>(null)
-  const listboxRef = React.useRef<HTMLDivElement>(null)
+  const { containerRef: listboxRef, registerItem } = useScrollActiveItem<
+    string,
+    HTMLButtonElement,
+    HTMLDivElement
+  >({
+    activeKey: selectedWorkspaceId,
+    enabled: open,
+  })
 
   const close = React.useCallback(() => {
     setOpen(false)
@@ -173,7 +183,7 @@ function WorkspaceSwitcher({
           else setOpen(true)
         }}
         className={cn(
-          'focus-visible:ring-action-focus-ring hover:bg-action-secondary-hover flex h-14 w-full min-w-0 items-center justify-start gap-2 overflow-hidden rounded-md px-1.5 transition-colors duration-150 outline-none focus-visible:ring-3',
+          'focus-visible:ring-action-focus-ring hover:bg-action-secondary-hover flex h-14 w-full min-w-0 items-center justify-start gap-2 overflow-hidden rounded-md px-1.5 text-left transition-colors duration-150 outline-none focus-visible:ring-3',
         )}
       >
         <span className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
@@ -193,29 +203,36 @@ function WorkspaceSwitcher({
                 워크스페이스 불러오는 중
               </span>
             ) : workspace ? (
-              <span className="flex w-full min-w-0 flex-1 flex-col items-start">
+              <span className="flex w-full min-w-0 flex-1 flex-col items-start overflow-hidden text-left">
                 <span
                   data-slot="workspace-name-row"
-                  className="flex w-full min-w-0 items-center gap-1.5"
+                  className="flex w-full min-w-0 items-center gap-1.5 text-left"
                 >
-                  <span className="text-label text-foreground-strong min-w-0 flex-1 truncate">
+                  <span
+                    data-slot="workspace-name"
+                    className="text-label text-foreground-strong min-w-0 flex-1 truncate text-left whitespace-nowrap"
+                  >
                     {workspace.name}
                   </span>
-                  <ChevronsUpDown className="text-foreground-strong size-4 shrink-0 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none" />
                 </span>
-                <span className="text-foreground-tertiary text-[11px]">
+                <span className="text-foreground-tertiary text-left text-[11px] whitespace-nowrap">
                   {workspace.role === 'owner' ? '소유자' : '멤버'}
                 </span>
               </span>
             ) : (
-              <span className="flex w-full min-w-0 flex-1 items-center gap-1.5">
+              <span className="flex w-full min-w-0 flex-1 items-center gap-1.5 text-left">
                 <span className="text-body-small text-foreground-secondary min-w-0 flex-1 truncate">
                   워크스페이스 없음
                 </span>
-                <ChevronsUpDown className="text-foreground-strong size-4 shrink-0 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none" />
               </span>
             )}
           </span>
+          {!collapsed && (
+            <ChevronsUpDown
+              data-slot="workspace-chevron"
+              className="text-foreground-strong size-4 shrink-0 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none"
+            />
+          )}
         </span>
       </button>
 
@@ -223,25 +240,24 @@ function WorkspaceSwitcher({
         <div
           data-slot="workspace-switcher-popover"
           className={cn(
-            'border-border bg-background-elevated animate-in fade-in-0 zoom-in-95 absolute z-50 flex h-80 w-68 flex-col gap-2 rounded-lg border p-3 shadow-lg transition-[opacity,transform] duration-200 ease-out motion-reduce:animate-none motion-reduce:transition-none',
+            'border-border bg-background-elevated animate-in fade-in-0 zoom-in-95 absolute z-50 flex h-80 w-68 flex-col gap-3 rounded-lg border p-3 shadow-lg transition-[opacity,transform] duration-200 ease-out motion-reduce:animate-none motion-reduce:transition-none',
             collapsed ? 'top-0 left-full ml-2' : 'top-full left-0 mt-2',
           )}
         >
           <div className="relative shrink-0">
-            <Search className="text-foreground-tertiary pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-            <Input
+            <SearchField
               autoFocus
-              type="search"
               aria-label="워크스페이스 검색"
               placeholder="워크스페이스 검색"
               value={query}
+              onClear={() => setQuery('')}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key !== 'ArrowDown') return
                 event.preventDefault()
                 getOptions()[0]?.focus()
               }}
-              className="bg-background-subtle rounded-full border-transparent pl-9 focus:border-transparent"
+              className="bg-background-subtle w-full border-transparent focus:border-transparent"
             />
           </div>
 
@@ -250,19 +266,21 @@ function WorkspaceSwitcher({
             role="listbox"
             aria-label="워크스페이스 목록"
             onKeyDown={handleListboxKeyDown}
-            className="min-h-0 flex-1 overflow-y-auto"
+            data-scrollbar-hidden="true"
+            className="flex min-h-0 flex-1 [scrollbar-width:none] flex-col gap-1.5 overflow-y-auto [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           >
             {filteredWorkspaces.map((item) => {
               const selected = item.id === selectedWorkspaceId
               return (
                 <button
                   key={item.id}
+                  ref={registerItem(item.id)}
                   type="button"
                   role="option"
                   aria-selected={selected}
                   onClick={() => handleWorkspaceSelect(item.id)}
                   className={cn(
-                    'focus-visible:ring-action-focus-ring hover:bg-action-secondary-hover flex h-11 w-full items-center gap-2 rounded-md px-2 text-left transition-[background-color,transform] duration-150 ease-out outline-none focus-visible:ring-3 active:scale-[0.99] motion-reduce:transition-none',
+                    'focus-visible:ring-action-focus-ring hover:bg-action-secondary-hover flex h-[58px] min-h-[58px] w-full shrink-0 items-center gap-2 rounded-md px-2 text-left transition-[background-color,transform] duration-150 ease-out outline-none focus-visible:ring-3 active:scale-[0.99] motion-reduce:transition-none',
                     selected && 'bg-action-secondary',
                   )}
                 >
@@ -281,11 +299,19 @@ function WorkspaceSwitcher({
                 </button>
               )
             })}
-            {filteredWorkspaces.length === 0 && (
-              <p className="text-body-small text-foreground-tertiary px-2 py-4 text-center">
-                워크스페이스가 없습니다
-              </p>
-            )}
+            {filteredWorkspaces.length === 0 &&
+              (query.trim() ? (
+                <CompactEmptyState
+                  className="min-h-0"
+                  icon={<Search className="size-4" />}
+                  title="검색 결과가 없어요"
+                  description="다른 검색어로 다시 시도해보세요"
+                />
+              ) : (
+                <p className="text-body-small text-foreground-tertiary flex flex-1 items-center justify-center px-2 py-4 text-center">
+                  워크스페이스가 없습니다
+                </p>
+              ))}
           </div>
 
           <div className="bg-border h-px w-full shrink-0" />
@@ -331,9 +357,7 @@ function SidebarNavItem({
         active ? 'bg-action-secondary' : 'hover:bg-action-secondary-hover',
       )}
     >
-      <span
-        className="flex min-w-0 items-center gap-2"
-      >
+      <span className="flex min-w-0 items-center gap-2">
         <Icon className="size-4 shrink-0" />
         <span
           aria-hidden={collapsed}
@@ -381,6 +405,7 @@ function Sidebar({
   workspaceMembers,
   activeNav,
   onNavChange,
+  onUserClick,
   onInviteMember,
   onLogout,
   userName,
@@ -447,10 +472,7 @@ function Sidebar({
         width >= SIDEBAR_TOGGLE_INSIDE_MIN_WIDTH
       ) {
         updateToggleOutside(false)
-      } else if (
-        !toggleOutsideRef.current &&
-        width <= outsideMaxWidth
-      ) {
+      } else if (!toggleOutsideRef.current && width <= outsideMaxWidth) {
         updateToggleOutside(true)
       }
     },
@@ -467,9 +489,7 @@ function Sidebar({
       const borderBoxSize = Array.isArray(entry.borderBoxSize)
         ? entry.borderBoxSize[0]?.inlineSize
         : undefined
-      updateToggleOutsideForWidth(
-        borderBoxSize ?? entry.contentRect.width,
-      )
+      updateToggleOutsideForWidth(borderBoxSize ?? entry.contentRect.width)
     })
 
     observer.observe(sidebarElement)
@@ -515,12 +535,7 @@ function Sidebar({
     setLayoutCollapsed(isCollapsed)
     updateSidebarWidth(isCollapsed ? SIDEBAR_WIDTH_MIN : SIDEBAR_WIDTH_MAX)
     updateToggleOutside(isCollapsed)
-  }, [
-    isCollapsed,
-    pendingCollapsed,
-    updateSidebarWidth,
-    updateToggleOutside,
-  ])
+  }, [isCollapsed, pendingCollapsed, updateSidebarWidth, updateToggleOutside])
 
   React.useEffect(() => {
     if (!isResizing) return
@@ -623,8 +638,7 @@ function Sidebar({
     sidebarWidth <= SIDEBAR_VISUAL_COLLAPSED_MAX_WIDTH &&
     pendingCollapsed !== false
   const workspaceMembersCollapsed = visualCollapsed || pendingCollapsed === true
-  const compact =
-    !visualCollapsed && sidebarWidth < SIDEBAR_COMPACT_MAX_WIDTH
+  const compact = !visualCollapsed && sidebarWidth < SIDEBAR_COMPACT_MAX_WIDTH
 
   return (
     <div
@@ -640,7 +654,7 @@ function Sidebar({
       }}
       onTransitionEnd={handleSidebarTransitionEnd}
       className={cn(
-        'border-sidebar-border bg-background-default relative flex h-full flex-col gap-3 border-r p-3 transition-[width] duration-300 ease-in-out motion-reduce:transition-none',
+        'border-sidebar-border bg-background-default sticky top-0 z-10 flex h-svh max-h-svh flex-col gap-3 self-start overflow-visible border-r p-3 transition-[width] duration-300 ease-in-out motion-reduce:transition-none',
         isResizing && 'transition-none',
         layoutCollapsed
           ? 'w-(--layout-sidebar-width-collapsed)'
@@ -648,9 +662,7 @@ function Sidebar({
         className,
       )}
     >
-      <div
-        className="flex h-8 items-center pl-1"
-      >
+      <div className="flex h-8 items-center pl-1">
         <img
           src="/logo-mark.png"
           alt="in2white"
@@ -665,16 +677,21 @@ function Sidebar({
               : '사이드바 접기'
           }
           className={cn(
-            'text-foreground-strong hover:bg-action-secondary-hover absolute z-20 flex items-center justify-center transition-[left,top,height,border-radius,background-color,transform] duration-300 ease-in-out active:scale-[0.98] motion-reduce:transition-none',
+            'text-foreground-strong hover:text-foreground-default hover:bg-background-default absolute z-40 flex cursor-default items-center justify-center transition-[left,top,height,border-radius,background-color,box-shadow,transform] duration-300 ease-in-out hover:shadow-sm active:scale-[0.98] motion-reduce:transition-none',
             toggleOutside
-              ? 'border-sidebar-border bg-background-default top-3 left-[calc(100%+1px)] h-8 w-6 rounded-l-none rounded-r-md border border-l-0'
-              : 'left-[calc(100%-36px)] top-4 h-6 w-6 rounded-md',
+              ? 'border-sidebar-border bg-background-default top-4 left-full h-6 w-6 -translate-x-1/2 rounded-full border'
+              : 'top-4 left-[calc(100%-40px)] h-6 w-6 rounded-full',
           )}
           style={
             toggleOutside ? { borderColor: SIDEBAR_BORDER_COLOR } : undefined
           }
         >
-          <PanelLeft className="size-4" />
+          <ChevronLeft
+            className={cn(
+              'size-3.5 transition-transform duration-300 ease-out motion-reduce:transition-none',
+              (pendingCollapsed ?? isCollapsed) && 'rotate-180',
+            )}
+          />
         </button>
       </div>
 
@@ -698,7 +715,7 @@ function Sidebar({
           data-slot="sidebar-workspace-members"
           aria-hidden={workspaceMembersCollapsed}
           className={cn(
-            'flex h-5 items-center translate-y-0 opacity-100 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
+            'flex h-5 translate-y-0 items-center pl-1.5 opacity-100 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
             workspaceMembersCollapsed && 'pointer-events-none opacity-0',
           )}
         >
@@ -779,24 +796,30 @@ function Sidebar({
 
       <div className="bg-border h-px w-full" />
 
-      <div
-        data-slot="sidebar-profile"
-        className="flex min-h-16 items-center gap-2 py-3 pr-3 pl-1"
-      >
-        <Avatar size="default">
-          {userImageUrl && <AvatarImage src={userImageUrl} alt={userName} />}
-          <AvatarFallback size="default">{userName.slice(0, 2)}</AvatarFallback>
-        </Avatar>
-        {!visualCollapsed && (
-          <div className="flex min-w-0 flex-col">
-            <span className="text-body-small text-foreground-strong truncate font-semibold">
-              {userName}
-            </span>
-            <span className="text-caption text-foreground-tertiary truncate">
-              {userEmail}
-            </span>
-          </div>
-        )}
+      <div data-slot="sidebar-profile" className="min-h-16 w-full">
+        <button
+          type="button"
+          aria-label={`사용자 정보: ${userName}`}
+          onClick={() => onUserClick?.()}
+          className="focus-visible:ring-action-focus-ring hover:bg-action-secondary-hover flex min-h-16 w-full items-center gap-2 rounded-md py-3 pr-3 pl-1 text-left transition-colors duration-150 outline-none focus-visible:ring-3"
+        >
+          <Avatar size="default">
+            {userImageUrl && <AvatarImage src={userImageUrl} alt={userName} />}
+            <AvatarFallback size="default">
+              {userName.slice(0, 2)}
+            </AvatarFallback>
+          </Avatar>
+          {!visualCollapsed && (
+            <div className="flex min-w-0 flex-col">
+              <span className="text-body-small text-foreground-strong truncate font-semibold">
+                {userName}
+              </span>
+              <span className="text-caption text-foreground-tertiary truncate">
+                {userEmail}
+              </span>
+            </div>
+          )}
+        </button>
       </div>
 
       <div
@@ -811,7 +834,7 @@ function Sidebar({
         onPointerDown={handleResizePointerDown}
         onKeyDown={handleResizeKeyDown}
         className={cn(
-          'hover:bg-sidebar-border focus-visible:bg-sidebar-border absolute top-0 right-0 z-30 h-full w-1 translate-x-1/2 cursor-col-resize transition-colors duration-150 outline-none',
+          'hover:bg-sidebar-border focus-visible:bg-sidebar-border absolute top-0 right-0 z-10 h-full w-1 translate-x-1/2 cursor-col-resize transition-colors duration-150 outline-none',
           isResizing && 'bg-sidebar-border',
         )}
       />

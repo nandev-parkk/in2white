@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { valkey } from "@/cache/valkey";
 import {
+  deleteOtherRefreshSessions,
   deleteRefreshSession,
   rotateRefreshSession,
   saveRefreshSession,
@@ -13,6 +14,7 @@ vi.mock("@/cache/valkey", () => ({
     get: vi.fn(),
     del: vi.fn(),
     eval: vi.fn(),
+    scan: vi.fn(),
   },
 }));
 
@@ -29,6 +31,7 @@ describe("session service", () => {
     vi.mocked(valkey.get).mockReset();
     vi.mocked(valkey.del).mockReset();
     vi.mocked(valkey.eval).mockReset();
+    vi.mocked(valkey.scan).mockReset();
 
     vi.mocked(valkey.set).mockImplementation((async (key: string, value: string) => {
       store.set(key, value);
@@ -136,5 +139,26 @@ describe("session service", () => {
 
     expect(valkey.del).toHaveBeenCalledWith("refresh:user-1:sid-1");
     expect(store.has("refresh:user-1:sid-1")).toBe(false);
+  });
+
+  it("deletes other refresh sessions across scan batches while keeping the new sid", async () => {
+    vi.mocked(valkey.scan)
+      .mockResolvedValueOnce(["7", ["refresh:user-1:old-a", "refresh:user-1:keep"]])
+      .mockResolvedValueOnce(["0", ["refresh:user-1:old-b"]]);
+
+    await deleteOtherRefreshSessions("user-1", "keep");
+
+    expect(valkey.scan).toHaveBeenNthCalledWith(1, "0", "MATCH", "refresh:user-1:*", "COUNT", 100);
+    expect(valkey.del).toHaveBeenCalledWith("refresh:user-1:old-a");
+    expect(valkey.del).toHaveBeenCalledWith("refresh:user-1:old-b");
+    expect(valkey.del).not.toHaveBeenCalledWith("refresh:user-1:keep");
+  });
+
+  it("does not call delete when the scan finds no stale keys", async () => {
+    vi.mocked(valkey.scan).mockResolvedValueOnce(["0", ["refresh:user-1:keep"]]);
+
+    await deleteOtherRefreshSessions("user-1", "keep");
+
+    expect(valkey.del).not.toHaveBeenCalled();
   });
 });

@@ -15,6 +15,13 @@ export const ERROR_MESSAGES = {
   PASSWORD_MISSING_LETTER: "비밀번호는 영문을 포함해야 합니다",
   PASSWORD_MISSING_NUMBER: "비밀번호는 숫자를 포함해야 합니다",
   PASSWORD_MISSING_SPECIAL_CHAR: "비밀번호는 특수문자를 포함해야 합니다",
+  ACCOUNT_NAME_REQUIRED: "이름을 입력해주세요",
+  ACCOUNT_NAME_TOO_LONG: "이름은 255자 이내로 입력해주세요",
+  ACCOUNT_NOT_FOUND: "계정을 찾을 수 없습니다",
+  CURRENT_PASSWORD_REQUIRED: "현재 비밀번호를 입력해주세요",
+  CURRENT_PASSWORD_MISMATCH: "현재 비밀번호가 올바르지 않습니다",
+  PASSWORD_CHANGED_REAUTH_REQUIRED:
+    "비밀번호는 변경되었지만 로그인 갱신에 실패했습니다. 다시 로그인해주세요",
   WORKSPACE_NAME_REQUIRED: "워크스페이스 이름을 입력해주세요",
   WORKSPACE_NAME_TOO_LONG: "워크스페이스 이름은 255자 이내로 입력해주세요",
   WORKSPACE_NOT_FOUND: "워크스페이스를 찾을 수 없습니다",

@@ -237,9 +237,17 @@ function mockWhiteboardDocumentDeleteTransaction({
     update: vi.fn().mockReturnValue(documentUpdate),
   };
 
-  vi.mocked(db.transaction).mockImplementation(async (callback) => callback(transaction as never));
+  vi.mocked(db.transaction).mockImplementation(async (callback) =>
+    callback(transaction as never),
+  );
 
-  return { membershipQuery, projectQuery, documentQuery, documentUpdate, transaction };
+  return {
+    membershipQuery,
+    projectQuery,
+    documentQuery,
+    documentUpdate,
+    transaction,
+  };
 }
 ```
 
@@ -248,11 +256,11 @@ function mockWhiteboardDocumentDeleteTransaction({
 `DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documents/:documentId` describe를 추가한다. Owner 성공 테스트는 다음 계약을 고정한다.
 
 ```ts
-const deletePath =
-  `/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents/${createdWhiteboardDocument.id}`;
+const deletePath = `/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents/${createdWhiteboardDocument.id}`;
 
 it("Owner가 다른 Creator의 문서를 삭제하고 204를 반환한다", async () => {
-  const { documentUpdate, transaction } = mockWhiteboardDocumentDeleteTransaction();
+  const { documentUpdate, transaction } =
+    mockWhiteboardDocumentDeleteTransaction();
 
   const response = await request(createApp())
     .delete(deletePath)
@@ -305,7 +313,9 @@ expect(documentUpdate.where).toHaveBeenCalledWith(
     isNull(whiteboardDocuments.deletedAt),
   ),
 );
-expect(documentUpdate.returning).toHaveBeenCalledWith({ id: whiteboardDocuments.id });
+expect(documentUpdate.returning).toHaveBeenCalledWith({
+  id: whiteboardDocuments.id,
+});
 ```
 
 - [x] **Step 3: 인증·입력·권한·존재 여부·DB 오류 테스트를 작성한다.**
@@ -408,7 +418,9 @@ WHITEBOARD_DOCUMENT_DELETE_FORBIDDEN: "화이트보드 문서를 삭제할 권�
 const whereCondition = and(
   eq(whiteboardDocuments.projectId, projectId),
   isNull(whiteboardDocuments.deletedAt),
-  search ? ilike(whiteboardDocuments.name, buildContainsSearchPattern(search)) : undefined,
+  search
+    ? ilike(whiteboardDocuments.name, buildContainsSearchPattern(search))
+    : undefined,
 );
 ```
 
@@ -419,7 +431,7 @@ and(
   eq(whiteboardDocuments.id, documentId),
   eq(whiteboardDocuments.projectId, projectId),
   isNull(whiteboardDocuments.deletedAt),
-)
+);
 ```
 
 이 변경으로 삭제된 문서는 목록 count/rows와 이름 변경의 대상에서 제외되고, 기존 update service는 `WHITEBOARD_DOCUMENT_NOT_FOUND`를 반환한다.
@@ -458,7 +470,11 @@ export async function deleteWhiteboardDocument({
       );
 
     if (!membership) {
-      throw new HttpError(404, "WORKSPACE_NOT_FOUND", ERROR_MESSAGES.WORKSPACE_NOT_FOUND);
+      throw new HttpError(
+        404,
+        "WORKSPACE_NOT_FOUND",
+        ERROR_MESSAGES.WORKSPACE_NOT_FOUND,
+      );
     }
 
     const [project] = await tx
@@ -473,11 +489,18 @@ export async function deleteWhiteboardDocument({
       );
 
     if (!project) {
-      throw new HttpError(404, "PROJECT_NOT_FOUND", ERROR_MESSAGES.PROJECT_NOT_FOUND);
+      throw new HttpError(
+        404,
+        "PROJECT_NOT_FOUND",
+        ERROR_MESSAGES.PROJECT_NOT_FOUND,
+      );
     }
 
     const [whiteboardDocument] = await tx
-      .select({ id: whiteboardDocuments.id, creatorId: whiteboardDocuments.creatorId })
+      .select({
+        id: whiteboardDocuments.id,
+        creatorId: whiteboardDocuments.creatorId,
+      })
       .from(whiteboardDocuments)
       .where(
         and(
@@ -495,7 +518,10 @@ export async function deleteWhiteboardDocument({
       );
     }
 
-    if (membership.role !== "owner" && whiteboardDocument.creatorId !== userId) {
+    if (
+      membership.role !== "owner" &&
+      whiteboardDocument.creatorId !== userId
+    ) {
       throw new HttpError(
         403,
         "WHITEBOARD_DOCUMENT_DELETE_FORBIDDEN",
@@ -534,7 +560,10 @@ export async function deleteWhiteboardDocument({
 `backend/src/controllers/whiteboard-document.controller.ts`에서 service import에 `deleteWhiteboardDocument`를 추가하고 다음 handler를 추가한다.
 
 ```ts
-export async function deleteWhiteboardDocumentHandler(req: Request, res: Response) {
+export async function deleteWhiteboardDocumentHandler(
+  req: Request,
+  res: Response,
+) {
   const user = requireUser(req);
   const { workspaceId, projectId, documentId } = parseOrThrow(
     whiteboardDocumentUpdateParamsSchema,
@@ -700,7 +729,7 @@ Expected: 변경은 승인된 설계의 schema, migration metadata, backend API,
 
 ### 남은 후속 작업
 
-- 배포 시 생성된 `0003_misty_zarda.sql`을 실제 데이터베이스에 적용한다.
+- 배포 시 `dev` 병합 후 번호가 조정된 `0004_misty_zarda.sql`을 실제 데이터베이스에 적용한다.
 - generated migration metadata의 broad Prettier 경고는 별도 generated-file 정리 범위에서 판단한다.
 - 복구·영구 삭제·프론트엔드 UI가 필요하면 별도 설계와 작업으로 진행한다.
 - 커밋·push는 사용자의 명시적 요청 전까지 하지 않는다.

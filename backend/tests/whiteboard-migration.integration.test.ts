@@ -8,7 +8,7 @@ const shouldRun = process.env.RUN_DATABASE_INTEGRATION_TESTS === "1";
 const describeDatabaseIntegration = shouldRun ? describe : describe.skip;
 const postgresImage = process.env.TEST_POSTGRES_IMAGE ?? "postgres:17-alpine";
 const migrationSql = readFileSync(
-  fileURLToPath(new URL("../src/db/migrations/0004_greedy_shriek.sql", import.meta.url)),
+  fileURLToPath(new URL("../src/db/migrations/0005_greedy_shriek.sql", import.meta.url)),
   "utf8",
 );
 

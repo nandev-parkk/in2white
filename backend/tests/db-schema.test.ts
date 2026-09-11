@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import * as schema from "@/db/schema";
 
 const migrationSql = readFileSync(
-  fileURLToPath(new URL("../src/db/migrations/0004_greedy_shriek.sql", import.meta.url)),
+  fileURLToPath(new URL("../src/db/migrations/0005_greedy_shriek.sql", import.meta.url)),
   "utf8",
 );
 
@@ -58,5 +58,11 @@ describe("db schema", () => {
     expect(migrationSql).toContain(
       `WHEN "canvas_content" = '{}'::jsonb THEN '{"elements":[]}'::jsonb`,
     );
+  });
+
+  it("users schema exposes a sessionVersion column with default zero", () => {
+    expect(schema.users.sessionVersion).toBeDefined();
+    expect(schema.users.sessionVersion.notNull).toBe(true);
+    expect(schema.users.sessionVersion.hasDefault).toBe(true);
   });
 });
