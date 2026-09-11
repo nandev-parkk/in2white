@@ -6,11 +6,14 @@ import { users, workspaceMemberships, workspaces } from "@/db/schema";
 import {
   getUserByEmail,
   getUserById,
+  updateUserName,
+  updateUserPasswordAndIncrementSessionVersion,
   upsertUserWithDefaultWorkspace,
 } from "@/services/user.service";
 
 vi.mock("@/db/client", () => ({
   db: {
+    update: vi.fn(),
     transaction: vi.fn(),
     query: {
       users: {
@@ -232,5 +235,53 @@ describe("upsertUserWithDefaultWorkspace", () => {
         passwordHash: "hashed-value",
       }),
     ).rejects.toBe(membershipError);
+  });
+});
+
+describe("account user updates", () => {
+  beforeEach(() => {
+    vi.mocked(db.update).mockReset();
+  });
+
+  function mockUpdateReturning(row: unknown) {
+    const returning = vi.fn().mockResolvedValue(row ? [row] : []);
+    const where = vi.fn().mockReturnValue({ returning });
+    const set = vi.fn().mockReturnValue({ where });
+    vi.mocked(db.update).mockReturnValue({ set } as never);
+    return { returning, set, where };
+  }
+
+  it("updates a user's name and returns the updated row", async () => {
+    const { set, where } = mockUpdateReturning({ ...mockUser, name: "새 이름" });
+
+    const result = await updateUserName({ userId: "user-1", name: "새 이름" });
+
+    expect(db.update).toHaveBeenCalledWith(users);
+    expect(set).toHaveBeenCalledWith({ name: "새 이름" });
+    expect(where).toHaveBeenCalledWith(eq(users.id, "user-1"));
+    expect(result?.name).toBe("새 이름");
+  });
+
+  it("updates the password and increments the session version atomically", async () => {
+    const { set } = mockUpdateReturning({ ...mockUser, sessionVersion: 1 });
+
+    const result = await updateUserPasswordAndIncrementSessionVersion({
+      userId: "user-1",
+      passwordHash: "new-hash",
+    });
+
+    expect(set).toHaveBeenCalledWith({
+      passwordHash: "new-hash",
+      sessionVersion: expect.anything(),
+    });
+    expect(result?.sessionVersion).toBe(1);
+  });
+
+  it("returns undefined when the target user no longer exists", async () => {
+    mockUpdateReturning(undefined);
+
+    await expect(
+      updateUserName({ userId: "missing-user", name: "새 이름" }),
+    ).resolves.toBeUndefined();
   });
 });

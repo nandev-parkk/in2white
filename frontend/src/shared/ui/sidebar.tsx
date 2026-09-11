@@ -44,6 +44,7 @@ type SidebarProps = React.ComponentProps<'div'> & {
   workspaceMembers: PresenceUser[]
   activeNav: SidebarNavKey
   onNavChange: (key: SidebarNavKey) => void
+  onUserClick?: () => void
   onInviteMember?: () => void
   onLogout?: () => void
   userName: string
@@ -404,6 +405,7 @@ function Sidebar({
   workspaceMembers,
   activeNav,
   onNavChange,
+  onUserClick,
   onInviteMember,
   onLogout,
   userName,
@@ -794,24 +796,30 @@ function Sidebar({
 
       <div className="bg-border h-px w-full" />
 
-      <div
-        data-slot="sidebar-profile"
-        className="flex min-h-16 items-center gap-2 py-3 pr-3 pl-1"
-      >
-        <Avatar size="default">
-          {userImageUrl && <AvatarImage src={userImageUrl} alt={userName} />}
-          <AvatarFallback size="default">{userName.slice(0, 2)}</AvatarFallback>
-        </Avatar>
-        {!visualCollapsed && (
-          <div className="flex min-w-0 flex-col">
-            <span className="text-body-small text-foreground-strong truncate font-semibold">
-              {userName}
-            </span>
-            <span className="text-caption text-foreground-tertiary truncate">
-              {userEmail}
-            </span>
-          </div>
-        )}
+      <div data-slot="sidebar-profile" className="min-h-16 w-full">
+        <button
+          type="button"
+          aria-label={`사용자 정보: ${userName}`}
+          onClick={() => onUserClick?.()}
+          className="focus-visible:ring-action-focus-ring hover:bg-action-secondary-hover flex min-h-16 w-full items-center gap-2 rounded-md py-3 pr-3 pl-1 text-left transition-colors duration-150 outline-none focus-visible:ring-3"
+        >
+          <Avatar size="default">
+            {userImageUrl && <AvatarImage src={userImageUrl} alt={userName} />}
+            <AvatarFallback size="default">
+              {userName.slice(0, 2)}
+            </AvatarFallback>
+          </Avatar>
+          {!visualCollapsed && (
+            <div className="flex min-w-0 flex-col">
+              <span className="text-body-small text-foreground-strong truncate font-semibold">
+                {userName}
+              </span>
+              <span className="text-caption text-foreground-tertiary truncate">
+                {userEmail}
+              </span>
+            </div>
+          )}
+        </button>
       </div>
 
       <div

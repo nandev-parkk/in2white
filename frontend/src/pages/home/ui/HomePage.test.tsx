@@ -58,7 +58,25 @@ vi.mock('@/features/workspace', () => ({
 }))
 
 vi.mock('@/features/project/ui/ProjectListContent', () => ({
-  ProjectListContent: () => <div data-testid="project-list-content" />,
+  ProjectListContent: ({
+    accessToken,
+    workspaceId,
+    userId,
+    workspaceRole,
+  }: {
+    accessToken: string
+    workspaceId: string
+    userId: string
+    workspaceRole?: string
+  }) => (
+    <div
+      data-testid="project-list-content"
+      data-access-token={accessToken}
+      data-workspace-id={workspaceId}
+      data-user-id={userId}
+      data-workspace-role={workspaceRole}
+    />
+  ),
 }))
 
 vi.mock('@/shared/ui/toast', () => ({
@@ -187,6 +205,66 @@ describe('HomePage', () => {
     })
     expect(sidebar).toHaveClass('border-sidebar-border')
     expect(sidebar.parentElement).toHaveClass('bg-background-default')
+  })
+
+  it('ProjectListContent에 인증 및 workspace context를 전달한다', () => {
+    useSessionStore.getState().setSession('token-1', userFixture)
+    mockUseWorkspaces.mockReturnValue({
+      data: [workspaceFixture],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    })
+    mockUseCreateWorkspace.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      error: null,
+      reset: vi.fn(),
+    })
+
+    renderHomePage()
+
+    const projectListContent = screen.getByTestId('project-list-content')
+    expect(projectListContent).toHaveAttribute('data-access-token', 'token-1')
+    expect(projectListContent).toHaveAttribute(
+      'data-workspace-id',
+      'workspace-1',
+    )
+    expect(projectListContent).toHaveAttribute('data-user-id', 'user-1')
+    expect(projectListContent).toHaveAttribute('data-workspace-role', 'owner')
+  })
+
+  it('사이드바 navigation callback을 route에 위임한다', async () => {
+    useSessionStore.getState().setSession('token-1', userFixture)
+    mockUseWorkspaces.mockReturnValue({
+      data: [workspaceFixture],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    })
+    mockUseCreateWorkspace.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+      error: null,
+      reset: vi.fn(),
+    })
+    const onNavChange = vi.fn()
+
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({
+            defaultOptions: { queries: { retry: false } },
+          })
+        }
+      >
+        <HomePage onNavChange={onNavChange} />
+      </QueryClientProvider>,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: '설정' }))
+
+    expect(onNavChange).toHaveBeenCalledWith('settings', 'workspace-1')
   })
 
   it('생성 중에는 모달을 닫아 mutation을 초기화할 수 없다', async () => {

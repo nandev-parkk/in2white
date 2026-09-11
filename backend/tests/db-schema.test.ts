@@ -13,4 +13,10 @@ describe("db schema", () => {
   it("projects schema exposes a nullable deletedAt column", () => {
     expect(schema.projects.deletedAt).toBeDefined();
   });
+
+  it("users schema exposes a sessionVersion column with default zero", () => {
+    expect(schema.users.sessionVersion).toBeDefined();
+    expect(schema.users.sessionVersion.notNull).toBe(true);
+    expect(schema.users.sessionVersion.hasDefault).toBe(true);
+  });
 });
