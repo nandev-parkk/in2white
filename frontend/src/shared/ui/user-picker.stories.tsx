@@ -24,7 +24,7 @@ const USERS: PickableUser[] = [
 
 type UserPickerStoryProps = Pick<
   ComponentProps<typeof UserPicker>,
-  'users' | 'title' | 'open' | 'searchValue'
+  'users' | 'title' | 'open' | 'searchValue' | 'loading'
 >
 
 function UserPickerExample({
@@ -32,6 +32,7 @@ function UserPickerExample({
   title,
   open: controlledOpen,
   searchValue: controlledSearchValue,
+  loading,
 }: UserPickerStoryProps) {
   const [open, setOpen] = useState(controlledOpen)
   const [previousControlledOpen, setPreviousControlledOpen] =
@@ -81,6 +82,7 @@ function UserPickerExample({
         onSelect={handleSelect}
         searchValue={searchValue}
         onSearchChange={setSearchValue}
+        loading={loading}
       />
     </div>
   )
@@ -105,6 +107,7 @@ const meta = {
       title={args.title}
       open={args.open}
       searchValue={args.searchValue}
+      loading={args.loading}
     />
   ),
 } satisfies Meta<typeof UserPicker>
@@ -116,6 +119,10 @@ export const Default: Story = {}
 
 export const Open: Story = {
   args: { open: true },
+}
+
+export const Loading: Story = {
+  args: { open: true, loading: true },
 }
 
 export const SearchResults: Story = {

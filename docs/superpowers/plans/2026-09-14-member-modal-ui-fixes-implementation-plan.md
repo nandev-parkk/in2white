@@ -2,7 +2,7 @@
 
 ## 상태
 
-2026-09-14 사용자 설계 승인 완료. 9번 피그마 대조를 포함한 전 항목 구현·검증 완료. 로딩 표현 방식 1건만 사용자 판단이 필요하다.
+2026-09-14 사용자 설계 승인 완료. 9번 피그마 대조를 포함한 전 항목 구현·검증 완료. 보류했던 로딩 표현 방식도 사용자 승인 후 스켈레톤으로 전환 완료.
 
 설계: [멤버 추가 모달·사이드바 활성 표시 수정 설계](../specs/2026-09-14-member-modal-ui-fixes-design.md)
 
@@ -120,7 +120,51 @@ TDD 순서를 지켰다. 구현 전 프론트 8건, 백엔드 7건이 실패하�
 
 ### 남은 후속 작업
 
-- 모달 로딩 표현: 현재 스피너(`CompactLoadingState`) 대 피그마의 `Skeleton / List Cell`. 사용자 판단이 필요하다.
-- 스크롤 시 마지막 행 잘림, 딤 배경 불투명도 0.40 대 0.44는 별도 작업으로 남긴다.
+- 모달 로딩 표현은 사용자 승인 후 스켈레톤으로 전환했다. 아래 "후속 작업: 모달 로딩 스켈레톤 전환" 참고.
+- 스크롤 시 마지막 행 잘림, 딤 배경 불투명도 0.40 대 0.44는 의도적으로 두기로 했다.
+  - 마지막 행 잘림은 표준 스크롤 어포던스이고, 피그마에 스크롤 상태 프레임이 없다. `max-h-72`를 행 높이 배수로 튜닝하는 방식은 이름 줄바꿈·토큰 변경에 취약하다.
+  - 딤 배경은 전역 `DialogOverlay`(`shared/ui/dialog.tsx`)의 `bg-black/40`이라 0.04 차이 때문에 앱 전체 다이얼로그를 바꾸게 된다. 디자인 토큰 정합성 작업에서 다룬다.
 - 규칙 도입 전 기본 워크스페이스 멤버십은 사용자 선택(B안)에 따라 위반 3건만 삭제했다. 삭제 후 위반 0건, 기본 워크스페이스 6개 모두 멤버십 1건을 확인했다.
 - 커밋·푸시·PR은 미실행이다.
+
+## 후속 작업: 모달 로딩 스켈레톤 전환
+
+2026-09-14 사용자 승인 후 진행. 브랜치 `fix/member-modal-loading-skeleton`, base `dev`.
+
+### 배경
+
+피그마 노드 `220:3927`의 목록 로딩 패턴은 `Skeleton / List Cell`인데 모달만 스피너(`CompactLoadingState`)를 썼다. 모달 뒤에 깔린 멤버 목록 페이지가 이미 스켈레톤 행을 보여주고 있어 일관성도 맞지 않았다.
+
+### 실제 변경
+
+- `shared/ui/user-picker.tsx`: 로딩을 `SkeletonListCell` 5개로 교체했다. 래퍼는 `role="status"` + `aria-label="사용자 불러오는 중"`으로 스크린리더 안내를 유지한다.
+- `shared/ui/skeleton.tsx`: `SkeletonListCell` 기본 높이에 `h-15.5`를 넣어 `ListCell` 실제 렌더 높이(62px)와 맞췄다.
+- `features/member/ui/MemberListContent.tsx`: 직접 작성한 스켈레톤 행을 `SkeletonListCell`로 교체했다. 기존에 지정하던 `h-15.5`가 공용 컴포넌트 기본값이 되어 override가 필요 없다.
+- `shared/ui/user-picker.stories.tsx`: `loading` 인자를 wrapper로 전달하고 `Loading` 스토리를 추가했다.
+- `shared/ui/compact-loading-state.tsx`와 테스트를 삭제했다. `user-picker.tsx` 외에 사용처가 없었다.
+
+### 검증
+
+TDD 순서를 지켰다. 테스트를 먼저 스켈레톤 기준으로 바꿔 실패를 확인한 뒤 구현했다.
+
+| 대상 | 명령 | 결과 |
+| --- | --- | --- |
+| frontend | `npx vitest run` | 49파일 / 268개 통과 |
+| frontend | `npx eslint .` | 오류 0, 기존 Fast Refresh 경고 4건 |
+| frontend | `npm run build` | exit 0 |
+| frontend | `npx prettier --check src/` | 통과 |
+| 루트 | `git diff --check` | 통과 |
+
+브라우저 확인은 Storybook(포트 6007)과 Orca 내장 브라우저의 DOM 측정으로 했다.
+
+| 상태 | 행 높이 | 목록 높이 | 모달 |
+| --- | --- | --- | --- |
+| 로딩(스켈레톤 5개) | 62px | 288px | 380 x 480 |
+| 로드 완료(실제 5행) | 62px | 288px | 380 x 480 |
+
+두 상태의 치수가 완전히 같아 로딩에서 데이터로 전환할 때 레이아웃 이동이 없다. 높이를 맞추기 전에는 스켈레톤이 56px이라 행당 6px, 모달 전체 8px이 밀렸다.
+
+### 계획과 달라진 점
+
+- `SkeletonListCell`이 `--component-list-cell-*` 토큰을 쓰는데도 실제 `ListCell`보다 6px 낮았다. 토큰만으로는 높이가 맞지 않아 `h-15.5`를 기본값으로 넣었다. 이 값은 기존 `MemberListContent`가 쓰던 수치와 같다.
+- 로딩 상태를 브라우저에서 재현하려면 스토리가 필요해 `Loading` 스토리를 추가했다. 계획에는 없던 변경이다.

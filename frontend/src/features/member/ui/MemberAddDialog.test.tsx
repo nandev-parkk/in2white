@@ -58,7 +58,9 @@ it('멤버 추가 후 재조회 중에도 후보 목록을 유지하고 로딩�
   await userEvent.click(candidate)
 
   expect(screen.getByText(/sky@example\.com/)).toBeInTheDocument()
-  expect(screen.queryByText('사용자 불러오는 중')).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('status', { name: '사용자 불러오는 중' }),
+  ).not.toBeInTheDocument()
 
   await act(async () => {
     settleRefetch()
@@ -78,7 +80,9 @@ it('검색어를 바꿔 재조회하는 동안 이전 결과를 유지한다', a
   await act(() => vi.advanceTimersByTimeAsync(300))
 
   expect(screen.getByText('sky@example.com')).toBeInTheDocument()
-  expect(screen.queryByText('사용자 불러오는 중')).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('status', { name: '사용자 불러오는 중' }),
+  ).not.toBeInTheDocument()
 
   await act(async () => {
     settleRefetch()
@@ -89,11 +93,15 @@ it('모달을 처음 열 때만 로딩 상태를 표시한다', async () => {
   const settleFirstLoad = deferCandidates()
   mount()
 
-  expect(screen.getByText('사용자 불러오는 중')).toBeInTheDocument()
+  expect(
+    screen.getByRole('status', { name: '사용자 불러오는 중' }),
+  ).toBeInTheDocument()
 
   await act(async () => {
     settleFirstLoad()
   })
   expect(await screen.findByRole('button', { name: /하늘/ })).toBeVisible()
-  expect(screen.queryByText('사용자 불러오는 중')).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('status', { name: '사용자 불러오는 중' }),
+  ).not.toBeInTheDocument()
 })

@@ -19,7 +19,7 @@ function SkeletonListCell({
     <div
       data-slot="skeleton-list-cell"
       className={cn(
-        'bg-background-default flex items-center gap-(--component-list-cell-gap) px-(--component-list-cell-padding-horizontal) py-(--component-list-cell-padding-vertical)',
+        'bg-background-default flex h-15.5 items-center gap-(--component-list-cell-gap) px-(--component-list-cell-padding-horizontal) py-(--component-list-cell-padding-vertical)',
         className,
       )}
       {...props}
