@@ -21,6 +21,31 @@ pnpm dev
 
 `GET http://localhost:4000/health`로 서버가 떠 있는지 확인할 수 있다.
 
+## 프로젝트 상세 조회
+
+인증된 워크스페이스 Owner/Member는
+`GET /workspaces/:workspaceId/projects/:projectId`로 프로젝트 기본 정보와
+`creator: { id, name }`을 조회한다. 성공 응답은 `200 { project }`이며
+설명은 null일 수 있다. `Authorization: Bearer <access-token>`이 필요하다.
+
+비멤버·없는 워크스페이스는 `404 WORKSPACE_NOT_FOUND`, 없는·다른
+워크스페이스·삭제된 프로젝트는 `404 PROJECT_NOT_FOUND`다.
+인증·경로 UUID 오류는 각각 401·400이다.
+
+화이트보드 문서 검색·목록·개수는 기존
+`GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents`의
+`whiteboardDocuments`와 `pagination.total`을 사용한다.
+
+실제 PostgreSQL 접근 범위 검증은 backend 디렉터리에서 실행한다.
+
+```bash
+RUN_DATABASE_INTEGRATION_TESTS=1 pnpm exec vitest run tests/project-detail.integration.test.ts --reporter=dot
+```
+
+Testcontainers의 임시 DB를 사용하며 Docker가 필요하다. 기본 이미지는
+`postgres:17-alpine`이고 `TEST_POSTGRES_IMAGE`로 바꿀 수 있다.
+기본 전체 테스트에서는 이 통합 테스트가 제외된다.
+
 ## 스크립트
 
 | 명령                        | 설명                                                                          |
