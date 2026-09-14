@@ -1,0 +1,51 @@
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { UserPicker } from './user-picker'
+const users = [
+  { id: '1', name: '민지', email: 'minji@example.com' },
+  { id: '2', name: '서준', email: 'seo@example.com', isMember: true },
+]
+it('키보드로 후보를 선택하고 기존 멤버는 실제로 비활성화한다', async () => {
+  const onSelect = vi.fn()
+  render(
+    <UserPicker
+      open
+      onOpenChange={vi.fn()}
+      users={users}
+      onSelect={onSelect}
+      searchValue=""
+      onSearchChange={vi.fn()}
+    />,
+  )
+  const candidate = screen.getByRole('button', { name: /민지/ })
+  candidate.focus()
+  await userEvent.keyboard('{Enter}')
+  expect(onSelect).toHaveBeenCalledWith(users[0])
+  expect(screen.getByRole('button', { name: /서준/ })).toBeDisabled()
+})
+it('로딩과 오류·재시도 및 후보 페이지 이동을 표시한다', async () => {
+  const onRetry = vi.fn(),
+    onPageChange = vi.fn()
+  const props = {
+    open: true,
+    onOpenChange: vi.fn(),
+    users,
+    onSelect: vi.fn(),
+    searchValue: '',
+    onSearchChange: vi.fn(),
+    page: 1,
+    totalPages: 2,
+    onPageChange,
+  }
+  const { rerender } = render(<UserPicker {...props} loading />)
+  expect(screen.getByRole('status')).toHaveTextContent('불러오는 중')
+  expect(screen.queryByRole('button', { name: /민지/ })).not.toBeInTheDocument()
+  rerender(
+    <UserPicker {...props} error="검색하지 못했어요" onRetry={onRetry} />,
+  )
+  await userEvent.click(screen.getByRole('button', { name: '다시 시도' }))
+  expect(onRetry).toHaveBeenCalledOnce()
+  rerender(<UserPicker {...props} />)
+  await userEvent.click(screen.getByRole('button', { name: '다음 페이지' }))
+  expect(onPageChange).toHaveBeenCalledWith(2)
+})

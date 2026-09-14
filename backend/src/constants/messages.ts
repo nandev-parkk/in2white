@@ -24,6 +24,7 @@ export const ERROR_MESSAGES = {
   WORKSPACE_ID_INVALID: "유효하지 않은 워크스페이스 ID입니다",
   USER_ID_INVALID: "유효하지 않은 사용자 ID입니다",
   USER_NOT_FOUND: "사용자를 찾을 수 없습니다",
+  MEMBER_SEARCH_FORBIDDEN: "사용자를 검색할 권한이 없습니다",
   MEMBER_ADD_FORBIDDEN: "멤버를 추가할 권한이 없습니다",
   MEMBER_REMOVE_FORBIDDEN: "멤버를 내보낼 권한이 없습니다",
   MEMBER_SELF_REMOVE_FORBIDDEN: "자기 자신은 내보낼 수 없습니다",

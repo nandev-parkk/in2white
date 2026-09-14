@@ -227,3 +227,72 @@ export async function listMembers({
     pagination: createPaginationMeta({ page, limit, total }),
   };
 }
+
+export interface MemberCandidateListItem {
+  id: string;
+  name: string;
+  email: string;
+  isMember: boolean;
+}
+
+export interface ListMemberCandidatesResult {
+  users: MemberCandidateListItem[];
+  pagination: PaginationMeta;
+}
+
+export async function listMemberCandidates({
+  workspaceId,
+  requesterId,
+  search,
+  page,
+  limit,
+}: ListMembersInput): Promise<ListMemberCandidatesResult> {
+  const [requesterMembership] = await db
+    .select({ role: workspaceMemberships.role })
+    .from(workspaceMemberships)
+    .where(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, requesterId),
+      ),
+    );
+
+  if (!requesterMembership) {
+    throw new HttpError(404, "WORKSPACE_NOT_FOUND", ERROR_MESSAGES.WORKSPACE_NOT_FOUND);
+  }
+  if (requesterMembership.role !== "owner") {
+    throw new HttpError(403, "MEMBER_SEARCH_FORBIDDEN", ERROR_MESSAGES.MEMBER_SEARCH_FORBIDDEN);
+  }
+
+  const pattern = search ? buildContainsSearchPattern(search) : undefined;
+  const whereCondition = pattern
+    ? or(ilike(users.name, pattern), ilike(users.email, pattern))
+    : undefined;
+  const [countRows, candidateRows] = await Promise.all([
+    db.select({ total: count() }).from(users).where(whereCondition),
+    db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        isMember: sql<boolean>`${workspaceMemberships.id} is not null`,
+      })
+      .from(users)
+      .leftJoin(
+        workspaceMemberships,
+        and(
+          eq(workspaceMemberships.userId, users.id),
+          eq(workspaceMemberships.workspaceId, workspaceId),
+        ),
+      )
+      .where(whereCondition)
+      .orderBy(asc(users.name), asc(users.id))
+      .limit(limit)
+      .offset(getPaginationOffset({ page, limit })),
+  ]);
+
+  return {
+    users: candidateRows,
+    pagination: createPaginationMeta({ page, limit, total: Number(countRows[0]?.total ?? 0) }),
+  };
+}

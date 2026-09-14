@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 
 import { useSessionStore, type SessionUser } from '@/entities/session'
@@ -11,6 +11,12 @@ import { useCreateWorkspace, useWorkspaces } from '@/features/workspace'
 import { ProjectListContent } from '@/features/project/ui/ProjectListContent'
 import { WorkspaceCreateDialog } from '@/features/workspace/ui/WorkspaceCreateDialog'
 import { WorkspaceAccessDeniedPage } from '@/pages/workspace-access-denied'
+import {
+  useMembers,
+  isMemberAccessLost,
+} from '@/features/member/model/use-members'
+import { MemberListContent } from '@/features/member/ui/MemberListContent'
+import { MemberAddDialog } from '@/features/member/ui/MemberAddDialog'
 import { Button } from '@/shared/ui/button'
 import { Sidebar, type SidebarNavKey } from '@/shared/ui/sidebar'
 
@@ -46,11 +52,13 @@ function AuthenticatedHomePage({
   onLogout,
   workspaceId,
   onWorkspaceChange,
+  activeNav = 'projects',
 }: {
   accessToken: string
   user: SessionUser
   onLogout: () => void
   workspaceId?: string
+  activeNav?: 'projects' | 'members'
   onWorkspaceChange?: (workspaceId: string) => void
 }) {
   const { data, isLoading, isError, refetch } = useWorkspaces(
@@ -61,7 +69,10 @@ function AuthenticatedHomePage({
   const compactSidebar = useCompactSidebar()
   const [collapsed, setCollapsed] = useState(false)
   const isSidebarCollapsed = compactSidebar || collapsed
-  const [activeNav, setActiveNav] = useState<SidebarNavKey>('projects')
+  const navigate = useNavigate()
+  const [lostWorkspaceId, setLostWorkspaceId] = useState<string | null>(null)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const inviteTrigger = useRef<HTMLElement | null>(null)
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(
     workspaceId ?? null,
   )
@@ -94,6 +105,31 @@ function AuthenticatedHomePage({
       fallbackWorkspace)
   const resolvedSelectedWorkspaceId = selectedWorkspace?.id ?? null
 
+  const preview = useMembers(
+    accessToken,
+    user.id,
+    resolvedSelectedWorkspaceId,
+    { page: 1, limit: 20, search: '' },
+  )
+  const handleAccessLost = useCallback(() => {
+    setLostWorkspaceId(resolvedSelectedWorkspaceId)
+    void refetch()
+  }, [resolvedSelectedWorkspaceId, refetch])
+  const previewAccessLost = isMemberAccessLost(preview.error)
+  useEffect(() => {
+    if (previewAccessLost) void refetch()
+  }, [previewAccessLost, refetch])
+  function handleNavChange(nav: SidebarNavKey) {
+    if (nav === 'settings' || !resolvedSelectedWorkspaceId) return
+    void navigate({
+      to:
+        nav === 'members'
+          ? '/workspaces/$workspaceId/members'
+          : '/workspaces/$workspaceId/projects',
+      params: { workspaceId: resolvedSelectedWorkspaceId },
+    })
+  }
+
   if (previousWorkspaces !== workspaces) {
     setPreviousWorkspaces(workspaces)
     setSelectedWorkspaceId((currentWorkspaceId) =>
@@ -117,12 +153,19 @@ function AuthenticatedHomePage({
     )
   }
 
-  if (!isLoading && workspaceId && !routeWorkspace) {
+  if (
+    !isLoading &&
+    ((workspaceId && !routeWorkspace) ||
+      previewAccessLost ||
+      (lostWorkspaceId && lostWorkspaceId === resolvedSelectedWorkspaceId))
+  ) {
     return (
       <WorkspaceAccessDeniedPage
         workspaceName={fallbackWorkspace?.name ?? '기본 워크스페이스'}
         onReturn={() => {
-          if (fallbackWorkspaceId) onWorkspaceChange?.(fallbackWorkspaceId)
+          if (fallbackWorkspaceId && fallbackWorkspaceId !== lostWorkspaceId)
+            onWorkspaceChange?.(fallbackWorkspaceId)
+          else void navigate({ to: '/', replace: true })
         }}
       />
     )
@@ -145,6 +188,7 @@ function AuthenticatedHomePage({
   }
 
   function handleWorkspaceChange(nextWorkspaceId: string) {
+    setInviteOpen(false)
     setSelectedWorkspaceId(nextWorkspaceId)
     onWorkspaceChange?.(nextWorkspaceId)
   }
@@ -162,9 +206,22 @@ function AuthenticatedHomePage({
         onWorkspaceChange={handleWorkspaceChange}
         onCreateWorkspace={() => handleCreateDialogOpenChange(true)}
         workspaceDialogOpen={createDialogOpen}
-        workspaceMembers={[{ id: user.id, name: user.name, presenceIndex: 1 }]}
+        workspaceMembers={(preview.data?.members ?? []).map((member) => ({
+          id: member.userId,
+          name: member.name,
+          presenceIndex: 1,
+        }))}
+        workspaceMemberCount={preview.data?.pagination.total}
+        onInviteMember={
+          selectedWorkspace?.role === 'owner'
+            ? () => {
+                inviteTrigger.current = document.activeElement as HTMLElement
+                setInviteOpen(true)
+              }
+            : undefined
+        }
         activeNav={activeNav}
-        onNavChange={setActiveNav}
+        onNavChange={handleNavChange}
         onLogout={onLogout}
         userName={user.name}
         userEmail={user.email}
@@ -176,18 +233,43 @@ function AuthenticatedHomePage({
             워크스페이스 불러오는 중
           </p>
         ) : workspaceId || resolvedSelectedWorkspaceId ? (
-          <ProjectListContent
-            accessToken={accessToken}
-            workspaceId={workspaceId ?? resolvedSelectedWorkspaceId!}
-            userId={user.id}
-            workspaceRole={selectedWorkspace?.role}
-          />
+          activeNav === 'members' ? (
+            <MemberListContent
+              key={`${user.id}:${workspaceId ?? resolvedSelectedWorkspaceId}`}
+              accessToken={accessToken}
+              userId={user.id}
+              workspaceId={workspaceId ?? resolvedSelectedWorkspaceId!}
+              workspaceRole={selectedWorkspace?.role}
+              onAccessLost={handleAccessLost}
+            />
+          ) : (
+            <ProjectListContent
+              accessToken={accessToken}
+              workspaceId={workspaceId ?? resolvedSelectedWorkspaceId!}
+              userId={user.id}
+              workspaceRole={selectedWorkspace?.role}
+            />
+          )
         ) : (
           <p className="text-body text-foreground-secondary">
             워크스페이스 없음
           </p>
         )}
       </main>
+
+      {inviteOpen &&
+        selectedWorkspace?.role === 'owner' &&
+        resolvedSelectedWorkspaceId && (
+          <MemberAddDialog
+            key={`${user.id}:${resolvedSelectedWorkspaceId}`}
+            accessToken={accessToken}
+            userId={user.id}
+            workspaceId={resolvedSelectedWorkspaceId}
+            onClose={() => setInviteOpen(false)}
+            onAccessLost={handleAccessLost}
+            returnFocus={inviteTrigger}
+          />
+        )}
 
       <WorkspaceCreateDialog
         open={createDialogOpen}
@@ -205,8 +287,10 @@ function AuthenticatedHomePage({
 export function HomePage({
   workspaceId,
   onWorkspaceChange,
+  activeNav = 'projects',
 }: {
   workspaceId?: string
+  activeNav?: 'projects' | 'members'
   onWorkspaceChange?: (workspaceId: string) => void
 } = {}) {
   const navigate = useNavigate()
@@ -236,6 +320,7 @@ export function HomePage({
       onLogout={handleLogout}
       workspaceId={workspaceId}
       onWorkspaceChange={onWorkspaceChange}
+      activeNav={activeNav}
     />
   )
 }

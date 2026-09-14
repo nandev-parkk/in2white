@@ -40,6 +40,7 @@ type SidebarProps = React.ComponentProps<'div'> & {
   onCreateWorkspace: () => void
   workspaceDialogOpen?: boolean
   workspaceMembers: PresenceUser[]
+  workspaceMemberCount?: number
   activeNav: SidebarNavKey
   onNavChange: (key: SidebarNavKey) => void
   onInviteMember?: () => void
@@ -329,11 +330,10 @@ function SidebarNavItem({
       className={cn(
         'focus-visible:ring-action-focus-ring flex h-11 w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-md p-3 text-left transition-[background-color,transform,color] duration-150 ease-out outline-none focus-visible:ring-3 active:scale-[0.99] motion-reduce:transition-none',
         active ? 'bg-action-secondary' : 'hover:bg-action-secondary-hover',
+        !collapsed && !compact && trailing ? 'pr-11' : undefined,
       )}
     >
-      <span
-        className="flex min-w-0 items-center gap-2"
-      >
+      <span className="flex min-w-0 items-center gap-2">
         <Icon className="size-4 shrink-0" />
         <span
           aria-hidden={collapsed}
@@ -352,11 +352,21 @@ function SidebarNavItem({
           {label}
         </span>
       </span>
-      {!collapsed && !compact && trailing}
     </button>
   )
 
-  if (!collapsed && !compact) return content
+  if (!collapsed && !compact && !trailing) return content
+  if (!collapsed && !compact)
+    return (
+      <div className="relative">
+        {content}
+        {trailing && (
+          <div className="absolute top-1/2 right-2 -translate-y-1/2">
+            {trailing}
+          </div>
+        )}
+      </div>
+    )
 
   return (
     <Tooltip>
@@ -379,6 +389,7 @@ function Sidebar({
   onCreateWorkspace,
   workspaceDialogOpen = false,
   workspaceMembers,
+  workspaceMemberCount,
   activeNav,
   onNavChange,
   onInviteMember,
@@ -447,10 +458,7 @@ function Sidebar({
         width >= SIDEBAR_TOGGLE_INSIDE_MIN_WIDTH
       ) {
         updateToggleOutside(false)
-      } else if (
-        !toggleOutsideRef.current &&
-        width <= outsideMaxWidth
-      ) {
+      } else if (!toggleOutsideRef.current && width <= outsideMaxWidth) {
         updateToggleOutside(true)
       }
     },
@@ -467,9 +475,7 @@ function Sidebar({
       const borderBoxSize = Array.isArray(entry.borderBoxSize)
         ? entry.borderBoxSize[0]?.inlineSize
         : undefined
-      updateToggleOutsideForWidth(
-        borderBoxSize ?? entry.contentRect.width,
-      )
+      updateToggleOutsideForWidth(borderBoxSize ?? entry.contentRect.width)
     })
 
     observer.observe(sidebarElement)
@@ -515,12 +521,7 @@ function Sidebar({
     setLayoutCollapsed(isCollapsed)
     updateSidebarWidth(isCollapsed ? SIDEBAR_WIDTH_MIN : SIDEBAR_WIDTH_MAX)
     updateToggleOutside(isCollapsed)
-  }, [
-    isCollapsed,
-    pendingCollapsed,
-    updateSidebarWidth,
-    updateToggleOutside,
-  ])
+  }, [isCollapsed, pendingCollapsed, updateSidebarWidth, updateToggleOutside])
 
   React.useEffect(() => {
     if (!isResizing) return
@@ -623,8 +624,7 @@ function Sidebar({
     sidebarWidth <= SIDEBAR_VISUAL_COLLAPSED_MAX_WIDTH &&
     pendingCollapsed !== false
   const workspaceMembersCollapsed = visualCollapsed || pendingCollapsed === true
-  const compact =
-    !visualCollapsed && sidebarWidth < SIDEBAR_COMPACT_MAX_WIDTH
+  const compact = !visualCollapsed && sidebarWidth < SIDEBAR_COMPACT_MAX_WIDTH
 
   return (
     <div
@@ -648,9 +648,7 @@ function Sidebar({
         className,
       )}
     >
-      <div
-        className="flex h-8 items-center pl-1"
-      >
+      <div className="flex h-8 items-center pl-1">
         <img
           src="/logo-mark.png"
           alt="in2white"
@@ -668,7 +666,7 @@ function Sidebar({
             'text-foreground-strong hover:bg-action-secondary-hover absolute z-20 flex items-center justify-center transition-[left,top,height,border-radius,background-color,transform] duration-300 ease-in-out active:scale-[0.98] motion-reduce:transition-none',
             toggleOutside
               ? 'border-sidebar-border bg-background-default top-3 left-[calc(100%+1px)] h-8 w-6 rounded-l-none rounded-r-md border border-l-0'
-              : 'left-[calc(100%-36px)] top-4 h-6 w-6 rounded-md',
+              : 'top-4 left-[calc(100%-36px)] h-6 w-6 rounded-md',
           )}
           style={
             toggleOutside ? { borderColor: SIDEBAR_BORDER_COLOR } : undefined
@@ -698,7 +696,7 @@ function Sidebar({
           data-slot="sidebar-workspace-members"
           aria-hidden={workspaceMembersCollapsed}
           className={cn(
-            'flex h-5 items-center translate-y-0 opacity-100 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
+            'flex h-5 translate-y-0 items-center opacity-100 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
             workspaceMembersCollapsed && 'pointer-events-none opacity-0',
           )}
         >
@@ -716,9 +714,9 @@ function Sidebar({
               </AvatarFallback>
             </Avatar>
           ))}
-          {workspaceMembers.length > 3 && (
+          {(workspaceMemberCount ?? workspaceMembers.length) > 3 && (
             <div className="border-1.5 border-background-default bg-background-subtle text-foreground-secondary flex size-5 items-center justify-center rounded-full text-[9px] font-semibold">
-              +{workspaceMembers.length - 3}
+              +{(workspaceMemberCount ?? workspaceMembers.length) - 3}
             </div>
           )}
         </div>
@@ -747,13 +745,14 @@ function Sidebar({
           onClick={() => onNavChange('members')}
           trailing={
             onInviteMember && (
-              <UserPlus
-                className="text-foreground-tertiary hover:text-foreground-default size-4"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onInviteMember()
-                }}
-              />
+              <button
+                type="button"
+                aria-label="멤버 초대"
+                className="text-foreground-tertiary hover:text-foreground-default focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-sm outline-none focus-visible:ring-3"
+                onClick={onInviteMember}
+              >
+                <UserPlus className="size-4" />
+              </button>
             )
           }
         />
