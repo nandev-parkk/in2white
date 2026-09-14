@@ -1,4 +1,16 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  useMembers,
+  isMemberAccessLost,
+} from '@/features/member/model/use-members'
+import { MemberAddDialog } from '@/features/member/ui/MemberAddDialog'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useNavigate } from '@tanstack/react-router'
 
 import { useSessionStore, type SessionUser } from '@/entities/session'
@@ -25,6 +37,7 @@ export type WorkspaceShellContext = {
   workspaceLoading: boolean
   workspaceError: boolean
   refetchWorkspaces: () => Promise<unknown>
+  onAccessLost: () => void
 }
 
 export type AuthenticatedWorkspaceLayoutProps = {
@@ -83,6 +96,12 @@ function WorkspaceLayoutContent({
     accessToken,
     user.id,
   )
+  const navigate = useNavigate()
+  const [lostWorkspaceId, setLostWorkspaceId] = useState<string | null>(null)
+  const [inviteWorkspaceId, setInviteWorkspaceId] = useState<string | null>(
+    null,
+  )
+  const inviteTrigger = useRef<HTMLElement | null>(null)
   const createWorkspace = useCreateWorkspace(accessToken)
   const compactSidebar = useCompactSidebar()
   const [collapsed, setCollapsed] = useState(false)
@@ -124,6 +143,20 @@ function WorkspaceLayoutContent({
     : (workspaces.find(({ id }) => id === selectedWorkspaceId) ??
       fallbackWorkspace)
   const resolvedSelectedWorkspaceId = selectedWorkspace?.id ?? null
+  const preview = useMembers(
+    accessToken,
+    user.id,
+    resolvedSelectedWorkspaceId,
+    { page: 1, limit: 20, search: '' },
+  )
+  const handleAccessLost = useCallback(() => {
+    setLostWorkspaceId(resolvedSelectedWorkspaceId)
+    void refetch()
+  }, [resolvedSelectedWorkspaceId, refetch])
+  const previewAccessLost = isMemberAccessLost(preview.error)
+  useEffect(() => {
+    if (previewAccessLost) void refetch()
+  }, [previewAccessLost, refetch])
 
   if (previousWorkspaces !== workspaces) {
     setPreviousWorkspaces(workspaces)
@@ -150,15 +183,18 @@ function WorkspaceLayoutContent({
 
   if (
     !isLoading &&
-    workspaceId &&
-    !routeWorkspace &&
-    unknownWorkspace === 'deny'
+    !isWorkspaceOptional &&
+    ((workspaceId && !routeWorkspace && unknownWorkspace === 'deny') ||
+      previewAccessLost ||
+      (lostWorkspaceId && lostWorkspaceId === resolvedSelectedWorkspaceId))
   ) {
     return (
       <WorkspaceAccessDeniedPage
         workspaceName={fallbackWorkspace?.name ?? '기본 워크스페이스'}
         onReturn={() => {
-          if (fallbackWorkspaceId) onWorkspaceChange?.(fallbackWorkspaceId)
+          if (fallbackWorkspaceId && fallbackWorkspaceId !== lostWorkspaceId)
+            onWorkspaceChange?.(fallbackWorkspaceId)
+          else void navigate({ to: '/', replace: true })
         }}
       />
     )
@@ -182,13 +218,26 @@ function WorkspaceLayoutContent({
   }
 
   function handleWorkspaceChange(nextWorkspaceId: string) {
+    setInviteWorkspaceId(null)
     setSelectedWorkspaceId(nextWorkspaceId)
     onWorkspaceChange?.(nextWorkspaceId)
   }
 
   function handleNavChange(key: SidebarNavKey) {
     setInternalActiveNav(key)
-    onNavChange?.(key, resolvedSelectedWorkspaceId)
+    if (onNavChange) onNavChange(key, resolvedSelectedWorkspaceId)
+    else if (
+      resolvedSelectedWorkspaceId &&
+      (key === 'projects' || key === 'members')
+    ) {
+      void navigate({
+        to:
+          key === 'members'
+            ? '/workspaces/$workspaceId/members'
+            : '/workspaces/$workspaceId/projects',
+        params: { workspaceId: resolvedSelectedWorkspaceId },
+      })
+    }
   }
 
   return (
@@ -204,7 +253,20 @@ function WorkspaceLayoutContent({
         onWorkspaceChange={handleWorkspaceChange}
         onCreateWorkspace={() => handleCreateDialogOpenChange(true)}
         workspaceDialogOpen={createDialogOpen}
-        workspaceMembers={[{ id: user.id, name: user.name, presenceIndex: 1 }]}
+        workspaceMembers={(preview.data?.members ?? []).map((member) => ({
+          id: member.userId,
+          name: member.name,
+          presenceIndex: 1,
+        }))}
+        workspaceMemberCount={preview.data?.pagination.total}
+        onInviteMember={
+          selectedWorkspace?.role === 'owner'
+            ? () => {
+                inviteTrigger.current = document.activeElement as HTMLElement
+                setInviteWorkspaceId(resolvedSelectedWorkspaceId)
+              }
+            : undefined
+        }
         activeNav={resolvedActiveNav}
         onNavChange={handleNavChange}
         onUserClick={() => onUserClick?.(resolvedSelectedWorkspaceId)}
@@ -228,10 +290,24 @@ function WorkspaceLayoutContent({
             workspaceLoading: isLoading,
             workspaceError: isError,
             refetchWorkspaces: () => refetch(),
+            onAccessLost: handleAccessLost,
           })
         )}
       </main>
 
+      {inviteWorkspaceId &&
+        inviteWorkspaceId === resolvedSelectedWorkspaceId &&
+        selectedWorkspace?.role === 'owner' && (
+          <MemberAddDialog
+            key={`${user.id}:${inviteWorkspaceId}`}
+            accessToken={accessToken}
+            userId={user.id}
+            workspaceId={inviteWorkspaceId}
+            onClose={() => setInviteWorkspaceId(null)}
+            onAccessLost={handleAccessLost}
+            returnFocus={inviteTrigger}
+          />
+        )}
       <WorkspaceCreateDialog
         open={createDialogOpen}
         onOpenChange={handleCreateDialogOpenChange}

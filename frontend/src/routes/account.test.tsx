@@ -31,7 +31,10 @@ vi.mock('@/pages/account', () => ({
     onWorkspaceChange,
   }: {
     workspaceId?: string
-    onNavChange?: (key: 'projects', workspaceId: string | null) => void
+    onNavChange?: (
+      key: 'projects' | 'members',
+      workspaceId: string | null,
+    ) => void
     onWorkspaceChange?: (workspaceId: string) => void
   }) => (
     <div data-testid="account-page" data-workspace-id={workspaceId}>
@@ -46,6 +49,12 @@ vi.mock('@/pages/account', () => ({
         onClick={() => onNavChange?.('projects', 'workspace-row')}
       >
         워크스페이스 행
+      </button>
+      <button
+        type="button"
+        onClick={() => onNavChange?.('members', 'workspace-current')}
+      >
+        멤버 메뉴
       </button>
       <button
         type="button"
@@ -125,6 +134,11 @@ describe('account route', () => {
     expect(mockNavigate).toHaveBeenNthCalledWith(2, {
       to: '/workspaces/$workspaceId/projects',
       params: { workspaceId: 'workspace-row' },
+    })
+    await userEvent.click(screen.getByRole('button', { name: '멤버 메뉴' }))
+    expect(mockNavigate).toHaveBeenLastCalledWith({
+      to: '/workspaces/$workspaceId/members',
+      params: { workspaceId: 'workspace-current' },
     })
   })
 

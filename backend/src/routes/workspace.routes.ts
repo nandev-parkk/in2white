@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { listMemberCandidatesHandler } from "@/controllers/member.controller";
 import {
   createWorkspaceHandler,
   deleteWorkspaceHandler,
@@ -16,3 +17,9 @@ workspaceRouter.get("/", authenticate, asyncHandler(listWorkspacesHandler));
 workspaceRouter.get("/:workspaceId", authenticate, asyncHandler(getWorkspaceDetailHandler));
 workspaceRouter.patch("/:workspaceId", authenticate, asyncHandler(updateWorkspaceHandler));
 workspaceRouter.delete("/:workspaceId", authenticate, asyncHandler(deleteWorkspaceHandler));
+
+workspaceRouter.get(
+  "/:workspaceId/member-candidates",
+  authenticate,
+  asyncHandler(listMemberCandidatesHandler),
+);

@@ -42,6 +42,7 @@ type SidebarProps = React.ComponentProps<'div'> & {
   onCreateWorkspace: () => void
   workspaceDialogOpen?: boolean
   workspaceMembers: PresenceUser[]
+  workspaceMemberCount?: number
   activeNav: SidebarNavKey
   onNavChange: (key: SidebarNavKey) => void
   onUserClick?: () => void
@@ -355,6 +356,7 @@ function SidebarNavItem({
       className={cn(
         'focus-visible:ring-action-focus-ring flex h-11 w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-md p-3 text-left transition-[background-color,transform,color] duration-150 ease-out outline-none focus-visible:ring-3 active:scale-[0.99] motion-reduce:transition-none',
         active ? 'bg-action-secondary' : 'hover:bg-action-secondary-hover',
+        !collapsed && !compact && trailing ? 'pr-11' : undefined,
       )}
     >
       <span className="flex min-w-0 items-center gap-2">
@@ -376,11 +378,21 @@ function SidebarNavItem({
           {label}
         </span>
       </span>
-      {!collapsed && !compact && trailing}
     </button>
   )
 
-  if (!collapsed && !compact) return content
+  if (!collapsed && !compact && !trailing) return content
+  if (!collapsed && !compact)
+    return (
+      <div className="relative">
+        {content}
+        {trailing && (
+          <div className="absolute top-1/2 right-2 -translate-y-1/2">
+            {trailing}
+          </div>
+        )}
+      </div>
+    )
 
   return (
     <Tooltip>
@@ -403,6 +415,7 @@ function Sidebar({
   onCreateWorkspace,
   workspaceDialogOpen = false,
   workspaceMembers,
+  workspaceMemberCount,
   activeNav,
   onNavChange,
   onUserClick,
@@ -733,9 +746,9 @@ function Sidebar({
               </AvatarFallback>
             </Avatar>
           ))}
-          {workspaceMembers.length > 3 && (
+          {(workspaceMemberCount ?? workspaceMembers.length) > 3 && (
             <div className="border-1.5 border-background-default bg-background-subtle text-foreground-secondary flex size-5 items-center justify-center rounded-full text-[9px] font-semibold">
-              +{workspaceMembers.length - 3}
+              +{(workspaceMemberCount ?? workspaceMembers.length) - 3}
             </div>
           )}
         </div>
@@ -764,13 +777,14 @@ function Sidebar({
           onClick={() => onNavChange('members')}
           trailing={
             onInviteMember && (
-              <UserPlus
-                className="text-foreground-tertiary hover:text-foreground-default size-4"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onInviteMember()
-                }}
-              />
+              <button
+                type="button"
+                aria-label="멤버 초대"
+                className="text-foreground-tertiary hover:text-foreground-default focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-sm outline-none focus-visible:ring-3"
+                onClick={onInviteMember}
+              >
+                <UserPlus className="size-4" />
+              </button>
             )
           }
         />

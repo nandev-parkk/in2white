@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { healthRouter } from "@/routes/health.routes";
 import { authRouter } from "@/routes/auth.routes";
+import { memberRouter } from "@/routes/member.routes";
 import { accountRouter } from "@/routes/account.routes";
 import { projectRouter } from "@/routes/project.routes";
 import {
@@ -19,6 +20,7 @@ export function createRouter(dependencies: WhiteboardDocumentRouteDependencies =
     "/workspaces/:workspaceId/projects/:projectId/whiteboard-documents",
     createWhiteboardDocumentRouter(dependencies),
   );
+  router.use("/workspaces/:workspaceId/members", memberRouter);
   router.use("/workspaces", workspaceRouter);
   return router;
 }

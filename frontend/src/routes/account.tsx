@@ -31,10 +31,14 @@ function AccountRoute() {
         })
       }
       onNavChange={(key, selectedWorkspaceId) => {
-        if (key !== 'projects' || !selectedWorkspaceId) return
+        if ((key !== 'projects' && key !== 'members') || !selectedWorkspaceId)
+          return
 
         void navigate({
-          to: PROJECTS_ROUTE,
+          to:
+            key === 'members'
+              ? '/workspaces/$workspaceId/members'
+              : PROJECTS_ROUTE,
           params: { workspaceId: selectedWorkspaceId },
         })
       }}
