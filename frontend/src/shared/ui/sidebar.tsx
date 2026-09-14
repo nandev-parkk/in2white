@@ -43,7 +43,7 @@ type SidebarProps = React.ComponentProps<'div'> & {
   workspaceDialogOpen?: boolean
   workspaceMembers: PresenceUser[]
   workspaceMemberCount?: number
-  activeNav: SidebarNavKey
+  activeNav: SidebarNavKey | null
   onNavChange: (key: SidebarNavKey) => void
   onUserClick?: () => void
   onInviteMember?: () => void

@@ -31,7 +31,7 @@ const list = {
   members: [owner, member],
   pagination: { page: 1, limit: 20, total: 21, totalPages: 2 },
 }
-function mount(role: 'owner' | 'member' = 'owner') {
+function mount(role: 'owner' | 'member' = 'owner', canAddMember = true) {
   const onAccessLost = vi.fn()
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -41,6 +41,7 @@ function mount(role: 'owner' | 'member' = 'owner') {
     userId: 'owner',
     workspaceId: 'ws',
     workspaceRole: role,
+    canAddMember: canAddMember && role === 'owner',
     onAccessLost,
   }
   return {
@@ -128,6 +129,16 @@ it('후보 선택 중 중복 제출을 막고 성공해도 모달을 유지한�
   expect(candidate).toBeDisabled()
   await act(async () => resolve({ data: { member } }))
   expect(screen.getByRole('dialog')).toBeInTheDocument()
+})
+it('멤버 추가가 막힌 워크스페이스에서는 추가 버튼을 숨긴다', async () => {
+  mount('owner', false)
+  await screen.findByText('minji@example.com')
+  expect(
+    screen.queryByRole('button', { name: '멤버 추가' }),
+  ).not.toBeInTheDocument()
+  expect(
+    screen.getByRole('button', { name: '민지 내보내기' }),
+  ).toBeInTheDocument()
 })
 it('제거는 확인 후 요청하고 실패하면 오류를 표시하여 재시도한다', async () => {
   vi.mocked(axiosInstance.delete)

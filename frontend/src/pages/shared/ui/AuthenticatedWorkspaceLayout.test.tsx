@@ -134,6 +134,72 @@ describe('AuthenticatedWorkspaceLayout', () => {
     expect(onUserClick).toHaveBeenCalledWith('workspace-1')
   })
 
+  it('activeNav가 null이면 어떤 사이드바 항목도 활성화하지 않는다', () => {
+    renderLayout(
+      <AuthenticatedWorkspaceLayout
+        workspaceId="workspace-1"
+        activeNav={null}
+        workspaceMode="optional"
+      >
+        {() => null}
+      </AuthenticatedWorkspaceLayout>,
+    )
+
+    for (const label of ['프로젝트', '멤버', '설정']) {
+      expect(screen.getByRole('button', { name: label })).not.toHaveClass(
+        'bg-action-secondary',
+      )
+    }
+  })
+
+  it('activeNav를 지정하면 해당 사이드바 항목만 활성화한다', () => {
+    renderLayout(
+      <AuthenticatedWorkspaceLayout
+        workspaceId="workspace-1"
+        activeNav="settings"
+      >
+        {() => null}
+      </AuthenticatedWorkspaceLayout>,
+    )
+
+    expect(screen.getByRole('button', { name: '설정' })).toHaveClass(
+      'bg-action-secondary',
+    )
+    expect(screen.getByRole('button', { name: '프로젝트' })).not.toHaveClass(
+      'bg-action-secondary',
+    )
+  })
+
+  it('기본 워크스페이스에서는 사이드바 멤버 초대 진입점을 제공하지 않는다', () => {
+    renderLayout(
+      <AuthenticatedWorkspaceLayout
+        workspaceId="workspace-default"
+        activeNav="members"
+      >
+        {() => null}
+      </AuthenticatedWorkspaceLayout>,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: '멤버 초대' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('일반 워크스페이스 소유자에게는 사이드바 멤버 초대 진입점을 제공한다', () => {
+    renderLayout(
+      <AuthenticatedWorkspaceLayout
+        workspaceId="workspace-1"
+        activeNav="members"
+      >
+        {() => null}
+      </AuthenticatedWorkspaceLayout>,
+    )
+
+    expect(
+      screen.getByRole('button', { name: '멤버 초대' }),
+    ).toBeInTheDocument()
+  })
+
   it('optional 모드에서는 workspace query loading 중에도 children을 렌더링한다', () => {
     mockUseWorkspaces.mockReturnValue({
       data: undefined,

@@ -42,7 +42,7 @@ export type WorkspaceShellContext = {
 
 export type AuthenticatedWorkspaceLayoutProps = {
   workspaceId?: string
-  activeNav?: SidebarNavKey
+  activeNav?: SidebarNavKey | null
   unknownWorkspace?: 'deny' | 'fallback'
   workspaceMode?: 'required' | 'optional'
   onWorkspaceChange?: (workspaceId: string) => void
@@ -109,7 +109,9 @@ function WorkspaceLayoutContent({
   const [internalActiveNav, setInternalActiveNav] = useState<SidebarNavKey>(
     activeNav ?? 'projects',
   )
-  const resolvedActiveNav = activeNav ?? internalActiveNav
+  // null은 활성 항목 없음을 뜻하므로 ??로 기본값을 채우지 않는다.
+  const resolvedActiveNav =
+    activeNav === undefined ? internalActiveNav : activeNav
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(
     workspaceId ?? null,
   )
@@ -260,7 +262,7 @@ function WorkspaceLayoutContent({
         }))}
         workspaceMemberCount={preview.data?.pagination.total}
         onInviteMember={
-          selectedWorkspace?.role === 'owner'
+          selectedWorkspace?.role === 'owner' && !selectedWorkspace.isDefault
             ? () => {
                 inviteTrigger.current = document.activeElement as HTMLElement
                 setInviteWorkspaceId(resolvedSelectedWorkspaceId)
@@ -297,7 +299,8 @@ function WorkspaceLayoutContent({
 
       {inviteWorkspaceId &&
         inviteWorkspaceId === resolvedSelectedWorkspaceId &&
-        selectedWorkspace?.role === 'owner' && (
+        selectedWorkspace?.role === 'owner' &&
+        !selectedWorkspace.isDefault && (
           <MemberAddDialog
             key={`${user.id}:${inviteWorkspaceId}`}
             accessToken={accessToken}

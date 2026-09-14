@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import {
   listMembersRequest,
@@ -38,6 +43,8 @@ export function useMemberCandidates(
     queryKey: ['member-candidates', userId, workspaceId, params],
     queryFn: () => listMemberCandidatesRequest(workspaceId, params, token!),
     enabled: Boolean(token && userId && workspaceId && enabled),
+    // 검색어·페이지가 바뀌어도 이전 결과를 유지해 모달이 로딩으로 교체되지 않게 한다.
+    placeholderData: keepPreviousData,
     retry: false,
   })
 }

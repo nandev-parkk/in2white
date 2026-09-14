@@ -3,7 +3,7 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "@/app";
 import { db } from "@/db/client";
-import { users, workspaceMemberships } from "@/db/schema";
+import { users, workspaceMemberships, workspaces } from "@/db/schema";
 import { signAccessToken } from "@/lib/jwt";
 import {
   addMemberBodySchema,
@@ -107,6 +107,7 @@ function mockAddMemberTransaction({
 } = {}) {
   const requesterQuery = {
     from: vi.fn().mockReturnThis(),
+    innerJoin: vi.fn().mockReturnThis(),
     where: requesterError
       ? vi.fn().mockRejectedValue(requesterError)
       : vi.fn().mockResolvedValue(requesterRows),
@@ -237,7 +238,10 @@ describe("addMember", () => {
     });
 
     expect(db.transaction).toHaveBeenCalledOnce();
-    expect(transaction.select).toHaveBeenNthCalledWith(1, { role: workspaceMemberships.role });
+    expect(transaction.select).toHaveBeenNthCalledWith(1, {
+      role: workspaceMemberships.role,
+      isDefault: workspaces.isDefault,
+    });
     expect(transaction.select).toHaveBeenNthCalledWith(2, {
       id: users.id,
       name: users.name,
@@ -299,6 +303,28 @@ describe("addMember", () => {
     });
 
     expect(transaction.select).toHaveBeenCalledOnce();
+    expect(userQuery.where).not.toHaveBeenCalled();
+    expect(membershipInsert.values).not.toHaveBeenCalled();
+  });
+
+  it("기본 워크스페이스에는 멤버를 추가할 수 없다", async () => {
+    const { transaction, requesterQuery, userQuery, membershipInsert } = mockAddMemberTransaction({
+      requesterRows: [{ role: "owner", isDefault: true }],
+    });
+
+    await expect(
+      addMember({ workspaceId, requesterId: ownerUserId, userId: targetUserId }),
+    ).rejects.toMatchObject({
+      status: 403,
+      code: "MEMBER_ADD_DEFAULT_WORKSPACE_FORBIDDEN",
+      message: "기본 워크스페이스에는 멤버를 추가할 수 없습니다",
+    });
+
+    expect(transaction.select).toHaveBeenCalledOnce();
+    expect(requesterQuery.innerJoin).toHaveBeenCalledWith(
+      workspaces,
+      eq(workspaceMemberships.workspaceId, workspaces.id),
+    );
     expect(userQuery.where).not.toHaveBeenCalled();
     expect(membershipInsert.values).not.toHaveBeenCalled();
   });

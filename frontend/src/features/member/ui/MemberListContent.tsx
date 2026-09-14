@@ -46,12 +46,14 @@ export function MemberListContent({
   userId,
   workspaceId,
   workspaceRole,
+  canAddMember = false,
   onAccessLost,
 }: {
   accessToken: string
   userId: string
   workspaceId: string
   workspaceRole?: 'owner' | 'member'
+  canAddMember?: boolean
   onAccessLost: () => void
 }) {
   const { search, setSearch, params, setPage } = useMemberSearch()
@@ -64,6 +66,7 @@ export function MemberListContent({
   const heading = useRef<HTMLHeadingElement>(null)
   const submitting = useRef(false)
   const owner = workspaceRole === 'owner'
+  const canAdd = owner && canAddMember
   const lost =
     isMemberAccessLost(query.error) || isMemberAccessLost(remove.error)
   useEffect(() => {
@@ -107,7 +110,7 @@ export function MemberListContent({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
-        {owner && (
+        {canAdd && (
           <Button ref={addButton} onClick={() => setAdding(true)}>
             멤버 추가
           </Button>
@@ -228,7 +231,7 @@ export function MemberListContent({
           />
         </Pagination>
       )}
-      {owner && adding && (
+      {canAdd && adding && (
         <MemberAddDialog
           accessToken={accessToken}
           userId={userId}

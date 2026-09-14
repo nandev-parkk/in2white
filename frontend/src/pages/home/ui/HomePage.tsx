@@ -39,6 +39,7 @@ export function HomePage({
               userId={user.id}
               workspaceId={workspaceId ?? selectedWorkspaceId!}
               workspaceRole={selectedWorkspace?.role}
+              canAddMember={!selectedWorkspace?.isDefault}
               onAccessLost={onAccessLost}
             />
           ) : (
