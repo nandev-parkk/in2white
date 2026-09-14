@@ -1,5 +1,3 @@
-import { CalendarDays, Clock3 } from 'lucide-react'
-
 import type { Project } from '@/entities/project'
 import {
   Table,
@@ -30,13 +28,13 @@ function ProjectTable({
   canManage = () => true,
 }: ProjectTableProps) {
   return (
-    <Table className="min-w-[720px] table-fixed">
+    <Table className="min-w-[1008px] table-fixed">
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[36%]">이름</TableHead>
-          <TableHead className="w-[27%]">생성자</TableHead>
-          <TableHead className="w-[17%]">생성일</TableHead>
-          <TableHead className="w-[17%]">수정일</TableHead>
+          <TableHead className="w-[420px]">이름</TableHead>
+          <TableHead className="w-[180px]">생성자</TableHead>
+          <TableHead className="w-[180px]">생성일</TableHead>
+          <TableHead className="w-[180px]">수정일</TableHead>
           <TableHead className="w-12" aria-label="작업" />
         </TableRow>
       </TableHeader>
@@ -52,14 +50,12 @@ function ProjectTable({
               <span className="truncate">{project.creator.name}</span>
             </TableCell>
             <TableCell>
-              <span className="flex items-center gap-1 whitespace-nowrap">
-                <CalendarDays className="text-foreground-tertiary size-3" />
+              <span className="whitespace-nowrap">
                 {formatProjectCreatedAt(project.createdAt)}
               </span>
             </TableCell>
             <TableCell>
-              <span className="flex items-center gap-1 whitespace-nowrap">
-                <Clock3 className="text-foreground-tertiary size-3" />
+              <span className="whitespace-nowrap">
                 {formatProjectUpdatedAt(project.updatedAt)}
               </span>
             </TableCell>

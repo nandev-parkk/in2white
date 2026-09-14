@@ -10,9 +10,14 @@ function WorkspaceMembersRoute() {
   const navigate = useNavigate()
   return (
     <HomePage
-      key={workspaceId}
       workspaceId={workspaceId}
       activeNav="members"
+      onUserClick={(selectedWorkspaceId) => {
+        void navigate({
+          to: '/account',
+          search: { workspaceId: selectedWorkspaceId ?? workspaceId },
+        })
+      }}
       onWorkspaceChange={(nextWorkspaceId) =>
         navigate({
           to: '/workspaces/$workspaceId/members',

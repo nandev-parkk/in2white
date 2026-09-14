@@ -5,6 +5,7 @@ import {
 } from '@tanstack/react-router'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { vi } from 'vitest'
 
 import { useSessionStore } from '@/entities/session'
@@ -13,23 +14,53 @@ import { routeTree } from '@/routeTree.gen'
 import { redirectIfUnauthenticated } from '../../index'
 import { PROJECTS_ROUTE, Route } from './projects'
 
+const homePageInstance = vi.hoisted(() => ({ nextId: 0 }))
+
 vi.mock('@/pages/home', () => ({
   HomePage: ({
     workspaceId,
+    onNavChange,
+    onUserClick,
     onWorkspaceChange,
   }: {
     workspaceId?: string
+    onNavChange?: (key: 'settings', workspaceId: string | null) => void
+    onUserClick?: (workspaceId: string | null) => void
     onWorkspaceChange?: (workspaceId: string) => void
-  }) => (
-    <div data-testid="workspace-projects-route" data-workspace-id={workspaceId}>
-      <button
-        type="button"
-        onClick={() => onWorkspaceChange?.('workspace-next')}
+  }) => {
+    const [instanceId] = useState(() => ++homePageInstance.nextId)
+
+    return (
+      <div
+        data-testid="workspace-projects-route"
+        data-workspace-id={workspaceId}
+        data-instance-id={instanceId}
       >
-        다른 워크스페이스
-      </button>
-    </div>
-  ),
+        <button
+          type="button"
+          onClick={() => onWorkspaceChange?.('workspace-next')}
+        >
+          다른 워크스페이스
+        </button>
+        <button
+          type="button"
+          onClick={() => onNavChange?.('settings', 'workspace-current')}
+        >
+          설정
+        </button>
+        <button
+          type="button"
+          onClick={() => onUserClick?.('workspace-current')}
+        >
+          사용자 정보
+        </button>
+      </div>
+    )
+  },
+}))
+
+vi.mock('@/pages/account', () => ({
+  AccountPage: () => <div data-testid="account-route" />,
 }))
 
 describe('project route', () => {
@@ -45,6 +76,7 @@ describe('project route', () => {
 
   afterEach(() => {
     useSessionStore.getState().clearSession()
+    homePageInstance.nextId = 0
   })
 
   it('canonical project route는 복수형 resource 경로를 사용한다', () => {
@@ -91,6 +123,9 @@ describe('project route', () => {
         'workspace-current',
       ),
     )
+    const initialInstanceId = screen
+      .getByTestId('workspace-projects-route')
+      .getAttribute('data-instance-id')
 
     await userEvent.click(
       screen.getByRole('button', { name: '다른 워크스페이스' }),
@@ -104,6 +139,58 @@ describe('project route', () => {
     expect(screen.getByTestId('workspace-projects-route')).toHaveAttribute(
       'data-workspace-id',
       'workspace-next',
+    )
+    expect(screen.getByTestId('workspace-projects-route')).toHaveAttribute(
+      'data-instance-id',
+      initialInstanceId,
+    )
+  })
+
+  it('사이드바 하단 사용자 정보는 현재 workspace context를 보존한 account route로 이동한다', async () => {
+    useSessionStore.getState().setSession(createToken(2_000_000_000), {
+      id: 'user-1',
+      name: '테스터',
+      email: 'user@in2white.team',
+    })
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/workspaces/workspace-current/projects'],
+      }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: '사용자 정보' }),
+    )
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/account'))
+    expect(router.state.location.search).toEqual({
+      workspaceId: 'workspace-current',
+    })
+  })
+
+  it('사이드바 설정은 account route로 이동하지 않는다', async () => {
+    useSessionStore.getState().setSession(createToken(2_000_000_000), {
+      id: 'user-1',
+      name: '테스터',
+      email: 'user@in2white.team',
+    })
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/workspaces/workspace-current/projects'],
+      }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await userEvent.click(await screen.findByRole('button', { name: '설정' }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(router.state.location.pathname).toBe(
+      '/workspaces/workspace-current/projects',
     )
   })
 })

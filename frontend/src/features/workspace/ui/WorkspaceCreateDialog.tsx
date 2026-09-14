@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 
 import {
   Dialog,
@@ -28,10 +28,24 @@ function WorkspaceCreateDialog({
   const [name, setName] = useState('')
   const [requiredError, setRequiredError] = useState(false)
 
+  function resetForm() {
+    setName('')
+    setRequiredError(false)
+  }
+
   function handleOpenChange(nextOpen: boolean) {
-    if (!nextOpen) setRequiredError(false)
+    if (!nextOpen) resetForm()
     onOpenChange(nextOpen)
   }
+
+  useEffect(() => {
+    if (!open) {
+      queueMicrotask(() => {
+        setName('')
+        setRequiredError(false)
+      })
+    }
+  }, [open])
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

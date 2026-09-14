@@ -83,7 +83,7 @@
 - 기능 완료를 위해 필요한 필수 후속 작업 없음. 선택적 개선: Minor M1 통합 회귀 테스트의 저장소 편입.
 - 데스크톱 전체 캡처의 Orca 반복 렌더 문제는 도구 한계로 남는다.
 - 검증용 로컬 서버와 고유 테스트 데이터는 사용자 확인을 위해 유지한다. 기존 계정 비밀번호 변경은 없으며 인증정보는 문서·로그에 기록하지 않았다.
-- commit·push·PR·merge·배포는 실행하지 않았다.
+- 최초 구현 검증 시 commit·push·PR·merge는 미실행이었다. 이후 사용자가 이슈·PR 생성과 병합을 승인하여 아래 통합 절차를 진행한다. 배포는 범위 밖이다.
 
 ## Orca 실행과 충돌 검토
 
@@ -104,3 +104,13 @@
 | 프론트엔드 독립 리뷰 `task_be17eb35d163` | `ctx_7f375564464a` | succeeded, 필수 수정 없음·Minor 1건                  |
 
 모든 worker_done을 해당 Task/Dispatch와 대조해 수신했고 결과 보관 후 worker-release를 완료했다. 실행 모드 충돌 없이 하나의 coordinator와 기존 작업 공간·설계·계획·이슈를 사용했다.
+
+## PR 통합 검증 (2026-09-14)
+
+- 사용자 요청에 따라 기존 열린 이슈 #53을 재사용하고 `feature/members`에서 `dev` 대상 PR·병합을 진행한다.
+- 최신 `origin/dev`의 계정 설정 공통 레이아웃, 사이드바 접힘 상태 유지, 화이트보드 라우터 팩토리와 멤버 기능을 통합했다. 공통 레이아웃에 멤버 미리보기·추가·접근 상실 처리를 두고 계정 설정에서도 멤버 메뉴로 이동하도록 연결했다.
+- 계획과의 차이: 후속 dev 변경에 맞춰 멤버 셸 동작을 HomePage에서 AuthenticatedWorkspaceLayout으로 이동했다. 공개 API와 권한 계약은 동일하다.
+- 프론트엔드 `npm test`: 48개 파일, 259개 테스트 통과. `npm run build` 통과. `npm run lint` 오류 0, 기존 Fast Refresh 경고 4건.
+- 백엔드 `pnpm install --frozen-lockfile`, `npm test`, `npm run build`, `npm run lint`: 통과. 테스트 540개 통과, 별도 `RUN_DATABASE_INTEGRATION_TESTS=1`이 필요한 dev의 DB 통합 테스트 14개는 기본 실행에서 제외됨.
+- 계정→멤버 탐색 회귀 검증을 기존 account route 테스트에 추가하고 `pnpm exec vitest run src/routes/account.test.tsx` 4개 통과.
+- 병합 충돌 마커 없음, `git diff --check` 통과. 기능 관련 변경만 PR에 포함한다.

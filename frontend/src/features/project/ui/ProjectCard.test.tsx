@@ -34,6 +34,18 @@ describe('ProjectCard', () => {
     expect(screen.getByText('김민지')).toBeInTheDocument()
     expect(screen.getByText(/생성일 2026\.01\.10/)).toBeInTheDocument()
     expect(screen.getByText(/수정일/)).toBeInTheDocument()
+
+    const card = screen.getByRole('article')
+    expect(card).toHaveClass('border-border')
+    expect(card).toHaveClass('min-h-[204px]')
+    expect(card).not.toHaveClass('h-[204px]')
+    expect(screen.getByText(/수정일/).parentElement?.parentElement).toHaveClass(
+      'pb-3',
+    )
+    expect(screen.getByText('김민지').parentElement).toHaveClass(
+      'border-t',
+      'pt-3',
+    )
   })
 
   it('더보기 메뉴에서 수정과 삭제를 선택할 수 있다', async () => {

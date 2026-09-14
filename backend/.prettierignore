@@ -1,0 +1,2 @@
+# Drizzle Kit이 소유하는 생성 metadata는 원형을 유지한다.
+src/db/migrations/meta/*.json

@@ -17,7 +17,6 @@ function WorkspaceProjectsRoute() {
 
   return (
     <HomePage
-      key={workspaceId}
       workspaceId={workspaceId}
       onWorkspaceChange={(nextWorkspaceId) =>
         navigate({
@@ -25,6 +24,14 @@ function WorkspaceProjectsRoute() {
           params: { workspaceId: nextWorkspaceId },
         })
       }
+      onUserClick={(selectedWorkspaceId) => {
+        void navigate({
+          to: '/account',
+          search: {
+            workspaceId: selectedWorkspaceId ?? workspaceId,
+          },
+        })
+      }}
     />
   )
 }

@@ -1,24 +1,36 @@
+import { createServer } from "node:http";
 import { createApp } from "@/app";
+import { closeValkey } from "@/cache/valkey";
 import { getEnv } from "@/config/env";
+import { closeDatabase } from "@/db/client";
+import { createWhiteboardCollaborationServer } from "@/realtime/whiteboard-collaboration";
+import { createApplicationShutdown } from "@/server-shutdown";
 import { logger } from "@/utils/logger";
 
-const app = createApp();
 const env = getEnv();
+const httpServer = createServer();
+let shutdownDeadlineAt = Number.POSITIVE_INFINITY;
+const collaboration = createWhiteboardCollaborationServer(httpServer, {
+  shutdownDeadlineAt: () => shutdownDeadlineAt,
+});
+const app = createApp({
+  onWhiteboardDocumentDeleted: collaboration.documentDeleted,
+});
+httpServer.on("request", app);
 
-const server = app.listen(env.PORT, () => {
+const shutdown = createApplicationShutdown({
+  closeCollaboration: collaboration.close,
+  closeDatabase,
+  closeValkey,
+  logger,
+  onDeadlineCreated: (deadlineAt) => {
+    shutdownDeadlineAt = deadlineAt;
+  },
+});
+
+httpServer.listen(env.PORT, () => {
   logger.info(`Server listening on port ${env.PORT}`);
 });
 
-function shutdown(signal: string) {
-  logger.info(`Received ${signal}, shutting down gracefully`);
-  server.close((err) => {
-    if (err) {
-      logger.error({ err }, "Error during shutdown");
-      process.exit(1);
-    }
-    process.exit(0);
-  });
-}
-
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));

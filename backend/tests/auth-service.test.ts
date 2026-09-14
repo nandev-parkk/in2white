@@ -15,6 +15,7 @@ const mockUser = {
   name: "Test User",
   email: "user@example.com",
   passwordHash: "hashed-value",
+  sessionVersion: 0,
   createdAt: new Date(),
 };
 
@@ -61,6 +62,17 @@ describe("auth.service login", () => {
       expect.any(String),
       "refresh-token",
     );
+    expect(jwtLib.signAccessToken).toHaveBeenCalledWith({
+      sub: "user-1",
+      email: "user@example.com",
+      sid: expect.any(String),
+      ver: 0,
+    });
+    expect(jwtLib.signRefreshToken).toHaveBeenCalledWith({
+      sub: "user-1",
+      sid: expect.any(String),
+      ver: 0,
+    });
   });
 });
 
@@ -82,6 +94,7 @@ describe("auth.service refresh", () => {
     vi.mocked(jwtLib.verifyRefreshToken).mockResolvedValue({
       sub: "user-1",
       sid: "sid-1",
+      ver: 0,
       type: "refresh",
     });
     vi.mocked(userService.getUserById).mockResolvedValue(undefined);
@@ -96,6 +109,7 @@ describe("auth.service refresh", () => {
     vi.mocked(jwtLib.verifyRefreshToken).mockResolvedValue({
       sub: "user-1",
       sid: "sid-1",
+      ver: 0,
       type: "refresh",
     });
     vi.mocked(userService.getUserById).mockResolvedValue(mockUser);
@@ -115,6 +129,7 @@ describe("auth.service refresh", () => {
     vi.mocked(jwtLib.verifyRefreshToken).mockResolvedValue({
       sub: "user-1",
       sid: "sid-1",
+      ver: 0,
       type: "refresh",
     });
     vi.mocked(userService.getUserById).mockResolvedValue(mockUser);
@@ -136,6 +151,41 @@ describe("auth.service refresh", () => {
       "new-refresh-token",
     );
     expect(sessionService.deleteRefreshSession).not.toHaveBeenCalled();
+  });
+
+  it("rejects a refresh token from an older session version", async () => {
+    vi.mocked(jwtLib.verifyRefreshToken).mockResolvedValue({
+      sub: "user-1",
+      sid: "sid-old",
+      ver: 2,
+      type: "refresh",
+    });
+    vi.mocked(userService.getUserById).mockResolvedValue({ ...mockUser, sessionVersion: 3 });
+    vi.mocked(sessionService.deleteRefreshSession).mockResolvedValue(undefined);
+
+    await expect(refresh("old-generation-token")).rejects.toMatchObject({
+      status: 401,
+      code: "INVALID_REFRESH_TOKEN",
+    });
+    expect(sessionService.deleteRefreshSession).toHaveBeenCalledWith("user-1", "sid-old");
+    expect(jwtLib.signAccessToken).not.toHaveBeenCalled();
+    expect(sessionService.rotateRefreshSession).not.toHaveBeenCalled();
+  });
+
+  it("still returns INVALID_REFRESH_TOKEN when stale-session cleanup fails", async () => {
+    vi.mocked(jwtLib.verifyRefreshToken).mockResolvedValue({
+      sub: "user-1",
+      sid: "sid-old",
+      ver: 2,
+      type: "refresh",
+    });
+    vi.mocked(userService.getUserById).mockResolvedValue({ ...mockUser, sessionVersion: 3 });
+    vi.mocked(sessionService.deleteRefreshSession).mockRejectedValue(new Error("valkey down"));
+
+    await expect(refresh("old-generation-token")).rejects.toMatchObject({
+      status: 401,
+      code: "INVALID_REFRESH_TOKEN",
+    });
   });
 });
 

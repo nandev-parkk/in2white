@@ -9,6 +9,7 @@ import {
 import {
   createProject,
   deleteProject,
+  getProjectDetail,
   listProjects,
   updateProject,
 } from "@/services/project.service";
@@ -44,6 +45,14 @@ export async function listProjectsHandler(req: Request, res: Response) {
   });
 
   res.status(200).json(result);
+}
+
+export async function getProjectDetailHandler(req: Request, res: Response) {
+  const user = requireUser(req);
+  const { workspaceId, projectId } = parseOrThrow(projectUpdateParamsSchema, req.params);
+  const project = await getProjectDetail({ workspaceId, projectId, userId: user.sub });
+
+  res.status(200).json({ project });
 }
 
 export async function updateProjectHandler(req: Request, res: Response) {

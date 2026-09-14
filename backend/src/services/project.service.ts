@@ -39,6 +39,12 @@ export interface CreateProjectInput {
   creatorId: string;
 }
 
+export interface GetProjectDetailInput {
+  workspaceId: string;
+  projectId: string;
+  userId: string;
+}
+
 export interface UpdateProjectInput {
   workspaceId: string;
   projectId: string;
@@ -85,6 +91,53 @@ export async function createProject({
 
     return project;
   });
+}
+
+export async function getProjectDetail({
+  workspaceId,
+  projectId,
+  userId,
+}: GetProjectDetailInput): Promise<ProjectListItem> {
+  const [membership] = await db
+    .select({ id: workspaceMemberships.id })
+    .from(workspaceMemberships)
+    .where(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        eq(workspaceMemberships.userId, userId),
+      ),
+    );
+
+  if (!membership) {
+    throw new HttpError(404, "WORKSPACE_NOT_FOUND", ERROR_MESSAGES.WORKSPACE_NOT_FOUND);
+  }
+
+  const [project] = await db
+    .select({
+      id: projects.id,
+      workspaceId: projects.workspaceId,
+      name: projects.name,
+      description: projects.description,
+      creatorId: projects.creatorId,
+      creator: { id: users.id, name: users.name },
+      createdAt: projects.createdAt,
+      updatedAt: projects.updatedAt,
+    })
+    .from(projects)
+    .innerJoin(users, eq(projects.creatorId, users.id))
+    .where(
+      and(
+        eq(projects.id, projectId),
+        eq(projects.workspaceId, workspaceId),
+        isNull(projects.deletedAt),
+      ),
+    );
+
+  if (!project) {
+    throw new HttpError(404, "PROJECT_NOT_FOUND", ERROR_MESSAGES.PROJECT_NOT_FOUND);
+  }
+
+  return project;
 }
 
 export async function updateProject({

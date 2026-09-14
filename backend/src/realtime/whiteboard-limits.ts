@@ -1,0 +1,13 @@
+export const WHITEBOARD_LIMITS = {
+  applicationPayloadBytes: 1_048_576,
+  transportPayloadBytes: 1_572_864,
+  elementsPerUpdate: 2_000,
+  elementsPerRoom: 20_000,
+  snapshotBytesPerRoom: 10_485_760,
+  participantsPerRoom: 30,
+  socketsPerRoom: 60,
+  sceneRatePerSecond: 20,
+  sceneBurst: 40,
+  presenceRatePerSecond: 30,
+  presenceBurst: 60,
+} as const;

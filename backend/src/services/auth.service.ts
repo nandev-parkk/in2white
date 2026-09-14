@@ -45,8 +45,8 @@ export async function login(email: string, password: string): Promise<LoginResul
 
   const sid = randomUUID();
   const [accessToken, refreshToken] = await Promise.all([
-    signAccessToken({ sub: user.id, email: user.email, sid }),
-    signRefreshToken({ sub: user.id, sid }),
+    signAccessToken({ sub: user.id, email: user.email, sid, ver: user.sessionVersion }),
+    signRefreshToken({ sub: user.id, sid, ver: user.sessionVersion }),
   ]);
 
   await saveRefreshSession(user.id, sid, refreshToken);
@@ -72,9 +72,23 @@ export async function refresh(refreshToken: string): Promise<RefreshResult> {
     throw new HttpError(401, "INVALID_REFRESH_TOKEN", ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
   }
 
+  if (payload.ver !== user.sessionVersion) {
+    try {
+      await deleteRefreshSession(user.id, payload.sid);
+    } catch (err) {
+      logger.warn({ err }, "Stale refresh session cleanup failed after version mismatch");
+    }
+    throw new HttpError(401, "INVALID_REFRESH_TOKEN", ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
+  }
+
   const [accessToken, newRefreshToken] = await Promise.all([
-    signAccessToken({ sub: user.id, email: user.email, sid: payload.sid }),
-    signRefreshToken({ sub: user.id, sid: payload.sid }),
+    signAccessToken({
+      sub: user.id,
+      email: user.email,
+      sid: payload.sid,
+      ver: user.sessionVersion,
+    }),
+    signRefreshToken({ sub: user.id, sid: payload.sid, ver: user.sessionVersion }),
   ]);
 
   const rotated = await rotateRefreshSession(user.id, payload.sid, refreshToken, newRefreshToken);
