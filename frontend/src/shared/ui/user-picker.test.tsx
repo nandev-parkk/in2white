@@ -49,3 +49,32 @@ it('로딩과 오류·재시도 및 후보 페이지 이동을 표시한다', as
   await userEvent.click(screen.getByRole('button', { name: '다음 페이지' }))
   expect(onPageChange).toHaveBeenCalledWith(2)
 })
+it('로딩과 빈 결과를 공용 상태 컴포넌트로 표시한다', () => {
+  const props = {
+    open: true,
+    onOpenChange: vi.fn(),
+    users: [],
+    onSelect: vi.fn(),
+    onSearchChange: vi.fn(),
+  }
+  const { rerender } = render(<UserPicker {...props} searchValue="" loading />)
+  const loading = screen.getByRole('status')
+  expect(loading).toHaveTextContent('사용자 불러오는 중')
+  expect(loading.querySelector('[data-slot="spinner"]')).toHaveAttribute(
+    'aria-hidden',
+    'true',
+  )
+
+  rerender(<UserPicker {...props} searchValue="민지" />)
+  const emptySearch = screen.getByTestId('user-picker-list')
+  expect(
+    emptySearch.querySelector('[data-slot="compact-empty-state"]'),
+  ).toBeInTheDocument()
+  expect(screen.getByText('검색 결과가 없어요')).toBeInTheDocument()
+  expect(
+    screen.getByText('다른 검색어로 다시 시도해보세요'),
+  ).toBeInTheDocument()
+
+  rerender(<UserPicker {...props} searchValue="" />)
+  expect(screen.getByText('추가할 사용자가 없어요')).toBeInTheDocument()
+})

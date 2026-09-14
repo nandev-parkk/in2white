@@ -439,9 +439,8 @@ describe('AccountPage', () => {
       workspaceId: 'missing',
     })
 
-    expect(screen.getByTestId('workspace-layout')).toHaveAttribute(
+    expect(screen.getByTestId('workspace-layout')).not.toHaveAttribute(
       'data-active-nav',
-      'settings',
     )
     expect(screen.getByTestId('workspace-layout')).toHaveAttribute(
       'data-unknown-workspace',

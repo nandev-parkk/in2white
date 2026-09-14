@@ -26,7 +26,7 @@ vi.mock('@/shared/api', () => ({
   },
 }))
 const workspaces = [
-  { id: 'ws', name: '테스트 팀', role: 'owner', isDefault: true },
+  { id: 'ws', name: '테스트 팀', role: 'owner', isDefault: false },
   { id: 'next', name: '다음 팀', role: 'member', isDefault: false },
 ]
 const members = [

@@ -63,7 +63,9 @@ function SidebarExample({
   const [collapsed, setCollapsed] = useState(controlledCollapsed)
   const [previousControlledCollapsed, setPreviousControlledCollapsed] =
     useState(controlledCollapsed)
-  const [activeNav, setActiveNav] = useState<SidebarNavKey>(controlledActiveNav)
+  const [activeNav, setActiveNav] = useState<SidebarNavKey | null>(
+    controlledActiveNav,
+  )
   const [previousControlledActiveNav, setPreviousControlledActiveNav] =
     useState(controlledActiveNav)
   const [lastAction, setLastAction] = useState('사이드바를 조작해 보세요.')
@@ -105,7 +107,7 @@ function SidebarExample({
       <main className="bg-background-canvas flex min-w-0 flex-1 items-center justify-center p-8">
         <div className="text-center">
           <p className="text-heading3 text-foreground-strong">
-            현재 메뉴: {NAV_LABELS[activeNav]}
+            현재 메뉴: {activeNav ? NAV_LABELS[activeNav] : '없음'}
           </p>
           <p className="text-body text-foreground-secondary mt-2">
             {lastAction}

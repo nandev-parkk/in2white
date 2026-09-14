@@ -33,6 +33,7 @@ export const ERROR_MESSAGES = {
   USER_NOT_FOUND: "사용자를 찾을 수 없습니다",
   MEMBER_SEARCH_FORBIDDEN: "사용자를 검색할 권한이 없습니다",
   MEMBER_ADD_FORBIDDEN: "멤버를 추가할 권한이 없습니다",
+  MEMBER_ADD_DEFAULT_WORKSPACE_FORBIDDEN: "기본 워크스페이스에는 멤버를 추가할 수 없습니다",
   MEMBER_REMOVE_FORBIDDEN: "멤버를 내보낼 권한이 없습니다",
   MEMBER_SELF_REMOVE_FORBIDDEN: "자기 자신은 내보낼 수 없습니다",
   MEMBER_NOT_FOUND: "워크스페이스 멤버를 찾을 수 없습니다",

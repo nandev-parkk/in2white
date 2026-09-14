@@ -7,6 +7,9 @@ import {
   DialogTitle,
 } from '@/shared/ui/dialog'
 import { Search } from '@/shared/ui/search'
+import { Search as SearchIcon } from 'lucide-react'
+import { CompactEmptyState } from '@/shared/ui/compact-empty-state'
+import { CompactLoadingState } from '@/shared/ui/compact-loading-state'
 import { ListCell } from '@/shared/ui/list-cell'
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
 import {
@@ -78,17 +81,21 @@ function UserPicker({
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
         />
-        <div className="flex max-h-72 flex-col overflow-y-auto">
+        <div
+          data-testid="user-picker-list"
+          className="flex max-h-72 flex-col overflow-y-auto"
+        >
           {loading ? (
-            <p
-              role="status"
-              className="text-body text-foreground-secondary py-6"
-            >
-              사용자 불러오는 중
-            </p>
+            <CompactLoadingState
+              title="사용자 불러오는 중"
+              description="잠시만 기다려주세요"
+            />
           ) : error ? (
-            <div role="alert" className="flex flex-col gap-3 py-4">
-              <p className="text-body text-status-danger">{error}</p>
+            <div
+              role="alert"
+              className="flex flex-1 flex-col items-center justify-center gap-3 px-3 py-4 text-center"
+            >
+              <p className="text-body-small text-status-danger">{error}</p>
               {onRetry && (
                 <Button variant="secondary" onClick={onRetry}>
                   다시 시도
@@ -96,9 +103,19 @@ function UserPicker({
               )}
             </div>
           ) : users.length === 0 ? (
-            <p className="text-body text-foreground-secondary py-6">
-              검색 결과가 없어요
-            </p>
+            <CompactEmptyState
+              icon={<SearchIcon className="size-4" />}
+              title={
+                searchValue.trim()
+                  ? '검색 결과가 없어요'
+                  : '추가할 사용자가 없어요'
+              }
+              description={
+                searchValue.trim()
+                  ? '다른 검색어로 다시 시도해보세요'
+                  : undefined
+              }
+            />
           ) : (
             users.map((user) => (
               <button
@@ -116,7 +133,7 @@ function UserPicker({
                   leading={
                     <Avatar size="default">
                       <AvatarFallback size="default">
-                        {user.name.slice(0, 2)}
+                        {user.name.slice(0, 1)}
                       </AvatarFallback>
                     </Avatar>
                   }

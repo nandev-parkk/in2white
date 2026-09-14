@@ -1,7 +1,7 @@
 import { and, asc, count, eq, ilike, or, sql } from "drizzle-orm";
 import { ERROR_MESSAGES } from "@/constants/messages";
 import { db } from "@/db/client";
-import { users, workspaceMemberships } from "@/db/schema";
+import { users, workspaceMemberships, workspaces } from "@/db/schema";
 import { HttpError } from "@/utils/http-error";
 import type { PaginationMeta } from "@/utils/pagination";
 import { createPaginationMeta, getPaginationOffset } from "@/utils/pagination";
@@ -51,8 +51,9 @@ export async function addMember({
 }: AddMemberInput): Promise<MemberListItem> {
   return db.transaction(async (tx) => {
     const [requesterMembership] = await tx
-      .select({ role: workspaceMemberships.role })
+      .select({ role: workspaceMemberships.role, isDefault: workspaces.isDefault })
       .from(workspaceMemberships)
+      .innerJoin(workspaces, eq(workspaceMemberships.workspaceId, workspaces.id))
       .where(
         and(
           eq(workspaceMemberships.workspaceId, workspaceId),
@@ -66,6 +67,14 @@ export async function addMember({
 
     if (requesterMembership.role !== "owner") {
       throw new HttpError(403, "MEMBER_ADD_FORBIDDEN", ERROR_MESSAGES.MEMBER_ADD_FORBIDDEN);
+    }
+
+    if (requesterMembership.isDefault) {
+      throw new HttpError(
+        403,
+        "MEMBER_ADD_DEFAULT_WORKSPACE_FORBIDDEN",
+        ERROR_MESSAGES.MEMBER_ADD_DEFAULT_WORKSPACE_FORBIDDEN,
+      );
     }
 
     const [targetUser] = await tx
@@ -248,8 +257,9 @@ export async function listMemberCandidates({
   limit,
 }: ListMembersInput): Promise<ListMemberCandidatesResult> {
   const [requesterMembership] = await db
-    .select({ role: workspaceMemberships.role })
+    .select({ role: workspaceMemberships.role, isDefault: workspaces.isDefault })
     .from(workspaceMemberships)
+    .innerJoin(workspaces, eq(workspaceMemberships.workspaceId, workspaces.id))
     .where(
       and(
         eq(workspaceMemberships.workspaceId, workspaceId),
@@ -262,6 +272,13 @@ export async function listMemberCandidates({
   }
   if (requesterMembership.role !== "owner") {
     throw new HttpError(403, "MEMBER_SEARCH_FORBIDDEN", ERROR_MESSAGES.MEMBER_SEARCH_FORBIDDEN);
+  }
+  if (requesterMembership.isDefault) {
+    throw new HttpError(
+      403,
+      "MEMBER_ADD_DEFAULT_WORKSPACE_FORBIDDEN",
+      ERROR_MESSAGES.MEMBER_ADD_DEFAULT_WORKSPACE_FORBIDDEN,
+    );
   }
 
   const pattern = search ? buildContainsSearchPattern(search) : undefined;

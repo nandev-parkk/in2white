@@ -65,7 +65,7 @@ export function MemberAddDialog({
       onSelect={select}
       searchValue={search}
       onSearchChange={setSearch}
-      loading={candidates.isFetching}
+      loading={candidates.isLoading}
       disabled={add.isPending}
       error={
         candidates.isError

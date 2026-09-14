@@ -3,7 +3,7 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "@/app";
 import { db } from "@/db/client";
-import { users, workspaceMemberships } from "@/db/schema";
+import { users, workspaceMemberships, workspaces } from "@/db/schema";
 import { signAccessToken } from "@/lib/jwt";
 import { listMemberCandidates } from "@/services/member.service";
 
@@ -23,13 +23,21 @@ const candidates = [
 beforeEach(() => vi.mocked(db.select).mockReset());
 function mockQueries({
   role = "owner",
+  isDefault = false,
   total = 2,
   rows = candidates,
   error,
-}: { role?: string | null; total?: number; rows?: typeof candidates; error?: Error } = {}) {
+}: {
+  role?: string | null;
+  isDefault?: boolean;
+  total?: number;
+  rows?: typeof candidates;
+  error?: Error;
+} = {}) {
   const membership = {
     from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockResolvedValue(role ? [{ role }] : []),
+    innerJoin: vi.fn().mockReturnThis(),
+    where: vi.fn().mockResolvedValue(role ? [{ role, isDefault }] : []),
   };
   const count = { from: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue([{ total }]) };
   const list = {
@@ -60,26 +68,37 @@ async function get(query = {}, id = workspaceId) {
 
 describe("listMemberCandidates", () => {
   it.each([
-    [null, 404, "WORKSPACE_NOT_FOUND"],
-    ["member", 403, "MEMBER_SEARCH_FORBIDDEN"],
-  ] as const)("권한 %s는 사용자 조회 전에 차단한다", async (role, status, code) => {
-    const { membership } = mockQueries({ role });
-    await expect(listMemberCandidates(input)).rejects.toMatchObject({ status, code });
-    expect(db.select).toHaveBeenCalledOnce();
-    expect(membership.where).toHaveBeenCalledWith(
-      and(
-        eq(workspaceMemberships.workspaceId, workspaceId),
-        eq(workspaceMemberships.userId, requesterId),
-      ),
-    );
-  });
+    [null, false, 404, "WORKSPACE_NOT_FOUND"],
+    ["member", false, 403, "MEMBER_SEARCH_FORBIDDEN"],
+    ["owner", true, 403, "MEMBER_ADD_DEFAULT_WORKSPACE_FORBIDDEN"],
+  ] as const)(
+    "권한 %s·기본 워크스페이스 %s는 사용자 조회 전에 차단한다",
+    async (role, isDefault, status, code) => {
+      const { membership } = mockQueries({ role, isDefault });
+      await expect(listMemberCandidates(input)).rejects.toMatchObject({ status, code });
+      expect(db.select).toHaveBeenCalledOnce();
+      expect(membership.innerJoin).toHaveBeenCalledWith(
+        workspaces,
+        eq(workspaceMemberships.workspaceId, workspaces.id),
+      );
+      expect(membership.where).toHaveBeenCalledWith(
+        and(
+          eq(workspaceMemberships.workspaceId, workspaceId),
+          eq(workspaceMemberships.userId, requesterId),
+        ),
+      );
+    },
+  );
   it("소유자는 전체 사용자와 현재 워크스페이스의 멤버 여부만 조회한다", async () => {
     const { list, count } = mockQueries();
     await expect(listMemberCandidates(input)).resolves.toEqual({
       users: candidates,
       pagination: { page: 1, limit: 20, total: 2, totalPages: 1 },
     });
-    expect(db.select).toHaveBeenNthCalledWith(1, { role: workspaceMemberships.role });
+    expect(db.select).toHaveBeenNthCalledWith(1, {
+      role: workspaceMemberships.role,
+      isDefault: workspaces.isDefault,
+    });
     expect(db.select).toHaveBeenNthCalledWith(3, {
       id: users.id,
       name: users.name,
@@ -134,15 +153,19 @@ describe("GET /workspaces/:workspaceId/member-candidates", () => {
     },
   );
   it.each([
-    [null, 404, "WORKSPACE_NOT_FOUND"],
-    ["member", 403, "MEMBER_SEARCH_FORBIDDEN"],
-  ] as const)("권한 %s의 HTTP 오류 계약", async (role, status, code) => {
-    mockQueries({ role });
-    const response = await get();
-    expect(response.status).toBe(status);
-    expect(response.body.error.code).toBe(code);
-    expect(db.select).toHaveBeenCalledOnce();
-  });
+    [null, false, 404, "WORKSPACE_NOT_FOUND"],
+    ["member", false, 403, "MEMBER_SEARCH_FORBIDDEN"],
+    ["owner", true, 403, "MEMBER_ADD_DEFAULT_WORKSPACE_FORBIDDEN"],
+  ] as const)(
+    "권한 %s·기본 워크스페이스 %s의 HTTP 오류 계약",
+    async (role, isDefault, status, code) => {
+      mockQueries({ role, isDefault });
+      const response = await get();
+      expect(response.status).toBe(status);
+      expect(response.body.error.code).toBe(code);
+      expect(db.select).toHaveBeenCalledOnce();
+    },
+  );
   it("기본 페이지와 공개 필드 및 기존 멤버를 반환한다", async () => {
     const { list } = mockQueries();
     const response = await get({ search: "  " });

@@ -269,7 +269,7 @@ export function AccountPage({
   return (
     <AuthenticatedWorkspaceLayout
       workspaceId={workspaceId}
-      activeNav="settings"
+      activeNav={null}
       unknownWorkspace="fallback"
       workspaceMode="optional"
       onWorkspaceChange={onWorkspaceChange}
