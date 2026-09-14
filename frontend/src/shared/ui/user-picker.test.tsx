@@ -38,7 +38,9 @@ it('로딩과 오류·재시도 및 후보 페이지 이동을 표시한다', as
     onPageChange,
   }
   const { rerender } = render(<UserPicker {...props} loading />)
-  expect(screen.getByRole('status')).toHaveTextContent('불러오는 중')
+  expect(
+    screen.getByRole('status', { name: '사용자 불러오는 중' }),
+  ).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /민지/ })).not.toBeInTheDocument()
   rerender(
     <UserPicker {...props} error="검색하지 못했어요" onRetry={onRetry} />,
@@ -49,7 +51,7 @@ it('로딩과 오류·재시도 및 후보 페이지 이동을 표시한다', as
   await userEvent.click(screen.getByRole('button', { name: '다음 페이지' }))
   expect(onPageChange).toHaveBeenCalledWith(2)
 })
-it('로딩과 빈 결과를 공용 상태 컴포넌트로 표시한다', () => {
+it('로딩은 스켈레톤 셀로, 빈 결과는 공용 상태 컴포넌트로 표시한다', () => {
   const props = {
     open: true,
     onOpenChange: vi.fn(),
@@ -58,12 +60,11 @@ it('로딩과 빈 결과를 공용 상태 컴포넌트로 표시한다', () => {
     onSearchChange: vi.fn(),
   }
   const { rerender } = render(<UserPicker {...props} searchValue="" loading />)
-  const loading = screen.getByRole('status')
-  expect(loading).toHaveTextContent('사용자 불러오는 중')
-  expect(loading.querySelector('[data-slot="spinner"]')).toHaveAttribute(
-    'aria-hidden',
-    'true',
-  )
+  const loading = screen.getByRole('status', { name: '사용자 불러오는 중' })
+  expect(
+    loading.querySelectorAll('[data-slot="skeleton-list-cell"]'),
+  ).toHaveLength(5)
+  expect(loading.querySelector('[data-slot="spinner"]')).toBeNull()
 
   rerender(<UserPicker {...props} searchValue="민지" />)
   const emptySearch = screen.getByTestId('user-picker-list')

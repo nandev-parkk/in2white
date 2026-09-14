@@ -9,7 +9,7 @@ import {
 import { Search } from '@/shared/ui/search'
 import { Search as SearchIcon } from 'lucide-react'
 import { CompactEmptyState } from '@/shared/ui/compact-empty-state'
-import { CompactLoadingState } from '@/shared/ui/compact-loading-state'
+import { SkeletonListCell } from '@/shared/ui/skeleton'
 import { ListCell } from '@/shared/ui/list-cell'
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
 import {
@@ -86,10 +86,11 @@ function UserPicker({
           className="flex max-h-72 flex-col overflow-y-auto"
         >
           {loading ? (
-            <CompactLoadingState
-              title="사용자 불러오는 중"
-              description="잠시만 기다려주세요"
-            />
+            <div role="status" aria-label="사용자 불러오는 중">
+              {Array.from({ length: 5 }, (_, index) => (
+                <SkeletonListCell key={index} />
+              ))}
+            </div>
           ) : error ? (
             <div
               role="alert"

@@ -27,7 +27,7 @@ import {
   PaginationNext,
 } from '@/shared/ui/pagination'
 import { Search } from '@/shared/ui/search'
-import { Skeleton } from '@/shared/ui/skeleton'
+import { SkeletonListCell } from '@/shared/ui/skeleton'
 import { toast } from '@/shared/ui/toast'
 
 function joinedDate(value: string) {
@@ -123,16 +123,7 @@ export function MemberListContent({
           className="divide-border-subtle divide-y"
         >
           {Array.from({ length: 5 }, (_, index) => (
-            <div
-              key={index}
-              className="flex h-15.5 items-center gap-3 px-4 py-3"
-            >
-              <Skeleton className="size-8 rounded-full" />
-              <div className="flex flex-col gap-1.5">
-                <Skeleton className="h-3 w-40" />
-                <Skeleton className="h-2.5 w-25" />
-              </div>
-            </div>
+            <SkeletonListCell key={index} />
           ))}
         </div>
       ) : query.isError ? (
