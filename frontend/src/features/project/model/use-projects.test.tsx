@@ -5,6 +5,7 @@ import type React from 'react'
 import {
   createProjectRequest,
   deleteProjectRequest,
+  getProjectRequest,
   listProjectsRequest,
   updateProjectRequest,
   type ListProjectsResponse,
@@ -14,6 +15,7 @@ import {
 import {
   useCreateProject,
   useDeleteProject,
+  useProject,
   useProjects,
   useUpdateProject,
 } from './use-projects'
@@ -21,6 +23,7 @@ import {
 vi.mock('@/entities/project', () => ({
   createProjectRequest: vi.fn(),
   deleteProjectRequest: vi.fn(),
+  getProjectRequest: vi.fn(),
   listProjectsRequest: vi.fn(),
   updateProjectRequest: vi.fn(),
 }))
@@ -129,5 +132,34 @@ describe('project query hooks', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: ['projects', 'workspace-1'],
     })
+  })
+
+  it('프로젝트 단건 조회는 project 키를 쓴다', async () => {
+    vi.mocked(getProjectRequest).mockResolvedValue(projectFixture)
+    const queryClient = createTestQueryClient()
+
+    renderHook(() => useProject('token-1', 'workspace-1', 'project-1'), {
+      wrapper: createQueryClientWrapper(queryClient),
+    })
+
+    await waitFor(() => {
+      expect(getProjectRequest).toHaveBeenCalledWith(
+        'workspace-1',
+        'project-1',
+        'token-1',
+      )
+    })
+  })
+
+  it('projectId가 없으면 단건 조회를 하지 않는다', () => {
+    const queryClient = createTestQueryClient()
+
+    const { result } = renderHook(
+      () => useProject('token-1', 'workspace-1', null),
+      { wrapper: createQueryClientWrapper(queryClient) },
+    )
+
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(getProjectRequest).not.toHaveBeenCalled()
   })
 })

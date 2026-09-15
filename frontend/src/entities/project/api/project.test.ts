@@ -3,6 +3,7 @@ import { axiosInstance } from '@/shared/api'
 import {
   createProjectRequest,
   deleteProjectRequest,
+  getProjectRequest,
   listProjectsRequest,
   updateProjectRequest,
   type Project,
@@ -134,6 +135,21 @@ describe('project API requests', () => {
       { headers: { Authorization: 'Bearer token-1' } },
     )
     expect(axiosInstance.delete).toHaveBeenCalledWith(
+      '/workspaces/workspace-1/projects/project-1',
+      { headers: { Authorization: 'Bearer token-1' } },
+    )
+  })
+
+  it('프로젝트 단건 조회에 workspace, project, bearer token을 전달한다', async () => {
+    vi.mocked(axiosInstance.get).mockResolvedValueOnce({
+      data: { project: projectFixture },
+    })
+
+    await expect(
+      getProjectRequest('workspace-1', 'project-1', 'token-1'),
+    ).resolves.toEqual(projectFixture)
+
+    expect(axiosInstance.get).toHaveBeenCalledWith(
       '/workspaces/workspace-1/projects/project-1',
       { headers: { Authorization: 'Bearer token-1' } },
     )

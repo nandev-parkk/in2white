@@ -1,26 +1,32 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
-import { HomePage } from '@/pages/home'
+import { ProjectDetailPage } from '@/pages/project-detail'
 
 import { redirectIfUnauthenticated } from '../../index'
 import { PROJECT_DETAIL_ROUTE, PROJECTS_ROUTE } from './-route-paths'
 
-export { PROJECTS_ROUTE }
+export { PROJECT_DETAIL_ROUTE }
 
-export const Route = createFileRoute('/workspaces/$workspaceId/projects')({
+export const Route = createFileRoute(
+  '/workspaces/$workspaceId/projects_/$projectId',
+)({
   beforeLoad: redirectIfUnauthenticated,
-  component: WorkspaceProjectsRoute,
+  component: WorkspaceProjectDetailRoute,
 })
 
-function WorkspaceProjectsRoute() {
-  const { workspaceId } = Route.useParams()
+function WorkspaceProjectDetailRoute() {
+  const { workspaceId, projectId } = Route.useParams()
   const navigate = useNavigate()
 
   return (
-    <HomePage
+    <ProjectDetailPage
       workspaceId={workspaceId}
+      projectId={projectId}
+      onBack={() =>
+        void navigate({ to: PROJECTS_ROUTE, params: { workspaceId } })
+      }
       onWorkspaceChange={(nextWorkspaceId) =>
-        navigate({
+        void navigate({
           to: PROJECTS_ROUTE,
           params: { workspaceId: nextWorkspaceId },
         })
@@ -28,17 +34,9 @@ function WorkspaceProjectsRoute() {
       onUserClick={(selectedWorkspaceId) => {
         void navigate({
           to: '/account',
-          search: {
-            workspaceId: selectedWorkspaceId ?? workspaceId,
-          },
+          search: { workspaceId: selectedWorkspaceId ?? workspaceId },
         })
       }}
-      onProjectOpen={(projectId) =>
-        void navigate({
-          to: PROJECT_DETAIL_ROUTE,
-          params: { workspaceId, projectId },
-        })
-      }
     />
   )
 }

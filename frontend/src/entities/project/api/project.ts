@@ -1,4 +1,5 @@
 import { axiosInstance } from '@/shared/api'
+import type { Pagination } from '@/shared/types/pagination'
 
 export type ProjectCreator = {
   id: string
@@ -18,12 +19,7 @@ export type Project = {
 
 export type ProjectMutationProject = Omit<Project, 'creator'>
 
-export type ProjectPagination = {
-  page: number
-  limit: number
-  total: number
-  totalPages: number
-}
+export type ProjectPagination = Pagination
 
 export type ProjectListParams = {
   page: number
@@ -79,6 +75,19 @@ export async function createProjectRequest(
   }>(`/workspaces/${workspaceId}/projects`, input, {
     headers: authorization(accessToken),
   })
+
+  return data.project
+}
+
+export async function getProjectRequest(
+  workspaceId: string,
+  projectId: string,
+  accessToken: string,
+): Promise<Project> {
+  const { data } = await axiosInstance.get<{ project: Project }>(
+    `/workspaces/${workspaceId}/projects/${projectId}`,
+    { headers: authorization(accessToken) },
+  )
 
   return data.project
 }

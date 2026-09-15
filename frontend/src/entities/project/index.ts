@@ -1,6 +1,7 @@
 export {
   createProjectRequest,
   deleteProjectRequest,
+  getProjectRequest,
   listProjectsRequest,
   updateProjectRequest,
 } from './api/project'

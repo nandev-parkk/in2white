@@ -379,4 +379,23 @@ describe('ProjectListContent', () => {
     await userEvent.click(screen.getByRole('button', { name: '다시 시도' }))
     expect(refetch).toHaveBeenCalledOnce()
   })
+
+  it('프로젝트 제목을 누르면 상세 이동 콜백을 호출한다', async () => {
+    const onProjectOpen = vi.fn()
+    render(
+      <ProjectListContent
+        accessToken="token-1"
+        workspaceId="workspace-1"
+        userId="user-1"
+        workspaceRole="owner"
+        onProjectOpen={onProjectOpen}
+      />,
+    )
+
+    await userEvent.click(
+      screen.getByRole('button', { name: '2026 브랜드 리뉴얼' }),
+    )
+
+    expect(onProjectOpen).toHaveBeenCalledWith('project-1')
+  })
 })

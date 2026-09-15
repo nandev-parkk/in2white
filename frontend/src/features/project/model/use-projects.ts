@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 
 import {
   createProjectRequest,
   deleteProjectRequest,
+  getProjectRequest,
   listProjectsRequest,
   updateProjectRequest,
   type CreateProjectInput,
@@ -20,6 +22,33 @@ export function useProjects(
     queryFn: () =>
       listProjectsRequest(workspaceId as string, params, accessToken as string),
     enabled: Boolean(accessToken && workspaceId),
+  })
+}
+
+export function projectErrorCode(error: unknown): string | undefined {
+  return isAxiosError(error) ? error.response?.data?.error?.code : undefined
+}
+
+export function isProjectNotFound(error: unknown) {
+  const code = projectErrorCode(error)
+  return code === 'PROJECT_NOT_FOUND' || code === 'WORKSPACE_NOT_FOUND'
+}
+
+export function useProject(
+  accessToken: string | null,
+  workspaceId: string | null,
+  projectId: string | null,
+) {
+  return useQuery({
+    queryKey: ['project', workspaceId, projectId],
+    queryFn: () =>
+      getProjectRequest(
+        workspaceId as string,
+        projectId as string,
+        accessToken as string,
+      ),
+    enabled: Boolean(accessToken && workspaceId && projectId),
+    retry: (count, error) => !isProjectNotFound(error) && count < 2,
   })
 }
 
