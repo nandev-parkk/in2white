@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Folder, LayoutGrid, List, Search as SearchIcon } from 'lucide-react'
+import { Folder, Search as SearchIcon } from 'lucide-react'
 
 import type { Project } from '@/entities/project'
 import type { WorkspaceRole } from '@/entities/workspace'
@@ -11,14 +11,10 @@ import {
 } from '@/features/project'
 import { Button } from '@/shared/ui/button'
 import { EmptyState } from '@/shared/ui/empty-state'
-import {
-  Pagination,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/shared/ui/pagination'
+import { ListPagination } from '@/shared/ui/list-pagination'
 import { Search } from '@/shared/ui/search'
 import { toast } from '@/shared/ui/toast'
+import { ViewToggle, type ListView } from '@/shared/ui/view-toggle'
 
 import { ProjectCard } from './ProjectCard'
 import { ProjectDeleteDialog } from './ProjectDeleteDialog'
@@ -27,13 +23,12 @@ import { ProjectTable } from './ProjectTable'
 
 const PROJECTS_PER_PAGE = 12
 
-type ProjectView = 'grid' | 'table'
-
 type ProjectListContentProps = {
   accessToken: string
   workspaceId: string
   userId: string
   workspaceRole?: WorkspaceRole
+  onProjectOpen?: (projectId: string) => void
 }
 
 function ProjectListContent({
@@ -41,10 +36,11 @@ function ProjectListContent({
   workspaceId,
   userId,
   workspaceRole,
+  onProjectOpen,
 }: ProjectListContentProps) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [view, setView] = useState<ProjectView>('grid')
+  const [view, setView] = useState<ListView>('grid')
   const [createOpen, setCreateOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [deletingProject, setDeletingProject] = useState<Project | null>(null)
@@ -63,6 +59,9 @@ function ProjectListContent({
   const hasSearch = search.trim().length > 0
   const canManageProject = (project: Project) =>
     workspaceRole === 'owner' || project.creatorId === userId
+  const handleProjectOpen = onProjectOpen
+    ? (project: Project) => onProjectOpen(project.id)
+    : undefined
 
   function handleSearchChange(value: string) {
     setSearch(value)
@@ -168,30 +167,11 @@ function ProjectListContent({
           className="w-full max-w-80"
         />
         <div className="flex items-center gap-2">
-          <div
-            className="bg-background-subtle flex h-9 items-center gap-0.5 rounded-lg p-1"
-            role="group"
-            aria-label="프로젝트 보기 방식"
-          >
-            <button
-              type="button"
-              aria-label="카드 보기"
-              aria-pressed={view === 'grid'}
-              onClick={() => setView('grid')}
-              className="focus-visible:ring-action-focus-ring aria-pressed:bg-background-default aria-pressed:ring-border flex size-7 items-center justify-center rounded-md outline-none focus-visible:ring-3 aria-pressed:shadow-sm aria-pressed:ring-1"
-            >
-              <LayoutGrid className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              aria-label="목록 보기"
-              aria-pressed={view === 'table'}
-              onClick={() => setView('table')}
-              className="focus-visible:ring-action-focus-ring aria-pressed:bg-background-default aria-pressed:ring-border flex size-7 items-center justify-center rounded-md outline-none focus-visible:ring-3 aria-pressed:shadow-sm aria-pressed:ring-1"
-            >
-              <List className="size-3.5" />
-            </button>
-          </div>
+          <ViewToggle
+            value={view}
+            onChange={setView}
+            label="프로젝트 보기 방식"
+          />
           <Button className="h-9" onClick={openCreateDialog}>
             프로젝트 생성
           </Button>
@@ -269,6 +249,7 @@ function ProjectListContent({
                     onEdit={openEditDialog}
                     onDelete={openDeleteDialog}
                     canManage={canManageProject(project)}
+                    onOpen={handleProjectOpen}
                   />
                 ))}
               </div>
@@ -278,36 +259,16 @@ function ProjectListContent({
                 onEdit={openEditDialog}
                 onDelete={openDeleteDialog}
                 canManage={canManageProject}
+                onOpen={handleProjectOpen}
               />
             )}
 
-            {pagination && pagination.totalPages > 1 && (
-              <Pagination className="justify-center">
-                <PaginationPrevious
-                  disabled={page <= 1}
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
-                />
-                {Array.from(
-                  { length: pagination.totalPages },
-                  (_, index) => index + 1,
-                ).map((pageNumber) => (
-                  <PaginationItem
-                    key={pageNumber}
-                    isActive={pageNumber === page}
-                    onClick={() => setPage(pageNumber)}
-                  >
-                    {pageNumber}
-                  </PaginationItem>
-                ))}
-                <PaginationNext
-                  disabled={page >= pagination.totalPages}
-                  onClick={() =>
-                    setPage((current) =>
-                      Math.min(pagination.totalPages, current + 1),
-                    )
-                  }
-                />
-              </Pagination>
+            {pagination && (
+              <ListPagination
+                page={page}
+                totalPages={pagination.totalPages}
+                onPageChange={setPage}
+              />
             )}
           </>
         )}

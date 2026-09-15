@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { MoreVertical } from 'lucide-react'
 
 import { WhiteboardCard } from '@/shared/ui/whiteboard-card'
 
@@ -13,7 +14,16 @@ function ActionableCard() {
         createdAtLabel="2026. 9. 2."
         updatedAtLabel="10분 전"
         creatorName="박서연"
-        onMenuClick={() => setMenuCount((count) => count + 1)}
+        menu={
+          <button
+            type="button"
+            aria-label="신규 서비스 사용자 흐름 메뉴"
+            onClick={() => setMenuCount((count) => count + 1)}
+            className="bg-background-default text-foreground-secondary flex size-7 items-center justify-center rounded-md"
+          >
+            <MoreVertical className="size-4" />
+          </button>
+        }
       />
       <p className="text-caption text-foreground-secondary">
         더 보기 클릭 {menuCount}회
@@ -26,6 +36,13 @@ const meta = {
   title: 'Shared UI/Compositions/Whiteboard Card',
   component: WhiteboardCard,
   parameters: { layout: 'centered' },
+  decorators: [
+    (Story) => (
+      <div className="w-58">
+        <Story />
+      </div>
+    ),
+  ],
   args: {
     title: '브랜드 리뉴얼 아이디어',
     createdAtLabel: '2026. 8. 28.',
@@ -53,6 +70,13 @@ export const LongTitle: Story = {
 }
 
 export const CardGrid: Story = {
+  decorators: [
+    (Story) => (
+      <div className="w-120">
+        <Story />
+      </div>
+    ),
+  ],
   render: () => (
     <div className="grid grid-cols-2 gap-4">
       <WhiteboardCard

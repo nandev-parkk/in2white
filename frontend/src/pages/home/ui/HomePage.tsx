@@ -9,12 +9,14 @@ export function HomePage({
   onNavChange,
   onUserClick,
   onWorkspaceChange,
+  onProjectOpen,
 }: {
   workspaceId?: string
   activeNav?: 'projects' | 'members'
   onNavChange?: (key: SidebarNavKey, selectedWorkspaceId: string | null) => void
   onUserClick?: (selectedWorkspaceId: string | null) => void
   onWorkspaceChange?: (workspaceId: string) => void
+  onProjectOpen?: (projectId: string) => void
 } = {}) {
   return (
     <AuthenticatedWorkspaceLayout
@@ -48,6 +50,7 @@ export function HomePage({
               workspaceId={workspaceId ?? selectedWorkspaceId!}
               userId={user.id}
               workspaceRole={selectedWorkspace?.role}
+              onProjectOpen={onProjectOpen}
             />
           )
         ) : (

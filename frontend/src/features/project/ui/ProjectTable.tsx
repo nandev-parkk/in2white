@@ -8,10 +8,7 @@ import {
   TableRow,
 } from '@/shared/ui/table'
 
-import {
-  formatProjectCreatedAt,
-  formatProjectUpdatedAt,
-} from '../lib/project-date'
+import { formatCreatedAt, formatUpdatedAt } from '@/shared/lib/resource-date'
 import { ProjectMenu } from './ProjectCard'
 
 type ProjectTableProps = {
@@ -19,6 +16,7 @@ type ProjectTableProps = {
   onEdit: (project: Project) => void
   onDelete: (project: Project) => void
   canManage?: (project: Project) => boolean
+  onOpen?: (project: Project) => void
 }
 
 function ProjectTable({
@@ -26,6 +24,7 @@ function ProjectTable({
   onEdit,
   onDelete,
   canManage = () => true,
+  onOpen,
 }: ProjectTableProps) {
   return (
     <Table className="min-w-[1008px] table-fixed">
@@ -42,21 +41,31 @@ function ProjectTable({
         {projects.map((project) => (
           <TableRow key={project.id}>
             <TableCell>
-              <span className="text-card-title text-foreground-strong block truncate">
-                {project.name}
-              </span>
+              {onOpen ? (
+                <button
+                  type="button"
+                  onClick={() => onOpen(project)}
+                  className="text-card-title text-foreground-strong focus-visible:ring-action-focus-ring block w-full truncate rounded-sm text-left outline-none hover:underline focus-visible:ring-3"
+                >
+                  {project.name}
+                </button>
+              ) : (
+                <span className="text-card-title text-foreground-strong block truncate">
+                  {project.name}
+                </span>
+              )}
             </TableCell>
             <TableCell>
               <span className="truncate">{project.creator.name}</span>
             </TableCell>
             <TableCell>
               <span className="whitespace-nowrap">
-                {formatProjectCreatedAt(project.createdAt)}
+                {formatCreatedAt(project.createdAt)}
               </span>
             </TableCell>
             <TableCell>
               <span className="whitespace-nowrap">
-                {formatProjectUpdatedAt(project.updatedAt)}
+                {formatUpdatedAt(project.updatedAt)}
               </span>
             </TableCell>
             <TableCell>
