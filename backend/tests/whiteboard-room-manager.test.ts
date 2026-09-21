@@ -87,7 +87,7 @@ describe("WhiteboardRoomManager", () => {
       snapshot(),
     );
 
-    expect(joined.status).toBe("joined");
+    expect(joined).toMatchObject({ status: "joined", savedRevision: 0, persistenceState: "dirty" });
     if (joined.status === "joined") {
       expect(joined.snapshot.canvasContent.elements.map((item) => item.id)).toEqual(["a", "b"]);
       expect(joined.snapshot.revision).toBe(1);
@@ -221,6 +221,8 @@ describe("WhiteboardRoomManager", () => {
     expect(onRoomEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "sync_required",
+        savedRevision: 1,
+        persistenceState: "saving",
         snapshot: expect.objectContaining({
           canvasContent: expect.objectContaining({
             elements: [element("remote", 1), element("local", 1)],
@@ -296,6 +298,13 @@ describe("WhiteboardRoomManager", () => {
       await vi.advanceTimersByTimeAsync(delay);
       await vi.runAllTicks();
     }
+    await expect(
+      manager.join("socket-2", { userId: "user-2", name: "two" }, documentId, snapshot()),
+    ).resolves.toMatchObject({
+      status: "joined",
+      savedRevision: 0,
+      persistenceState: "blocked",
+    });
     expect(manager.updateScene("socket-1", update("rejected"))).toMatchObject({
       status: "persistence_unavailable",
     });

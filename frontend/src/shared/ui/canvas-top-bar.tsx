@@ -7,7 +7,7 @@ import {
   type PresenceUser,
 } from '@/shared/ui/presence-avatar-stack'
 
-type SaveStatus = 'saved' | 'saving' | 'disconnected'
+type SaveStatus = 'saved' | 'saving' | 'disconnected' | 'connecting' | 'error'
 
 type CanvasTopBarProps = React.ComponentProps<'div'> & {
   title: string
@@ -22,6 +22,12 @@ const saveStatusConfig: Record<
   { icon: React.ElementType; label: string; className?: string }
 > = {
   saved: { icon: CircleCheck, label: '저장됨' },
+  connecting: { icon: Spinner, label: '연결 중...' },
+  error: {
+    icon: CircleAlert,
+    label: '저장 상태 확인 필요',
+    className: 'text-status-danger',
+  },
   saving: { icon: Spinner, label: '저장 중...' },
   disconnected: {
     icon: CircleAlert,
@@ -71,7 +77,9 @@ function CanvasTopBar({
           )}
         >
           <StatusIcon className="size-3.5" />
-          <span>{label}</span>
+          <span role="status" aria-live="polite">
+            {label}
+          </span>
         </div>
       </div>
       <div className="flex items-center gap-3">

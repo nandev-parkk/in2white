@@ -4,6 +4,7 @@ import { axiosInstance } from '@/shared/api'
 
 import {
   createWhiteboardDocumentRequest,
+  getWhiteboardDocumentRequest,
   deleteWhiteboardDocumentRequest,
   listWhiteboardDocumentsRequest,
   updateWhiteboardDocumentRequest,
@@ -33,6 +34,28 @@ const LIST_URL =
   '/workspaces/workspace-1/projects/project-1/whiteboard-documents'
 
 describe('whiteboard document API requests', () => {
+  it('단건 조회에 문서 경로와 인증을 전달하고 콘텐츠를 반환한다', async () => {
+    const detail = {
+      ...documentFixture,
+      canvasContent: { elements: [] },
+      revision: 2,
+      lastSavedAt: '2026-09-21T00:00:00Z',
+    }
+    vi.mocked(axiosInstance.get).mockResolvedValueOnce({
+      data: { whiteboardDocument: detail },
+    })
+    expect(
+      await getWhiteboardDocumentRequest(
+        'workspace-1',
+        'project-1',
+        'document-1',
+        'token-1',
+      ),
+    ).toEqual(detail)
+    expect(axiosInstance.get).toHaveBeenCalledWith(LIST_URL + '/document-1', {
+      headers: { Authorization: 'Bearer token-1' },
+    })
+  })
   beforeEach(() => {
     vi.clearAllMocks()
   })

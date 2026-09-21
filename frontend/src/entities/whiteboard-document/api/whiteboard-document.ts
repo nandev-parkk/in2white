@@ -1,4 +1,5 @@
 import { axiosInstance } from '@/shared/api'
+import type { CanvasContent } from '../model/content'
 import type { Pagination } from '@/shared/types/pagination'
 
 export type WhiteboardDocumentCreator = {
@@ -18,6 +19,26 @@ export type WhiteboardDocument = {
 
 /** 생성 응답은 creator를 포함하지 않는다. */
 export type CreatedWhiteboardDocument = Omit<WhiteboardDocument, 'creator'>
+
+export type WhiteboardDocumentDetail = Omit<WhiteboardDocument, 'creator'> & {
+  canvasContent: CanvasContent
+  revision: number
+  lastSavedAt: string
+}
+
+export async function getWhiteboardDocumentRequest(
+  workspaceId: string,
+  projectId: string,
+  documentId: string,
+  accessToken: string,
+): Promise<WhiteboardDocumentDetail> {
+  const { data } = await axiosInstance.get<{
+    whiteboardDocument: WhiteboardDocumentDetail
+  }>(documentsUrl(workspaceId, projectId) + '/' + documentId, {
+    headers: authorization(accessToken),
+  })
+  return data.whiteboardDocument
+}
 
 /** 이름 변경 응답은 변경된 필드만 돌려준다. */
 export type UpdatedWhiteboardDocument = {

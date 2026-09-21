@@ -22,6 +22,7 @@ import { Skeleton } from '@/shared/ui/skeleton'
 import { toast } from '@/shared/ui/toast'
 
 type ProjectDetailPageProps = {
+  onDocumentOpen?: (documentId: string) => void
   workspaceId: string
   projectId: string
   onBack: () => void
@@ -31,6 +32,7 @@ type ProjectDetailPageProps = {
 }
 
 type ProjectDetailContentProps = {
+  onDocumentOpen?: (documentId: string) => void
   accessToken: string
   workspaceId: string
   projectId: string
@@ -62,6 +64,7 @@ function ProjectDetailContent({
   user,
   selectedWorkspace,
   onBack,
+  onDocumentOpen,
 }: ProjectDetailContentProps) {
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -164,6 +167,7 @@ function ProjectDetailContent({
       />
 
       <WhiteboardDocumentListContent
+        onDocumentOpen={onDocumentOpen}
         accessToken={accessToken}
         workspaceId={workspaceId}
         projectId={projectId}
@@ -204,6 +208,7 @@ function ProjectDetailPage({
   projectId,
   onBack,
   onWorkspaceChange,
+  onDocumentOpen,
   onNavChange,
   onUserClick,
 }: ProjectDetailPageProps) {
@@ -221,6 +226,7 @@ function ProjectDetailPage({
           workspaceId={workspaceId}
           projectId={projectId}
           user={user}
+          onDocumentOpen={onDocumentOpen}
           selectedWorkspace={selectedWorkspace}
           onBack={onBack}
         />

@@ -74,7 +74,14 @@ export type WhiteboardRoomEvent =
       fileUpdates?: WhiteboardFileUpdates;
     }
   | { status: "saved"; documentId: string; revision: number; lastSavedAt: Date }
-  | { status: "sync_required"; documentId: string; revision: number; snapshot: WhiteboardSnapshot }
+  | {
+      status: "sync_required";
+      documentId: string;
+      revision: number;
+      snapshot: WhiteboardSnapshot;
+      savedRevision: number;
+      persistenceState: PersistenceState;
+    }
   | {
       status: "save_failed";
       documentId: string;
@@ -102,6 +109,8 @@ export type JoinRoomResult =
       status: "joined";
       documentId: string;
       snapshot: WhiteboardSnapshot;
+      savedRevision: number;
+      persistenceState: PersistenceState;
       participants: WhiteboardParticipant[];
       participant: WhiteboardParticipant;
       participantJoined: boolean;
@@ -310,6 +319,8 @@ export class WhiteboardRoomManager {
       status: "joined",
       documentId,
       snapshot: room.scene.toSnapshot(),
+      savedRevision: room.scene.persistedRevision,
+      persistenceState: room.persistenceState,
       participants: [...room.participants.values()].map(toParticipant),
       participant: toParticipant(participant),
       participantJoined,
@@ -683,6 +694,8 @@ export class WhiteboardRoomManager {
         documentId: room.documentId,
         revision: merged.snapshot.revision,
         snapshot: merged.snapshot,
+        savedRevision: room.scene.persistedRevision,
+        persistenceState: room.persistenceState,
       });
     } catch (error) {
       if (error instanceof WhiteboardSceneLimitError) {

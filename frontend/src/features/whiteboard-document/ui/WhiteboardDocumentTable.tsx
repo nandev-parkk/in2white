@@ -13,6 +13,7 @@ import { WhiteboardDocumentMenu } from './WhiteboardDocumentMenu'
 
 type WhiteboardDocumentTableProps = {
   documents: WhiteboardDocument[]
+  onOpen?: (documentId: string) => void
   onRename: (document: WhiteboardDocument) => void
   onDelete: (document: WhiteboardDocument) => void
   canManage?: (document: WhiteboardDocument) => boolean
@@ -20,6 +21,7 @@ type WhiteboardDocumentTableProps = {
 
 function WhiteboardDocumentTable({
   documents,
+  onOpen,
   onRename,
   onDelete,
   canManage = () => true,
@@ -40,7 +42,17 @@ function WhiteboardDocumentTable({
           <TableRow key={document.id}>
             <TableCell>
               <span className="text-card-title text-foreground-strong block truncate">
-                {document.name}
+                {onOpen ? (
+                  <button
+                    type="button"
+                    className="text-left hover:underline focus-visible:outline-2"
+                    onClick={() => onOpen(document.id)}
+                  >
+                    {document.name}
+                  </button>
+                ) : (
+                  document.name
+                )}
               </span>
             </TableCell>
             <TableCell>

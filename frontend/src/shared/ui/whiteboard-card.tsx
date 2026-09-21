@@ -9,6 +9,7 @@ type WhiteboardCardProps = React.ComponentProps<'div'> & {
   updatedAtLabel: string
   creatorName: string
   menu?: React.ReactNode
+  onOpen?: () => void
 }
 
 function WhiteboardCard({
@@ -18,6 +19,7 @@ function WhiteboardCard({
   updatedAtLabel,
   creatorName,
   menu,
+  onOpen,
   ...props
 }: WhiteboardCardProps) {
   return (
@@ -33,7 +35,19 @@ function WhiteboardCard({
         {menu && <div className="absolute top-2 right-2">{menu}</div>}
       </div>
       <div className="flex flex-col gap-2 p-4">
-        <p className="text-card-title text-foreground-strong">{title}</p>
+        <p className="text-card-title text-foreground-strong">
+          {onOpen ? (
+            <button
+              type="button"
+              className="text-left hover:underline focus-visible:outline-2"
+              onClick={onOpen}
+            >
+              {title}
+            </button>
+          ) : (
+            title
+          )}
+        </p>
         <div className="flex flex-col gap-1">
           <div className="text-foreground-tertiary flex items-center gap-1.5">
             <Calendar className="size-3.5" />
