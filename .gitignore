@@ -1,0 +1,33 @@
+# 공통 의존성·빌드·환경 설정
+node_modules/
+.pnpm-store/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.idea/
+
+# 프론트엔드 로그·빌드 결과물
+/frontend/**/logs
+/frontend/**/npm-debug.log*
+/frontend/**/yarn-debug.log*
+/frontend/**/yarn-error.log*
+/frontend/**/pnpm-debug.log*
+/frontend/**/lerna-debug.log*
+/frontend/**/dist-ssr
+/frontend/**/*.local
+/frontend/**/storybook-static
+
+# 프론트엔드 자동 생성 라우트
+/frontend/src/routeTree.gen.ts
+
+# 프론트엔드 에디터 설정
+/frontend/.vscode/*
+!/frontend/.vscode/extensions.json
+/frontend/**/*.suo
+/frontend/**/*.ntvs*
+/frontend/**/*.njsproj
+/frontend/**/*.sln
+/frontend/**/*.sw?
