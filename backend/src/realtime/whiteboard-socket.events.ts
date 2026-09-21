@@ -5,7 +5,7 @@ import type {
   WhiteboardSceneUpdatePayload,
 } from "@/realtime/whiteboard-protocol.schema";
 import type { TokenBucket } from "@/realtime/whiteboard-rate-limiter";
-import type { WhiteboardParticipant } from "@/realtime/whiteboard-room-manager";
+import type { WhiteboardParticipant, PersistenceState } from "@/realtime/whiteboard-room-manager";
 import type { CanvasContent, WhiteboardElement, WhiteboardFileUpdates } from "@/types/whiteboard";
 
 export type WhiteboardErrorCode =
@@ -47,6 +47,8 @@ export type WhiteboardJoinAck =
       ok: true;
       whiteboardDocument: WhiteboardDocumentSocketResponse;
       participants: WhiteboardParticipant[];
+      savedRevision: number;
+      persistenceState: PersistenceState;
     }
   | { ok: false; error: WhiteboardProtocolError };
 
@@ -84,6 +86,8 @@ export interface WhiteboardSaveFailedEvent {
 
 export interface WhiteboardSyncRequiredEvent {
   documentId: string;
+  savedRevision: number;
+  persistenceState: PersistenceState;
   snapshot: { canvasContent: CanvasContent; revision: number; lastSavedAt: string };
 }
 

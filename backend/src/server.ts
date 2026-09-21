@@ -1,22 +1,13 @@
-import { createServer } from "node:http";
-import { createApp } from "@/app";
+import { createApplicationServer } from "@/server-app";
 import { closeValkey } from "@/cache/valkey";
 import { getEnv } from "@/config/env";
 import { closeDatabase } from "@/db/client";
-import { createWhiteboardCollaborationServer } from "@/realtime/whiteboard-collaboration";
 import { createApplicationShutdown } from "@/server-shutdown";
 import { logger } from "@/utils/logger";
 
 const env = getEnv();
-const httpServer = createServer();
 let shutdownDeadlineAt = Number.POSITIVE_INFINITY;
-const collaboration = createWhiteboardCollaborationServer(httpServer, {
-  shutdownDeadlineAt: () => shutdownDeadlineAt,
-});
-const app = createApp({
-  onWhiteboardDocumentDeleted: collaboration.documentDeleted,
-});
-httpServer.on("request", app);
+const { httpServer, collaboration } = createApplicationServer(() => shutdownDeadlineAt);
 
 const shutdown = createApplicationShutdown({
   closeCollaboration: collaboration.close,

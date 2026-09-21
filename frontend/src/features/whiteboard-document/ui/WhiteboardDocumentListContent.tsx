@@ -34,6 +34,7 @@ type WhiteboardDocumentListContentProps = {
   projectId: string
   userId: string
   workspaceRole?: WorkspaceRole
+  onDocumentOpen?: (documentId: string) => void
 }
 
 function WhiteboardDocumentListContent({
@@ -42,6 +43,7 @@ function WhiteboardDocumentListContent({
   projectId,
   userId,
   workspaceRole,
+  onDocumentOpen,
 }: WhiteboardDocumentListContentProps) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -255,6 +257,11 @@ function WhiteboardDocumentListContent({
                   <WhiteboardCard
                     key={document.id}
                     title={document.name}
+                    onOpen={
+                      onDocumentOpen
+                        ? () => onDocumentOpen(document.id)
+                        : undefined
+                    }
                     createdAtLabel={formatCreatedAt(document.createdAt)}
                     updatedAtLabel={formatUpdatedAt(document.updatedAt)}
                     creatorName={document.creator.name}
@@ -273,6 +280,7 @@ function WhiteboardDocumentListContent({
             ) : (
               <WhiteboardDocumentTable
                 documents={documents}
+                onOpen={onDocumentOpen}
                 onRename={openRenameDialog}
                 onDelete={openDeleteDialog}
                 canManage={canManageDocument}

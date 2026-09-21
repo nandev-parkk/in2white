@@ -148,6 +148,8 @@ describe("whiteboard collaboration server", () => {
 
     await expect(join(client)).resolves.toEqual({
       ok: true,
+      savedRevision: 0,
+      persistenceState: "clean",
       whiteboardDocument: {
         id: documentId,
         projectId,

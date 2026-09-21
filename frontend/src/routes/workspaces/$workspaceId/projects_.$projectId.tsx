@@ -22,6 +22,12 @@ function WorkspaceProjectDetailRoute() {
     <ProjectDetailPage
       workspaceId={workspaceId}
       projectId={projectId}
+      onDocumentOpen={(documentId) =>
+        void navigate({
+          to: '/workspaces/$workspaceId/projects/$projectId/whiteboard-documents/$documentId',
+          params: { workspaceId, projectId, documentId },
+        })
+      }
       onBack={() =>
         void navigate({ to: PROJECTS_ROUTE, params: { workspaceId } })
       }

@@ -1,5 +1,6 @@
 export {
   createWhiteboardDocumentRequest,
+  getWhiteboardDocumentRequest,
   deleteWhiteboardDocumentRequest,
   listWhiteboardDocumentsRequest,
   updateWhiteboardDocumentRequest,
@@ -9,6 +10,7 @@ export type {
   ListWhiteboardDocumentsResponse,
   UpdatedWhiteboardDocument,
   WhiteboardDocument,
+  WhiteboardDocumentDetail,
   WhiteboardDocumentCreator,
   WhiteboardDocumentInput,
   WhiteboardDocumentListParams,

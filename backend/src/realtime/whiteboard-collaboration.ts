@@ -243,6 +243,8 @@ export function createWhiteboardCollaborationServer(
     if (event.status === "sync_required") {
       target.emit("whiteboard:sync:required", {
         documentId: event.documentId,
+        savedRevision: event.savedRevision,
+        persistenceState: event.persistenceState,
         snapshot: {
           canvasContent: event.snapshot.canvasContent,
           revision: event.snapshot.revision,
@@ -439,6 +441,8 @@ export function createWhiteboardCollaborationServer(
             joined.snapshot,
           ),
           participants: joined.participants,
+          savedRevision: joined.savedRevision,
+          persistenceState: joined.persistenceState,
         });
       } catch (error) {
         sendAck(ack, protocolError(errorCode(error), errorMessage(error)));
