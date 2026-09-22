@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { cn } from 'cn'
+import { DelayedLoading } from '@/shared/ui/loading-state'
 import {
   Check,
   ChevronLeft,
@@ -200,9 +201,23 @@ function WorkspaceSwitcher({
             )}
           >
             {loading ? (
-              <span className="text-body-small text-foreground-secondary truncate">
-                워크스페이스 불러오는 중
-              </span>
+              <DelayedLoading as="span" className="min-w-0 flex-1">
+                <span
+                  role="status"
+                  aria-label="워크스페이스 불러오는 중"
+                  className="flex flex-col gap-1.5"
+                >
+                  <span className="sr-only">워크스페이스 불러오는 중</span>
+                  <span
+                    aria-hidden="true"
+                    className="bg-background-subtle h-4 w-24 max-w-full animate-pulse rounded-sm motion-reduce:animate-none"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="bg-background-subtle h-3 w-10 animate-pulse rounded-sm motion-reduce:animate-none"
+                  />
+                </span>
+              </DelayedLoading>
             ) : workspace ? (
               <span className="flex w-full min-w-0 flex-1 flex-col items-start overflow-hidden text-left">
                 <span

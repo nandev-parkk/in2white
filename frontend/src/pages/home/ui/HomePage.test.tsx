@@ -128,7 +128,7 @@ describe('HomePage', () => {
     expect(mockUseCreateWorkspace).not.toHaveBeenCalled()
   })
 
-  it('워크스페이스를 불러오는 동안 로딩 상태를 표시한다', () => {
+  it('워크스페이스를 불러오는 동안 로딩 상태를 지연 표시한다', async () => {
     useSessionStore.getState().setSession('token-1', userFixture)
     mockUseWorkspaces.mockReturnValue({
       data: undefined,
@@ -145,7 +145,10 @@ describe('HomePage', () => {
 
     renderHomePage()
 
-    expect(screen.getAllByText('워크스페이스 불러오는 중')).toHaveLength(2)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '워크스페이스를 불러오는 중',
+    )
   })
 
   it('좁은 화면에서는 사이드바를 접어 본문과 겹치지 않게 한다', () => {

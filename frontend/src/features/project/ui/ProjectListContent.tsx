@@ -12,6 +12,8 @@ import {
 import { Button } from '@/shared/ui/button'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { ListPagination } from '@/shared/ui/list-pagination'
+import { DelayedLoading } from '@/shared/ui/loading-state'
+import { ResourceListSkeleton } from '@/shared/ui/resource-list-skeleton'
 import { Search } from '@/shared/ui/search'
 import { toast } from '@/shared/ui/toast'
 import { ViewToggle, type ListView } from '@/shared/ui/view-toggle'
@@ -24,6 +26,7 @@ import { ProjectTable } from './ProjectTable'
 const PROJECTS_PER_PAGE = 12
 
 type ProjectListContentProps = {
+  loadingStartedAt?: number
   accessToken: string
   workspaceId: string
   userId: string
@@ -32,12 +35,16 @@ type ProjectListContentProps = {
 }
 
 function ProjectListContent({
+  loadingStartedAt: initialLoadingStartedAt,
   accessToken,
   workspaceId,
   userId,
   workspaceRole,
   onProjectOpen,
 }: ProjectListContentProps) {
+  const [loadingStartedAt, setLoadingStartedAt] = useState(
+    initialLoadingStartedAt,
+  )
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [view, setView] = useState<ListView>('grid')
@@ -56,7 +63,11 @@ function ProjectListContent({
 
   const projects = projectsQuery.data?.projects ?? []
   const pagination = projectsQuery.data?.pagination
-  const hasSearch = search.trim().length > 0
+  const [resultSearch, setResultSearch] = useState(search)
+  if (!projectsQuery.isPlaceholderData && resultSearch !== search) {
+    setResultSearch(search)
+  }
+  const hasSearch = resultSearch.trim().length > 0
   const canManageProject = (project: Project) =>
     workspaceRole === 'owner' || project.creatorId === userId
   const handleProjectOpen = onProjectOpen
@@ -179,9 +190,11 @@ function ProjectListContent({
       </div>
 
       {projectsQuery.isLoading && (
-        <div className="text-body text-foreground-secondary flex min-h-48 items-center justify-center">
-          프로젝트 불러오는 중
-        </div>
+        <DelayedLoading startedAt={loadingStartedAt}>
+          <div role="status" aria-label="프로젝트를 불러오는 중">
+            <ResourceListSkeleton view={view} kind="project" />
+          </div>
+        </DelayedLoading>
       )}
 
       {projectsQuery.isError && (
@@ -191,7 +204,10 @@ function ProjectListContent({
           </p>
           <Button
             variant="secondary"
-            onClick={() => void projectsQuery.refetch()}
+            onClick={() => {
+              setLoadingStartedAt(Date.now())
+              void projectsQuery.refetch()
+            }}
           >
             다시 시도
           </Button>
@@ -265,8 +281,9 @@ function ProjectListContent({
 
             {pagination && (
               <ListPagination
-                page={page}
+                page={pagination.page}
                 totalPages={pagination.totalPages}
+                disabled={projectsQuery.isFetching}
                 onPageChange={setPage}
               />
             )}

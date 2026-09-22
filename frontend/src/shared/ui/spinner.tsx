@@ -3,17 +3,20 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from 'cn'
 import { Loader2 } from 'lucide-react'
 
-const spinnerVariants = cva('animate-spin text-foreground-tertiary', {
-  variants: {
-    size: {
-      default: 'size-5',
-      large: 'size-7',
+const spinnerVariants = cva(
+  'animate-spin text-foreground-tertiary motion-reduce:animate-none',
+  {
+    variants: {
+      size: {
+        default: 'size-5',
+        large: 'size-7',
+      },
+    },
+    defaultVariants: {
+      size: 'default',
     },
   },
-  defaultVariants: {
-    size: 'default',
-  },
-})
+)
 
 function Spinner({
   className,

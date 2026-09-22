@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSessionStore } from '@/entities/session'
 
 import {
   createWhiteboardDocumentRequest,
@@ -19,8 +20,9 @@ export function useWhiteboardDocuments(
   projectId: string | null,
   params: WhiteboardDocumentListParams,
 ) {
+  const userId = useSessionStore((state) => state.user?.id)
   return useQuery({
-    queryKey: [...listKey(workspaceId, projectId), params],
+    queryKey: [...listKey(workspaceId, projectId), userId, params],
     queryFn: () =>
       listWhiteboardDocumentsRequest(
         workspaceId as string,
@@ -29,6 +31,13 @@ export function useWhiteboardDocuments(
         accessToken as string,
       ),
     enabled: Boolean(accessToken && workspaceId && projectId),
+    placeholderData: (previousData, previousQuery) =>
+      accessToken &&
+      previousQuery?.queryKey[1] === workspaceId &&
+      previousQuery.queryKey[2] === projectId &&
+      previousQuery.queryKey[3] === userId
+        ? previousData
+        : undefined,
   })
 }
 

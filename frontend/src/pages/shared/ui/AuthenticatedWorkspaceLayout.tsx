@@ -23,12 +23,19 @@ import { useCreateWorkspace, useWorkspaces } from '@/features/workspace'
 import { WorkspaceCreateDialog } from '@/features/workspace/ui/WorkspaceCreateDialog'
 import { WorkspaceAccessDeniedPage } from '@/pages/workspace-access-denied'
 import { Button } from '@/shared/ui/button'
+import { DelayedLoading } from '@/shared/ui/loading-state'
+import {
+  ListToolbarSkeleton,
+  ResourceListSkeleton,
+} from '@/shared/ui/resource-list-skeleton'
+import { Skeleton, SkeletonListCell } from '@/shared/ui/skeleton'
 import { Sidebar, type SidebarNavKey } from '@/shared/ui/sidebar'
 import { toast } from '@/shared/ui/toast'
 
 const COMPACT_SIDEBAR_MEDIA_QUERY = '(max-width: 639px)'
 
 export type WorkspaceShellContext = {
+  loadingStartedAt: number
   accessToken: string
   user: SessionUser
   workspaces: WorkspaceSummary[]
@@ -41,6 +48,7 @@ export type WorkspaceShellContext = {
 }
 
 export type AuthenticatedWorkspaceLayoutProps = {
+  loadingFallback?: (startedAt: number) => ReactNode
   workspaceId?: string
   activeNav?: SidebarNavKey | null
   unknownWorkspace?: 'deny' | 'fallback'
@@ -76,6 +84,7 @@ function useCompactSidebar() {
 }
 
 function WorkspaceLayoutContent({
+  loadingFallback,
   accessToken,
   user,
   onLogout,
@@ -92,6 +101,7 @@ function WorkspaceLayoutContent({
   user: SessionUser
   onLogout: () => Promise<void>
 }) {
+  const [loadingStartedAt, setLoadingStartedAt] = useState(() => Date.now())
   const { data, isLoading, isError, refetch } = useWorkspaces(
     accessToken,
     user.id,
@@ -176,7 +186,13 @@ function WorkspaceLayoutContent({
         <p className="text-body text-foreground-secondary">
           워크스페이스를 불러오지 못했어요
         </p>
-        <Button variant="secondary" onClick={() => void refetch()}>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setLoadingStartedAt(Date.now())
+            void refetch()
+          }}
+        >
           다시 시도
         </Button>
       </main>
@@ -220,12 +236,14 @@ function WorkspaceLayoutContent({
   }
 
   function handleWorkspaceChange(nextWorkspaceId: string) {
+    setLoadingStartedAt(Date.now())
     setInviteWorkspaceId(null)
     setSelectedWorkspaceId(nextWorkspaceId)
     onWorkspaceChange?.(nextWorkspaceId)
   }
 
   function handleNavChange(key: SidebarNavKey) {
+    setLoadingStartedAt(Date.now())
     setInternalActiveNav(key)
     if (onNavChange) onNavChange(key, resolvedSelectedWorkspaceId)
     else if (
@@ -279,11 +297,33 @@ function WorkspaceLayoutContent({
 
       <main className="flex min-w-0 flex-1 flex-col px-5 pt-6 pb-12">
         {!isWorkspaceOptional && isLoading ? (
-          <p className="text-body text-foreground-secondary">
-            워크스페이스 불러오는 중
-          </p>
+          loadingFallback ? (
+            loadingFallback(loadingStartedAt)
+          ) : (
+            <DelayedLoading startedAt={loadingStartedAt}>
+              <div
+                role="status"
+                aria-label="워크스페이스를 불러오는 중"
+                className="flex min-w-0 flex-col gap-6"
+              >
+                <span className="sr-only">워크스페이스를 불러오는 중</span>
+                <Skeleton className="h-7 w-32" />
+                <ListToolbarSkeleton />
+                {resolvedActiveNav === 'members' ? (
+                  <div aria-hidden="true">
+                    {Array.from({ length: 5 }, (_, index) => (
+                      <SkeletonListCell key={index} />
+                    ))}
+                  </div>
+                ) : (
+                  <ResourceListSkeleton view="grid" kind="project" />
+                )}
+              </div>
+            </DelayedLoading>
+          )
         ) : (
           children({
+            loadingStartedAt,
             accessToken,
             user,
             workspaces,
@@ -325,6 +365,7 @@ function WorkspaceLayoutContent({
 }
 
 export function AuthenticatedWorkspaceLayout({
+  loadingFallback,
   workspaceId,
   activeNav,
   unknownWorkspace,
@@ -354,6 +395,8 @@ export function AuthenticatedWorkspaceLayout({
 
   return (
     <WorkspaceLayoutContent
+      key={`${user.id}:${workspaceId ?? ''}:${activeNav ?? ''}`}
+      loadingFallback={loadingFallback}
       accessToken={accessToken}
       user={user}
       onLogout={handleLogout}

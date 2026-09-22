@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getWhiteboardDocumentRequest } from '@/entities/whiteboard-document'
 import { useSessionStore } from '@/entities/session'
 import { Button } from '@/shared/ui/button'
+import { LoadingState } from '@/shared/ui/loading-state'
 
 const WhiteboardCanvas = lazy(
   () => import('@/features/whiteboard-editor/ui/WhiteboardCanvas'),
@@ -13,12 +14,22 @@ type Props = {
   documentId: string
   onBack: () => void
 }
-export function WhiteboardEditorPage({
+export function WhiteboardEditorPage({ ...props }: Props) {
+  return (
+    <WhiteboardEditorContent
+      key={`${props.workspaceId}:${props.projectId}:${props.documentId}`}
+      {...props}
+    />
+  )
+}
+
+function WhiteboardEditorContent({
   workspaceId,
   projectId,
   documentId,
   onBack,
 }: Props) {
+  const [startedAt, setStartedAt] = useState(Date.now)
   const accessToken = useSessionStore((state) => state.accessToken)
   const user = useSessionStore((state) => state.user)
   // 입장 후 세션이 폐기돼도 미저장 장면과 내보내기 화면은 유지한다.
@@ -46,9 +57,11 @@ export function WhiteboardEditorPage({
   if (!editorUser) return null
   if (query.isPending)
     return (
-      <p role="status" className="p-6">
-        화이트보드를 불러오는 중...
-      </p>
+      <LoadingState
+        label="화이트보드를 불러오는 중"
+        startedAt={startedAt}
+        className="min-h-dvh"
+      />
     )
   if (!query.data) {
     const missing =
@@ -62,7 +75,14 @@ export function WhiteboardEditorPage({
             : '화이트보드를 불러오지 못했어요'}
         </h1>
         {!missing && (
-          <Button onClick={() => void query.refetch()}>다시 시도</Button>
+          <Button
+            onClick={() => {
+              setStartedAt(Date.now())
+              void query.refetch()
+            }}
+          >
+            다시 시도
+          </Button>
         )}
         <Button variant="secondary" onClick={onBack}>
           프로젝트로 돌아가기
@@ -73,9 +93,11 @@ export function WhiteboardEditorPage({
   return (
     <Suspense
       fallback={
-        <p role="status" className="p-6">
-          편집기를 준비하는 중...
-        </p>
+        <LoadingState
+          label="편집기를 준비하는 중"
+          startedAt={startedAt}
+          className="min-h-dvh"
+        />
       }
     >
       <WhiteboardCanvas

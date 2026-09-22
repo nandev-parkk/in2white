@@ -508,7 +508,10 @@ describe('AccountPage', () => {
     expect(
       screen.getByRole('heading', { name: '참여 워크스페이스' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('워크스페이스 불러오는 중')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '워크스페이스를 불러오는 중',
+    )
     loadingView.unmount()
 
     mockWorkspaceShellState.workspaceLoading = false

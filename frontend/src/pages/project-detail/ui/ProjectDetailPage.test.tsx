@@ -72,7 +72,7 @@ describe('ProjectDetailPage', () => {
     vi.clearAllMocks()
   })
 
-  it('로딩 중에는 Skeleton을 보여주고 문서 목록을 렌더링하지 않는다', () => {
+  it('로딩 중에는 Skeleton을 지연 표시하고 문서 목록을 렌더링하지 않는다', async () => {
     vi.mocked(useProject).mockReturnValue({
       data: undefined,
       isLoading: true,
@@ -84,8 +84,18 @@ describe('ProjectDetailPage', () => {
 
     expect(
       screen.getByTestId('project-detail-header-skeleton'),
-    ).toBeInTheDocument()
+    ).not.toBeVisible()
+    expect(await screen.findByRole('status')).toHaveAttribute(
+      'aria-label',
+      '프로젝트를 불러오는 중',
+    )
     expect(screen.queryByTestId('document-list')).not.toBeInTheDocument()
+    expect(
+      document.querySelectorAll('[data-slot="resource-card-skeleton"]'),
+    ).toHaveLength(6)
+    expect(
+      document.querySelector('[data-slot="list-toolbar-skeleton"]'),
+    ).toBeInTheDocument()
   })
 
   it('프로젝트를 찾을 수 없으면 빈 상태와 목록 이동 버튼을 보여준다', async () => {

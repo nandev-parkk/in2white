@@ -28,6 +28,7 @@ import {
 } from '@/shared/ui/pagination'
 import { Search } from '@/shared/ui/search'
 import { SkeletonListCell } from '@/shared/ui/skeleton'
+import { DelayedLoading } from '@/shared/ui/loading-state'
 import { toast } from '@/shared/ui/toast'
 
 function joinedDate(value: string) {
@@ -42,6 +43,7 @@ function joinedDate(value: string) {
     .join('.')
 }
 export function MemberListContent({
+  loadingStartedAt: initialLoadingStartedAt,
   accessToken,
   userId,
   workspaceId,
@@ -49,6 +51,7 @@ export function MemberListContent({
   canAddMember = false,
   onAccessLost,
 }: {
+  loadingStartedAt?: number
   accessToken: string
   userId: string
   workspaceId: string
@@ -56,8 +59,15 @@ export function MemberListContent({
   canAddMember?: boolean
   onAccessLost: () => void
 }) {
+  const [loadingStartedAt, setLoadingStartedAt] = useState(
+    initialLoadingStartedAt,
+  )
   const { search, setSearch, params, setPage } = useMemberSearch()
   const query = useMembers(accessToken, userId, workspaceId, params)
+  const [resultSearch, setResultSearch] = useState(params.search)
+  if (!query.isPlaceholderData && resultSearch !== params.search) {
+    setResultSearch(params.search)
+  }
   const remove = useRemoveMember(accessToken, userId, workspaceId)
   const [adding, setAdding] = useState(false)
   const [target, setTarget] = useState<Member | null>(null)
@@ -74,9 +84,19 @@ export function MemberListContent({
   }, [lost, onAccessLost])
   const totalPages = query.data?.pagination.totalPages ?? 0
   useEffect(() => {
-    if (query.isSuccess && params.page > Math.max(1, totalPages))
+    if (
+      query.isSuccess &&
+      !query.isPlaceholderData &&
+      params.page > Math.max(1, totalPages)
+    )
       setPage(Math.max(1, totalPages))
-  }, [query.isSuccess, params.page, totalPages, setPage])
+  }, [
+    query.isSuccess,
+    query.isPlaceholderData,
+    params.page,
+    totalPages,
+    setPage,
+  ])
   async function confirm() {
     if (!target || !owner || target.userId === userId || submitting.current)
       return
@@ -91,7 +111,8 @@ export function MemberListContent({
       submitting.current = false
     }
   }
-  const firstPage = Math.max(1, Math.min(params.page - 2, totalPages - 4))
+  const displayedPage = query.data?.pagination.page ?? params.page
+  const firstPage = Math.max(1, Math.min(displayedPage - 2, totalPages - 4))
   return (
     <section className="mx-auto flex w-full max-w-300 min-w-0 flex-col gap-6">
       <h1
@@ -117,22 +138,30 @@ export function MemberListContent({
         )}
       </div>
       {query.isLoading ? (
-        <div
-          role="status"
-          aria-label="멤버 불러오는 중"
-          className="divide-border-subtle divide-y"
-        >
-          {Array.from({ length: 5 }, (_, index) => (
-            <SkeletonListCell key={index} />
-          ))}
-        </div>
+        <DelayedLoading startedAt={loadingStartedAt}>
+          <div
+            role="status"
+            aria-label="멤버 불러오는 중"
+            className="divide-border-subtle divide-y"
+          >
+            {Array.from({ length: 5 }, (_, index) => (
+              <SkeletonListCell key={index} />
+            ))}
+          </div>
+        </DelayedLoading>
       ) : query.isError ? (
         <EmptyState
           icon={<CircleAlert className="text-status-danger size-6" />}
           title="멤버를 불러오지 못했어요"
           description="잠시 후 다시 시도해보세요"
           action={
-            <Button variant="secondary" onClick={() => void query.refetch()}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setLoadingStartedAt(Date.now())
+                void query.refetch()
+              }}
+            >
               다시 시도
             </Button>
           }
@@ -140,10 +169,10 @@ export function MemberListContent({
       ) : query.data?.members.length === 0 ? (
         <EmptyState
           icon={<SearchIcon className="size-6" />}
-          title={params.search ? '검색 결과가 없어요' : '멤버가 없어요'}
+          title={resultSearch ? '검색 결과가 없어요' : '멤버가 없어요'}
           description="다른 검색어로 다시 시도해보세요"
           action={
-            params.search && (
+            resultSearch && (
               <Button variant="secondary" onClick={() => setSearch('')}>
                 검색 결과 초기화
               </Button>
@@ -200,8 +229,8 @@ export function MemberListContent({
       {!query.isError && totalPages > 1 && (
         <Pagination className="justify-center">
           <PaginationPrevious
-            disabled={params.page <= 1 || query.isFetching}
-            onClick={() => setPage(params.page - 1)}
+            disabled={displayedPage <= 1 || query.isFetching}
+            onClick={() => setPage(displayedPage - 1)}
           />
           {Array.from(
             { length: Math.min(5, totalPages) },
@@ -209,7 +238,7 @@ export function MemberListContent({
           ).map((page) => (
             <PaginationItem
               key={page}
-              isActive={params.page === page}
+              isActive={displayedPage === page}
               disabled={query.isFetching}
               onClick={() => setPage(page)}
             >
@@ -217,8 +246,8 @@ export function MemberListContent({
             </PaginationItem>
           ))}
           <PaginationNext
-            disabled={params.page >= totalPages || query.isFetching}
-            onClick={() => setPage(params.page + 1)}
+            disabled={displayedPage >= totalPages || query.isFetching}
+            onClick={() => setPage(displayedPage + 1)}
           />
         </Pagination>
       )}

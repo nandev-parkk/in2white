@@ -184,7 +184,7 @@ it('초기 로딩에는 skeleton, 실패에는 다시 시도, 빈 검색에는 �
   )
   mount()
   expect(
-    screen.getByRole('status', { name: '멤버 불러오는 중' }),
+    await screen.findByRole('status', { name: '멤버 불러오는 중' }),
   ).toBeInTheDocument()
   await act(async () =>
     reject({

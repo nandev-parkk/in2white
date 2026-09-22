@@ -94,7 +94,7 @@ it('모달을 처음 열 때만 로딩 상태를 표시한다', async () => {
   mount()
 
   expect(
-    screen.getByRole('status', { name: '사용자 불러오는 중' }),
+    await screen.findByRole('status', { name: '사용자 불러오는 중' }),
   ).toBeInTheDocument()
 
   await act(async () => {

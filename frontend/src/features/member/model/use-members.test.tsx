@@ -27,6 +27,30 @@ function setup() {
   }
 }
 beforeEach(() => vi.clearAllMocks())
+
+it.each([useMembers, useMemberCandidates])(
+  '멤버 검색 중 결과를 유지하고 다른 범위로는 넘기지 않는다: %s',
+  async (useList) => {
+    const data = { members: [{ name: '기존 결과' }] }
+    vi.mocked(axiosInstance.get)
+      .mockResolvedValueOnce({ data })
+      .mockImplementation(() => new Promise(() => {}))
+    const { wrapper } = setup()
+    const { result, rerender } = renderHook(
+      ({ user, ws, search }) =>
+        useList('token', user, ws, { ...params, search }, true),
+      { initialProps: { user: 'u1', ws: 'w1', search: '' }, wrapper },
+    )
+    await waitFor(() => expect(result.current.data).toEqual(data))
+    rerender({ user: 'u1', ws: 'w1', search: '새 검색' })
+    expect(result.current.data).toEqual(data)
+    expect(result.current.isPlaceholderData).toBe(true)
+    rerender({ user: 'u2', ws: 'w1', search: '새 검색' })
+    expect(result.current.data).toBeUndefined()
+    rerender({ user: 'u1', ws: 'w2', search: '새 검색' })
+    expect(result.current.data).toBeUndefined()
+  },
+)
 it('사용자와 워크스페이스가 바뀌면 이전 멤버 캐시를 표시하지 않는다', async () => {
   vi.mocked(axiosInstance.get)
     .mockResolvedValueOnce({ data: { members: [{ name: '첫 사용자' }] } })

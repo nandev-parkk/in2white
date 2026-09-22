@@ -20,6 +20,8 @@ import { AuthenticatedWorkspaceLayout } from '@/pages/shared/ui/AuthenticatedWor
 import { MESSAGES } from '@/shared/constants/messages'
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
 import { Button } from '@/shared/ui/button'
+import { DelayedLoading } from '@/shared/ui/loading-state'
+import { SkeletonListCell } from '@/shared/ui/skeleton'
 import { Input } from '@/shared/ui/input'
 import { ListCell } from '@/shared/ui/list-cell'
 import { PageHeader } from '@/shared/ui/page-header'
@@ -179,9 +181,14 @@ function AccountContent({
             참여 워크스페이스
           </h2>
           {workspaceLoading ? (
-            <p className="text-foreground-secondary text-[12px]">
-              워크스페이스 불러오는 중
-            </p>
+            <DelayedLoading>
+              <div role="status" aria-label="워크스페이스를 불러오는 중">
+                <span className="sr-only">워크스페이스를 불러오는 중</span>
+                {Array.from({ length: 3 }, (_, index) => (
+                  <SkeletonListCell key={index} aria-hidden="true" />
+                ))}
+              </div>
+            </DelayedLoading>
           ) : workspaceError ? (
             <div
               className="flex items-center justify-between gap-4"
