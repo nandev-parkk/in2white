@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { WhiteboardDocument } from '@/entities/whiteboard-document'
@@ -83,6 +83,7 @@ function renderContent(
 }
 
 describe('WhiteboardDocumentListContent', () => {
+  afterEach(() => vi.useRealTimers())
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useWhiteboardDocuments).mockReturnValue(mockQuery() as never)
@@ -95,6 +96,47 @@ describe('WhiteboardDocumentListContent', () => {
     vi.mocked(useDeleteWhiteboardDocument).mockReturnValue(
       mockMutation() as never,
     )
+  })
+
+  it('상세에서 이어진 대기는 재지연 없이 문서 카드와 행을 표시한다', () => {
+    vi.useFakeTimers()
+    vi.mocked(useWhiteboardDocuments).mockReturnValue(
+      mockQuery({ data: undefined, isLoading: true }) as never,
+    )
+    renderContent({ loadingStartedAt: Date.now() - 350 })
+    expect(
+      screen.getByRole('status', { name: '화이트보드를 불러오는 중' }),
+    ).toBeVisible()
+    expect(
+      document.querySelectorAll('[data-slot="preview-skeleton"]'),
+    ).toHaveLength(6)
+    fireEvent.click(screen.getByRole('button', { name: '목록 보기' }))
+    expect(screen.getAllByRole('row', { hidden: true })).toHaveLength(6)
+    act(() => vi.advanceTimersByTime(300))
+    expect(screen.getByRole('status')).toBeVisible()
+  })
+
+  it('빈 검색을 지워도 새 응답 전에는 화이트보드 없음으로 바꾸지 않는다', async () => {
+    const empty = mockQuery({
+      data: {
+        whiteboardDocuments: [],
+        pagination: { page: 1, limit: 12, total: 0, totalPages: 0 },
+      },
+    })
+    vi.mocked(useWhiteboardDocuments).mockReturnValue(empty as never)
+    renderContent()
+    await userEvent.type(screen.getByRole('searchbox'), '없는 검색')
+    expect(screen.getByText('검색 결과가 없어요')).toBeInTheDocument()
+    vi.mocked(useWhiteboardDocuments).mockReturnValue({
+      ...empty,
+      isPlaceholderData: true,
+      isFetching: true,
+    } as never)
+    await userEvent.click(screen.getByRole('button', { name: '검색어 지우기' }))
+    expect(screen.getByText('검색 결과가 없어요')).toBeInTheDocument()
+    expect(
+      screen.queryByText('아직 화이트보드가 없어요'),
+    ).not.toBeInTheDocument()
   })
 
   it('기본은 카드 보기이고 목록 보기로 전환하면 테이블을 보여준다', async () => {

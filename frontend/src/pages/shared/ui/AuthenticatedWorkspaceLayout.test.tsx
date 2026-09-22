@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -7,6 +7,7 @@ import { useSessionStore } from '@/entities/session'
 import type { WorkspaceSummary } from '@/entities/workspace'
 
 import { AuthenticatedWorkspaceLayout } from './AuthenticatedWorkspaceLayout'
+import { DelayedLoading } from '@/shared/ui/loading-state'
 
 const userFixture = {
   id: 'user-1',
@@ -65,6 +66,7 @@ function renderLayout(children: React.ReactNode) {
 }
 
 describe('AuthenticatedWorkspaceLayout', () => {
+  afterEach(() => vi.useRealTimers())
   beforeEach(() => {
     useSessionStore.getState().clearSession()
     useSessionStore.getState().setSession('token-1', userFixture)
@@ -82,6 +84,54 @@ describe('AuthenticatedWorkspaceLayout', () => {
       error: null,
       reset: vi.fn(),
     })
+  })
+
+  it('워크스페이스와 자식은 대기 시간을 공유하고 새 경로에서는 다시 지연한다', () => {
+    vi.useFakeTimers()
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const page = (workspaceId: string) => (
+      <QueryClientProvider client={client}>
+        <AuthenticatedWorkspaceLayout workspaceId={workspaceId}>
+          {({ loadingStartedAt }) => (
+            <DelayedLoading startedAt={loadingStartedAt}>
+              <div role="status" aria-label="목록 로딩" />
+            </DelayedLoading>
+          )}
+        </AuthenticatedWorkspaceLayout>
+      </QueryClientProvider>
+    )
+    mockUseWorkspaces.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      refetch: vi.fn(),
+    })
+    const { rerender } = render(page('workspace-1'))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(
+      document.querySelectorAll('[data-slot="resource-card-skeleton"]'),
+    ).toHaveLength(6)
+    act(() => vi.advanceTimersByTime(350))
+    expect(
+      screen.getByRole('status', { name: '워크스페이스를 불러오는 중' }),
+    ).toBeVisible()
+    mockUseWorkspaces.mockReturnValue({
+      data: [workspaceFixture, defaultWorkspaceFixture],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    })
+    rerender(page('workspace-1'))
+    expect(screen.getByRole('status', { name: '목록 로딩' })).toBeVisible()
+    rerender(page('workspace-default'))
+    expect(
+      screen.queryByRole('status', { name: '목록 로딩' }),
+    ).not.toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(300))
+    expect(screen.getByRole('status', { name: '목록 로딩' })).toBeVisible()
+    client.clear()
   })
 
   it('fallback 모드에서는 알 수 없는 ID에도 기본 workspace를 선택한다', () => {

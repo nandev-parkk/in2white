@@ -4,6 +4,7 @@ import { selectDefaultWorkspace } from '@/entities/workspace'
 import type { SessionUser } from '@/entities/session'
 import { useWorkspaces } from '@/features/workspace'
 import { Button } from '@/shared/ui/button'
+import { LoadingState } from '@/shared/ui/loading-state'
 
 type WorkspaceRedirectPageProps = {
   accessToken: string
@@ -32,9 +33,7 @@ export function WorkspaceRedirectPage({
   if (isLoading) {
     return (
       <main className="flex min-h-svh items-center justify-center">
-        <p className="text-body text-foreground-secondary">
-          워크스페이스로 이동하는 중
-        </p>
+        <LoadingState label="워크스페이스로 이동하는 중" />
       </main>
     )
   }
@@ -64,9 +63,7 @@ export function WorkspaceRedirectPage({
 
   return (
     <main className="flex min-h-svh items-center justify-center">
-      <p className="text-body text-foreground-secondary">
-        프로젝트로 이동하는 중
-      </p>
+      <LoadingState label="프로젝트로 이동하는 중" />
     </main>
   )
 }

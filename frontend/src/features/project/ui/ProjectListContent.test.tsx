@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -60,6 +60,7 @@ function mutationResult() {
 }
 
 describe('ProjectListContent', () => {
+  afterEach(() => vi.useRealTimers())
   beforeEach(() => {
     mockUseProjects.mockReset()
     mockUseCreateProject.mockReset()
@@ -69,6 +70,89 @@ describe('ProjectListContent', () => {
     mockUseCreateProject.mockReturnValue(mutationResult())
     mockUseUpdateProject.mockReturnValue(mutationResult())
     mockUseDeleteProject.mockReturnValue(mutationResult())
+  })
+
+  it('최초 로딩은 300ms 뒤 선택한 보기 형태로 표시한다', () => {
+    vi.useFakeTimers()
+    mockUseProjects.mockReturnValue(
+      projectQuery({ data: undefined, isLoading: true }),
+    )
+    render(
+      <ProjectListContent
+        accessToken="token-1"
+        workspaceId="workspace-1"
+        userId="user-1"
+      />,
+    )
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(
+      document.querySelectorAll('[data-slot="resource-card-skeleton"]'),
+    ).toHaveLength(6)
+    act(() => vi.advanceTimersByTime(300))
+    expect(
+      screen.getByRole('status', { name: '프로젝트를 불러오는 중' }),
+    ).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: '목록 보기' }))
+    expect(
+      document.querySelectorAll('[data-slot="resource-card-skeleton"]'),
+    ).toHaveLength(0)
+    expect(screen.getAllByRole('row', { hidden: true })).toHaveLength(6)
+    expect(screen.getByRole('status')).toBeVisible()
+  })
+
+  it('오래 기다린 오류에서 재시도하면 300ms 지연을 새로 시작한다', () => {
+    vi.useFakeTimers()
+    const retry = vi.fn(() =>
+      mockUseProjects.mockReturnValue(
+        projectQuery({ data: undefined, isLoading: true }),
+      ),
+    )
+    mockUseProjects.mockReturnValue(
+      projectQuery({ data: undefined, isError: true, refetch: retry }),
+    )
+    render(
+      <ProjectListContent
+        accessToken="token-1"
+        workspaceId="workspace-1"
+        userId="user-1"
+        loadingStartedAt={Date.now() - 1000}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
+    expect(retry).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(299))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(1))
+    expect(screen.getByRole('status')).toBeVisible()
+  })
+
+  it('빈 검색을 지운 뒤에도 새 응답 전에는 이전 빈 상태를 유지한다', async () => {
+    const empty = projectQuery({
+      data: {
+        projects: [],
+        pagination: { page: 1, limit: 12, total: 0, totalPages: 0 },
+      },
+    })
+    mockUseProjects.mockReturnValue(empty)
+    render(
+      <ProjectListContent
+        accessToken="token-1"
+        workspaceId="workspace-1"
+        userId="user-1"
+      />,
+    )
+    await userEvent.type(screen.getByRole('searchbox'), '없는 검색')
+    expect(screen.getByText('검색 결과가 없어요')).toBeInTheDocument()
+    mockUseProjects.mockReturnValue({
+      ...empty,
+      isPlaceholderData: true,
+      isFetching: true,
+    })
+    await userEvent.click(screen.getByRole('button', { name: '검색어 지우기' }))
+    expect(screen.getByRole('searchbox')).toHaveValue('')
+    expect(screen.getByText('검색 결과가 없어요')).toBeInTheDocument()
+    expect(screen.queryByText('아직 프로젝트가 없어요')).not.toBeInTheDocument()
   })
 
   it('프로젝트 목록과 기본 그리드 도구 모음을 표시한다', () => {

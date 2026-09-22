@@ -32,10 +32,12 @@ export function HomePage({
         selectedWorkspaceId,
         user,
         onAccessLost,
+        loadingStartedAt,
       }) =>
         workspaceId || selectedWorkspaceId ? (
           activeNav === 'members' ? (
             <MemberListContent
+              loadingStartedAt={loadingStartedAt}
               key={`${user.id}:${workspaceId ?? selectedWorkspaceId}`}
               accessToken={accessToken}
               userId={user.id}
@@ -46,6 +48,8 @@ export function HomePage({
             />
           ) : (
             <ProjectListContent
+              key={`${user.id}:${workspaceId ?? selectedWorkspaceId}`}
+              loadingStartedAt={loadingStartedAt}
               accessToken={accessToken}
               workspaceId={workspaceId ?? selectedWorkspaceId!}
               userId={user.id}

@@ -63,6 +63,31 @@ describe('whiteboard document query hooks', () => {
     vi.clearAllMocks()
   })
 
+  it('페이지 변경은 이전 목록을 유지하고 다른 프로젝트에는 노출하지 않는다', async () => {
+    vi.mocked(listWhiteboardDocumentsRequest)
+      .mockResolvedValueOnce(documentListFixture)
+      .mockImplementation(() => new Promise(() => {}))
+    const { result, rerender } = renderHook(
+      ({ project, page }) =>
+        useWhiteboardDocuments('token-1', 'workspace-1', project, {
+          ...listParams,
+          page,
+        }),
+      {
+        initialProps: { project: 'project-1', page: 1 },
+        wrapper: createQueryClientWrapper(createTestQueryClient()),
+      },
+    )
+    await waitFor(() =>
+      expect(result.current.data).toEqual(documentListFixture),
+    )
+    rerender({ project: 'project-1', page: 2 })
+    expect(result.current.data).toEqual(documentListFixture)
+    expect(result.current.isPlaceholderData).toBe(true)
+    rerender({ project: 'project-2', page: 2 })
+    expect(result.current.data).toBeUndefined()
+  })
+
   it('workspace, project, list params로 문서를 조회한다', async () => {
     vi.mocked(listWhiteboardDocumentsRequest).mockResolvedValue(
       documentListFixture,

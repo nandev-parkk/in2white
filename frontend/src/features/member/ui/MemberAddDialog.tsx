@@ -32,6 +32,10 @@ export function MemberAddDialog({
     true,
   )
   const add = useAddMember(accessToken, userId, workspaceId)
+  const [resultSearch, setResultSearch] = useState(params.search)
+  if (!candidates.isPlaceholderData && resultSearch !== params.search) {
+    setResultSearch(params.search)
+  }
   const submitting = useRef(false)
   const [added, setAdded] = useState<string[]>([])
   const lost =
@@ -64,8 +68,10 @@ export function MemberAddDialog({
       }))}
       onSelect={select}
       searchValue={search}
+      resultSearchValue={resultSearch}
       onSearchChange={setSearch}
       loading={candidates.isLoading}
+      fetching={candidates.isFetching}
       disabled={add.isPending}
       error={
         candidates.isError
@@ -82,7 +88,7 @@ export function MemberAddDialog({
         add.reset()
         void candidates.refetch()
       }}
-      page={params.page}
+      page={candidates.data?.pagination.page ?? params.page}
       totalPages={candidates.data?.pagination.totalPages ?? 0}
       onPageChange={setPage}
       onCloseAutoFocus={(event) => {

@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type React from 'react'
+import { useSessionStore } from '@/entities/session'
 
 import {
   createProjectRequest,
@@ -64,6 +65,100 @@ function createQueryClientWrapper(queryClient: QueryClient) {
 describe('project query hooks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('새 검색이 끝나면 빈 결과로 교체하고 늦은 이전 응답은 무시한다', async () => {
+    let settleOld!: (value: ListProjectsResponse) => void
+    let settleNew!: (value: ListProjectsResponse) => void
+    vi.mocked(listProjectsRequest)
+      .mockResolvedValueOnce(projectListFixture)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            settleOld = resolve
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            settleNew = resolve
+          }),
+      )
+    const { result, rerender } = renderHook(
+      ({ search }) =>
+        useProjects('token-1', 'workspace-1', { page: 1, limit: 20, search }),
+      {
+        initialProps: { search: '' },
+        wrapper: createQueryClientWrapper(createTestQueryClient()),
+      },
+    )
+    await waitFor(() => expect(result.current.data).toEqual(projectListFixture))
+    rerender({ search: '이전 검색' })
+    rerender({ search: '최신 검색' })
+    expect(result.current.data).toEqual(projectListFixture)
+    const empty = {
+      projects: [],
+      pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+    }
+    await act(async () => settleNew(empty))
+    await waitFor(() => expect(result.current.data).toEqual(empty))
+    await act(async () => settleOld(projectListFixture))
+    expect(result.current.data).toEqual(empty)
+    expect(result.current.isPlaceholderData).toBe(false)
+  })
+
+  it('새 검색 실패를 이전 결과의 성공 상태로 숨기지 않는다', async () => {
+    vi.mocked(listProjectsRequest)
+      .mockResolvedValueOnce(projectListFixture)
+      .mockRejectedValueOnce(new Error('network'))
+    const { result, rerender } = renderHook(
+      ({ search }) =>
+        useProjects('token-1', 'workspace-1', { page: 1, limit: 20, search }),
+      {
+        initialProps: { search: '' },
+        wrapper: createQueryClientWrapper(createTestQueryClient()),
+      },
+    )
+    await waitFor(() => expect(result.current.data).toEqual(projectListFixture))
+    rerender({ search: '실패 검색' })
+    expect(result.current.data).toEqual(projectListFixture)
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.data).toBeUndefined()
+  })
+
+  it('검색 중 이전 결과를 유지하지만 워크스페이스와 계정 변경 시 버린다', async () => {
+    useSessionStore.getState().setSession('token-1', {
+      id: 'u1',
+      name: '사용자',
+      email: 'test@example.test',
+    })
+    vi.mocked(listProjectsRequest)
+      .mockResolvedValueOnce(projectListFixture)
+      .mockImplementation(() => new Promise(() => {}))
+    const { result, rerender } = renderHook(
+      ({ workspace, search }) =>
+        useProjects('token-1', workspace, { page: 1, limit: 20, search }),
+      {
+        initialProps: { workspace: 'workspace-1', search: '' },
+        wrapper: createQueryClientWrapper(createTestQueryClient()),
+      },
+    )
+    await waitFor(() => expect(result.current.data).toEqual(projectListFixture))
+    rerender({ workspace: 'workspace-1', search: '새 검색' })
+    expect(result.current.data).toEqual(projectListFixture)
+    expect(result.current.isPlaceholderData).toBe(true)
+    rerender({ workspace: 'workspace-2', search: '새 검색' })
+    expect(result.current.data).toBeUndefined()
+    rerender({ workspace: 'workspace-1', search: '' })
+    await waitFor(() => expect(result.current.data).toEqual(projectListFixture))
+    act(() =>
+      useSessionStore.getState().setSession('token-2', {
+        id: 'u2',
+        name: '다른 사용자',
+        email: 'other@example.test',
+      }),
+    )
+    expect(result.current.data).toBeUndefined()
   })
 
   it('workspace와 list params로 프로젝트를 조회한다', async () => {

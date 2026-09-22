@@ -19,6 +19,11 @@ import { Button } from '@/shared/ui/button'
 import { EmptyState } from '@/shared/ui/empty-state'
 import type { SidebarNavKey } from '@/shared/ui/sidebar'
 import { Skeleton } from '@/shared/ui/skeleton'
+import { DelayedLoading } from '@/shared/ui/loading-state'
+import {
+  ListToolbarSkeleton,
+  ResourceListSkeleton,
+} from '@/shared/ui/resource-list-skeleton'
 import { toast } from '@/shared/ui/toast'
 
 type ProjectDetailPageProps = {
@@ -32,6 +37,7 @@ type ProjectDetailPageProps = {
 }
 
 type ProjectDetailContentProps = {
+  loadingStartedAt?: number
   onDocumentOpen?: (documentId: string) => void
   accessToken: string
   workspaceId: string
@@ -41,23 +47,32 @@ type ProjectDetailContentProps = {
   onBack: () => void
 }
 
-function ProjectDetailHeaderSkeleton() {
+function ProjectDetailHeaderSkeleton({ startedAt }: { startedAt?: number }) {
   return (
-    <div
-      data-testid="project-detail-header-skeleton"
-      className="flex flex-col gap-4"
-    >
-      <Skeleton className="h-4.5 w-40" />
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-7 w-72" />
-        <Skeleton className="h-5 w-96" />
+    <DelayedLoading startedAt={startedAt}>
+      <div
+        data-testid="project-detail-header-skeleton"
+        role="status"
+        aria-label="프로젝트를 불러오는 중"
+        className="flex min-w-0 flex-col gap-6"
+      >
+        <div className="flex h-[130px] flex-col gap-4" aria-hidden="true">
+          <Skeleton className="h-4.5 w-40" />
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-7 w-72 max-w-full" />
+            <Skeleton className="h-5 w-96 max-w-full" />
+          </div>
+          <Skeleton className="h-6 w-32" />
+        </div>
+        <ListToolbarSkeleton />
+        <ResourceListSkeleton view="grid" kind="whiteboard" />
       </div>
-      <Skeleton className="h-6 w-32" />
-    </div>
+    </DelayedLoading>
   )
 }
 
 function ProjectDetailContent({
+  loadingStartedAt,
   accessToken,
   workspaceId,
   projectId,
@@ -66,6 +81,9 @@ function ProjectDetailContent({
   onBack,
   onDocumentOpen,
 }: ProjectDetailContentProps) {
+  const [startedAt, setStartedAt] = useState(
+    () => loadingStartedAt ?? Date.now(),
+  )
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
@@ -122,7 +140,8 @@ function ProjectDetailContent({
     }
   }
 
-  if (projectQuery.isLoading) return <ProjectDetailHeaderSkeleton />
+  if (projectQuery.isLoading)
+    return <ProjectDetailHeaderSkeleton startedAt={startedAt} />
 
   if (projectQuery.isError && isProjectNotFound(projectQuery.error)) {
     return (
@@ -146,7 +165,13 @@ function ProjectDetailContent({
         <p className="text-body text-foreground-secondary">
           프로젝트를 불러오지 못했어요
         </p>
-        <Button variant="secondary" onClick={() => void projectQuery.refetch()}>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setStartedAt(Date.now())
+            void projectQuery.refetch()
+          }}
+        >
           다시 시도
         </Button>
       </div>
@@ -167,6 +192,7 @@ function ProjectDetailContent({
       />
 
       <WhiteboardDocumentListContent
+        loadingStartedAt={startedAt}
         onDocumentOpen={onDocumentOpen}
         accessToken={accessToken}
         workspaceId={workspaceId}
@@ -214,14 +240,20 @@ function ProjectDetailPage({
 }: ProjectDetailPageProps) {
   return (
     <AuthenticatedWorkspaceLayout
+      key={`${workspaceId}:${projectId}`}
+      loadingFallback={(startedAt) => (
+        <ProjectDetailHeaderSkeleton startedAt={startedAt} />
+      )}
       workspaceId={workspaceId}
       activeNav="projects"
       onWorkspaceChange={onWorkspaceChange}
       onNavChange={onNavChange}
       onUserClick={onUserClick}
     >
-      {({ accessToken, selectedWorkspace, user }) => (
+      {({ accessToken, selectedWorkspace, user, loadingStartedAt }) => (
         <ProjectDetailContent
+          key={`${user.id}:${workspaceId}:${projectId}`}
+          loadingStartedAt={loadingStartedAt}
           accessToken={accessToken}
           workspaceId={workspaceId}
           projectId={projectId}

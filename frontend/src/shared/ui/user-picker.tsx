@@ -10,6 +10,7 @@ import { Search } from '@/shared/ui/search'
 import { Search as SearchIcon } from 'lucide-react'
 import { CompactEmptyState } from '@/shared/ui/compact-empty-state'
 import { SkeletonListCell } from '@/shared/ui/skeleton'
+import { DelayedLoading } from '@/shared/ui/loading-state'
 import { ListCell } from '@/shared/ui/list-cell'
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
 import {
@@ -34,8 +35,10 @@ type UserPickerProps = {
   users: PickableUser[]
   onSelect: (user: PickableUser) => void
   searchValue: string
+  resultSearchValue?: string
   onSearchChange: (value: string) => void
   loading?: boolean
+  fetching?: boolean
   disabled?: boolean
   error?: string
   onRetry?: () => void
@@ -52,8 +55,10 @@ function UserPicker({
   users,
   onSelect,
   searchValue,
+  resultSearchValue = searchValue,
   onSearchChange,
   loading = false,
+  fetching = false,
   disabled = false,
   error,
   onRetry,
@@ -86,11 +91,13 @@ function UserPicker({
           className="flex max-h-72 flex-col overflow-y-auto"
         >
           {loading ? (
-            <div role="status" aria-label="사용자 불러오는 중">
-              {Array.from({ length: 5 }, (_, index) => (
-                <SkeletonListCell key={index} />
-              ))}
-            </div>
+            <DelayedLoading>
+              <div role="status" aria-label="사용자 불러오는 중">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <SkeletonListCell key={index} />
+                ))}
+              </div>
+            </DelayedLoading>
           ) : error ? (
             <div
               role="alert"
@@ -107,12 +114,12 @@ function UserPicker({
             <CompactEmptyState
               icon={<SearchIcon className="size-4" />}
               title={
-                searchValue.trim()
+                resultSearchValue.trim()
                   ? '검색 결과가 없어요'
                   : '추가할 사용자가 없어요'
               }
               description={
-                searchValue.trim()
+                resultSearchValue.trim()
                   ? '다른 검색어로 다시 시도해보세요'
                   : undefined
               }
@@ -153,14 +160,14 @@ function UserPicker({
             className="justify-center"
           >
             <PaginationPrevious
-              disabled={disabled || page <= 1}
+              disabled={disabled || fetching || page <= 1}
               onClick={() => onPageChange?.(page - 1)}
             />
             <span className="text-caption">
               {page} / {totalPages}
             </span>
             <PaginationNext
-              disabled={disabled || page >= totalPages}
+              disabled={disabled || fetching || page >= totalPages}
               onClick={() => onPageChange?.(page + 1)}
             />
           </Pagination>

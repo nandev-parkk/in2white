@@ -39,7 +39,7 @@ it('로딩과 오류·재시도 및 후보 페이지 이동을 표시한다', as
   }
   const { rerender } = render(<UserPicker {...props} loading />)
   expect(
-    screen.getByRole('status', { name: '사용자 불러오는 중' }),
+    await screen.findByRole('status', { name: '사용자 불러오는 중' }),
   ).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /민지/ })).not.toBeInTheDocument()
   rerender(
@@ -51,7 +51,7 @@ it('로딩과 오류·재시도 및 후보 페이지 이동을 표시한다', as
   await userEvent.click(screen.getByRole('button', { name: '다음 페이지' }))
   expect(onPageChange).toHaveBeenCalledWith(2)
 })
-it('로딩은 스켈레톤 셀로, 빈 결과는 공용 상태 컴포넌트로 표시한다', () => {
+it('로딩은 지연된 스켈레톤 셀로, 빈 결과는 공용 상태 컴포넌트로 표시한다', async () => {
   const props = {
     open: true,
     onOpenChange: vi.fn(),
@@ -60,7 +60,10 @@ it('로딩은 스켈레톤 셀로, 빈 결과는 공용 상태 컴포넌트로 �
     onSearchChange: vi.fn(),
   }
   const { rerender } = render(<UserPicker {...props} searchValue="" loading />)
-  const loading = screen.getByRole('status', { name: '사용자 불러오는 중' })
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  const loading = await screen.findByRole('status', {
+    name: '사용자 불러오는 중',
+  })
   expect(
     loading.querySelectorAll('[data-slot="skeleton-list-cell"]'),
   ).toHaveLength(5)

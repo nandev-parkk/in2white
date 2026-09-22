@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
+import { useSessionStore } from '@/entities/session'
 
 import {
   createProjectRequest,
@@ -17,11 +18,18 @@ export function useProjects(
   workspaceId: string | null,
   params: ProjectListParams,
 ) {
+  const userId = useSessionStore((state) => state.user?.id)
   return useQuery({
-    queryKey: ['projects', workspaceId, params],
+    queryKey: ['projects', workspaceId, userId, params],
     queryFn: () =>
       listProjectsRequest(workspaceId as string, params, accessToken as string),
     enabled: Boolean(accessToken && workspaceId),
+    placeholderData: (previousData, previousQuery) =>
+      accessToken &&
+      previousQuery?.queryKey[1] === workspaceId &&
+      previousQuery.queryKey[2] === userId
+        ? previousData
+        : undefined,
   })
 }
 

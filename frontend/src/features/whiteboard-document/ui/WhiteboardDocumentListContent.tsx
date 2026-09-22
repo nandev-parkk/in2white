@@ -16,6 +16,8 @@ import { formatCreatedAt, formatUpdatedAt } from '@/shared/lib/resource-date'
 import { Button } from '@/shared/ui/button'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { ListPagination } from '@/shared/ui/list-pagination'
+import { DelayedLoading } from '@/shared/ui/loading-state'
+import { ResourceListSkeleton } from '@/shared/ui/resource-list-skeleton'
 import { Search } from '@/shared/ui/search'
 import { toast } from '@/shared/ui/toast'
 import { ViewToggle, type ListView } from '@/shared/ui/view-toggle'
@@ -29,6 +31,7 @@ import { WhiteboardDocumentTable } from './WhiteboardDocumentTable'
 const DOCUMENTS_PER_PAGE = 12
 
 type WhiteboardDocumentListContentProps = {
+  loadingStartedAt?: number
   accessToken: string
   workspaceId: string
   projectId: string
@@ -38,6 +41,7 @@ type WhiteboardDocumentListContentProps = {
 }
 
 function WhiteboardDocumentListContent({
+  loadingStartedAt: initialLoadingStartedAt,
   accessToken,
   workspaceId,
   projectId,
@@ -45,6 +49,9 @@ function WhiteboardDocumentListContent({
   workspaceRole,
   onDocumentOpen,
 }: WhiteboardDocumentListContentProps) {
+  const [loadingStartedAt, setLoadingStartedAt] = useState(
+    initialLoadingStartedAt,
+  )
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [view, setView] = useState<ListView>('grid')
@@ -78,7 +85,11 @@ function WhiteboardDocumentListContent({
 
   const documents = documentsQuery.data?.whiteboardDocuments ?? []
   const pagination = documentsQuery.data?.pagination
-  const hasSearch = search.trim().length > 0
+  const [resultSearch, setResultSearch] = useState(search)
+  if (!documentsQuery.isPlaceholderData && resultSearch !== search) {
+    setResultSearch(search)
+  }
+  const hasSearch = resultSearch.trim().length > 0
   const canManageDocument = (document: WhiteboardDocument) =>
     workspaceRole === 'owner' || document.creatorId === userId
 
@@ -188,9 +199,11 @@ function WhiteboardDocumentListContent({
       </div>
 
       {documentsQuery.isLoading && (
-        <div className="text-body text-foreground-secondary flex min-h-48 items-center justify-center">
-          화이트보드 불러오는 중
-        </div>
+        <DelayedLoading startedAt={loadingStartedAt}>
+          <div role="status" aria-label="화이트보드를 불러오는 중">
+            <ResourceListSkeleton view={view} kind="whiteboard" />
+          </div>
+        </DelayedLoading>
       )}
 
       {documentsQuery.isError && (
@@ -200,7 +213,10 @@ function WhiteboardDocumentListContent({
           </p>
           <Button
             variant="secondary"
-            onClick={() => void documentsQuery.refetch()}
+            onClick={() => {
+              setLoadingStartedAt(Date.now())
+              void documentsQuery.refetch()
+            }}
           >
             다시 시도
           </Button>
@@ -289,8 +305,9 @@ function WhiteboardDocumentListContent({
 
             {pagination && (
               <ListPagination
-                page={page}
+                page={pagination.page}
                 totalPages={pagination.totalPages}
+                disabled={documentsQuery.isFetching}
                 onPageChange={setPage}
               />
             )}

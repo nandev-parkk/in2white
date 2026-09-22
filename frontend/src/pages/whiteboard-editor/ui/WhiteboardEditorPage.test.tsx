@@ -45,6 +45,24 @@ function show() {
   )
   return client
 }
+
+it('편집기 최초 조회가 짧으면 숨기고 300ms 이후 중앙 로딩을 표시한다', async () => {
+  vi.useFakeTimers()
+  try {
+    vi.mocked(getWhiteboardDocumentRequest).mockImplementation(
+      () => new Promise(() => {}),
+    )
+    show()
+    await act(async () => vi.advanceTimersByTimeAsync(299))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    await act(async () => vi.advanceTimersByTimeAsync(1))
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '화이트보드를 불러오는 중',
+    )
+  } finally {
+    vi.useRealTimers()
+  }
+})
 it('백그라운드 상세 재조회 실패가 열린 편집기의 미저장 내용을 없애지 않는다', async () => {
   vi.mocked(getWhiteboardDocumentRequest).mockResolvedValue({
     id: 'document',
