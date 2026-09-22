@@ -146,9 +146,9 @@ describe('HomePage', () => {
     renderHomePage()
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      '워크스페이스를 불러오는 중',
-    )
+    expect(
+      await screen.findByRole('status', { name: '워크스페이스를 불러오는 중' }),
+    ).toHaveTextContent('워크스페이스를 불러오는 중')
   })
 
   it('좁은 화면에서는 사이드바를 접어 본문과 겹치지 않게 한다', () => {
