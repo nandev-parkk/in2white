@@ -3,6 +3,8 @@ import { useBlocker } from '@tanstack/react-router'
 import {
   CaptureUpdateAction,
   Excalidraw,
+  MainMenu,
+  reconcileElements,
   restoreElements,
 } from '@excalidraw/excalidraw'
 import type {
@@ -10,6 +12,7 @@ import type {
   ExcalidrawImperativeAPI,
 } from '@excalidraw/excalidraw/types'
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types'
+import type { RemoteExcalidrawElement } from '@excalidraw/excalidraw/data/reconcile'
 import '@excalidraw/excalidraw/index.css'
 import type { WhiteboardDocumentDetail } from '@/entities/whiteboard-document'
 import { CanvasTopBar } from '@/shared/ui/canvas-top-bar'
@@ -85,10 +88,24 @@ export default function WhiteboardCanvas({
       applying.current = true
       if (editor.scene.files)
         api.addFiles(Object.values(editor.scene.files) as BinaryFileData[])
+      const appState = api.getAppState()
+      // 편집 중인 객체만 보존해야 명시적인 서버 장면 되돌리기도 계속 동작한다.
+      const editingElements = api
+        .getSceneElementsIncludingDeleted()
+        .filter(
+          (element) =>
+            element.id === appState.newElement?.id ||
+            element.id === appState.resizingElement?.id ||
+            element.id === appState.editingTextElement?.id,
+        )
       api.updateScene({
-        elements: restoreElements(
-          editor.scene.elements as unknown as ExcalidrawElement[],
-          null,
+        elements: reconcileElements(
+          editingElements,
+          restoreElements(
+            editor.scene.elements as unknown as ExcalidrawElement[],
+            null,
+          ) as unknown as RemoteExcalidrawElement[],
+          appState,
         ),
         captureUpdate: CaptureUpdateAction.NEVER,
       })
@@ -118,32 +135,6 @@ export default function WhiteboardCanvas({
     ) as Parameters<ExcalidrawImperativeAPI['updateScene']>[0]['collaborators']
     api.updateScene({ collaborators, captureUpdate: CaptureUpdateAction.NEVER })
   }, [api, editor.participants, userId])
-  function exportScene() {
-    const scene = api
-      ? {
-          elements: api.getSceneElementsIncludingDeleted(),
-          files: api.getFiles(),
-        }
-      : editor.scene
-    const url = URL.createObjectURL(
-      new Blob(
-        [
-          JSON.stringify({
-            type: 'excalidraw',
-            version: 2,
-            source: 'in2white',
-            ...scene,
-          }),
-        ],
-        { type: 'application/json' },
-      ),
-    )
-    const link = window.document.createElement('a')
-    link.href = url
-    link.download = document.name.replace(/[\\/:*?"<>|]/g, '_') + '.excalidraw'
-    link.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }
   return (
     <main className="flex h-dvh min-h-0 flex-col">
       <CanvasTopBar
@@ -155,11 +146,6 @@ export default function WhiteboardCanvas({
           name: person.name,
           presenceIndex: person.presenceIndex + 1,
         }))}
-        actions={
-          <Button variant="secondary" onClick={exportScene}>
-            파일로 내보내기
-          </Button>
-        }
       />
       {(editor.error || editor.status === 'disconnected') && (
         <div
@@ -189,7 +175,10 @@ export default function WhiteboardCanvas({
           </Button>
         </div>
       )}
-      <div className="min-h-0 flex-1" aria-label="화이트보드 편집기">
+      <div
+        className="min-h-0 flex-1 [&_label:has(.default-sidebar-trigger)]:hidden!"
+        aria-label="화이트보드 편집기"
+      >
         <Excalidraw
           excalidrawAPI={setApi}
           initialData={initialData}
@@ -228,7 +217,20 @@ export default function WhiteboardCanvas({
               selected.current,
             )
           }
-        />
+        >
+          <MainMenu>
+            <MainMenu.DefaultItems.LoadScene />
+            <MainMenu.DefaultItems.SaveToActiveFile />
+            <MainMenu.DefaultItems.Export />
+            <MainMenu.DefaultItems.SaveAsImage />
+            <MainMenu.DefaultItems.SearchMenu />
+            <MainMenu.DefaultItems.Help />
+            <MainMenu.DefaultItems.ClearCanvas />
+            <MainMenu.Separator />
+            <MainMenu.DefaultItems.ToggleTheme />
+            <MainMenu.DefaultItems.ChangeCanvasBackground />
+          </MainMenu>
+        </Excalidraw>
       </div>
     </main>
   )

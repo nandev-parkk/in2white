@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { cn } from 'cn'
-import { ArrowLeft, CircleAlert, CircleCheck, MoreVertical } from 'lucide-react'
+import { ArrowLeft, CircleAlert, CircleCheck } from 'lucide-react'
 import { Spinner } from '@/shared/ui/spinner'
 import {
   PresenceAvatarStack,
@@ -86,15 +86,7 @@ function CanvasTopBar({
         {users.length > 0 && (
           <PresenceAvatarStack users={users} max={3} size="small" />
         )}
-        {actions ?? (
-          <button
-            type="button"
-            aria-label="더 보기"
-            className="text-foreground-secondary flex size-4.5 items-center justify-center"
-          >
-            <MoreVertical className="size-4.5" />
-          </button>
-        )}
+        {actions}
       </div>
     </div>
   )
