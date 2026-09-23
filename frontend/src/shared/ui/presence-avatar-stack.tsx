@@ -40,8 +40,14 @@ function PresenceAvatarStack({
       {visible.map((user) => (
         <Avatar
           key={user.id}
+          role="img"
+          aria-label={user.name}
+          title={user.name}
           size={size}
-          className={cn('-mr-2.5', size === 'small' ? 'ring-1.5' : 'ring-2')}
+          className={cn(
+            '-mr-2.5 last:mr-0',
+            size === 'small' ? 'ring-1.5' : 'ring-2',
+          )}
           style={
             {
               '--tw-ring-color': `var(--presence-${((user.presenceIndex - 1) % 6) + 1})`,

@@ -9,6 +9,7 @@ const canvas = vi.hoisted(() => ({
   resetScene: vi.fn(),
   addFiles: vi.fn(),
   getSceneElementsIncludingDeleted: vi.fn(),
+  getAppState: () => ({}),
   getFiles: () => ({}),
   emitBeforeSync: false,
   beforeSyncElements: [] as unknown[],
@@ -23,6 +24,21 @@ const canvas = vi.hoisted(() => ({
 vi.mock('@excalidraw/excalidraw', () => ({
   CaptureUpdateAction: { NEVER: 'never' },
   restoreElements: (elements: unknown) => elements,
+  reconcileElements: (_local: unknown, remote: unknown) => remote,
+  MainMenu: Object.assign(() => null, {
+    DefaultItems: {
+      LoadScene: () => null,
+      SaveToActiveFile: () => null,
+      Export: () => null,
+      SaveAsImage: () => null,
+      SearchMenu: () => null,
+      Help: () => null,
+      ClearCanvas: () => null,
+      ToggleTheme: () => null,
+      ChangeCanvasBackground: () => null,
+    },
+    Separator: () => null,
+  }),
   Excalidraw: ({
     excalidrawAPI,
     onChange,
