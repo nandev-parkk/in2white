@@ -168,26 +168,33 @@ function ProjectListContent({
         <h1 className="text-heading1 text-foreground-strong">프로젝트</h1>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Search
-          aria-label="프로젝트 검색"
-          placeholder="프로젝트 이름으로 검색"
-          value={search}
-          onClear={() => handleSearchChange('')}
-          onChange={(event) => handleSearchChange(event.target.value)}
-          className="w-full max-w-80"
-        />
-        <div className="flex items-center gap-2">
-          <ViewToggle
-            value={view}
-            onChange={setView}
-            label="프로젝트 보기 방식"
+      {!(
+        projectsQuery.isSuccess &&
+        projects.length === 0 &&
+        !hasSearch &&
+        page === 1
+      ) && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Search
+            aria-label="프로젝트 검색"
+            placeholder="프로젝트 이름으로 검색"
+            value={search}
+            onClear={() => handleSearchChange('')}
+            onChange={(event) => handleSearchChange(event.target.value)}
+            className="w-full max-w-80"
           />
-          <Button className="h-9" onClick={openCreateDialog}>
-            프로젝트 생성
-          </Button>
+          <div className="flex items-center gap-2">
+            <ViewToggle
+              value={view}
+              onChange={setView}
+              label="프로젝트 보기 방식"
+            />
+            <Button className="h-9" onClick={openCreateDialog}>
+              프로젝트 생성
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {projectsQuery.isLoading && (
         <DelayedLoading startedAt={loadingStartedAt}>

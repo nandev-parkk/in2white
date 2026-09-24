@@ -87,8 +87,8 @@ function ProjectFormDialog({
       <DialogContent className="max-w-90">
         <DialogTitle>{title}</DialogTitle>
         <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-1.5">
               <label
                 className="text-label text-foreground-default"
                 htmlFor="project-name"
@@ -122,7 +122,7 @@ function ProjectFormDialog({
                 </p>
               )}
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               <label
                 className="text-label text-foreground-default"
                 htmlFor="project-description"
@@ -164,7 +164,7 @@ function ProjectFormDialog({
               {error}
             </p>
           )}
-          <DialogFooter className="mt-6">
+          <DialogFooter className="mt-5">
             <Button
               type="button"
               variant="tertiary"

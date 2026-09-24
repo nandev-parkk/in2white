@@ -210,7 +210,7 @@ describe('AccountPage', () => {
     const sectionColumn = profileSection?.parentElement
 
     expect(pageHeader).toHaveClass('max-sm:pl-2')
-    expect(pageHeader?.parentElement).toHaveClass('w-full', 'gap-7')
+    expect(pageHeader?.parentElement).toHaveClass('w-full', 'gap-6')
     expect(sectionColumn).toHaveClass('mx-auto', 'max-w-[480px]', 'gap-10')
     expect(pageHeader?.parentElement).not.toBe(sectionColumn)
   })
@@ -506,7 +506,7 @@ describe('AccountPage', () => {
       screen.getByRole('heading', { name: '기본 정보' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: '참여 워크스페이스' }),
+      screen.getByRole('heading', { name: '참여 중인 워크스페이스' }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(await screen.findByRole('status')).toHaveTextContent(

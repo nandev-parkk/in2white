@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from 'cn'
+import { cn } from '@/shared/lib/utils'
 
 type PageHeaderProps = React.ComponentProps<'div'> & {
   breadcrumb?: React.ReactNode

@@ -30,10 +30,10 @@ function ProjectTable({
     <Table className="min-w-[1008px] table-fixed">
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[420px]">이름</TableHead>
+          <TableHead>이름</TableHead>
           <TableHead className="w-[180px]">생성자</TableHead>
-          <TableHead className="w-[180px]">생성일</TableHead>
-          <TableHead className="w-[180px]">수정일</TableHead>
+          <TableHead className="w-[180px] text-right">생성일</TableHead>
+          <TableHead className="w-[180px] text-right">수정일</TableHead>
           <TableHead className="w-12" aria-label="작업" />
         </TableRow>
       </TableHeader>
@@ -58,12 +58,12 @@ function ProjectTable({
             <TableCell>
               <span className="truncate">{project.creator.name}</span>
             </TableCell>
-            <TableCell>
+            <TableCell className="text-right">
               <span className="whitespace-nowrap">
                 {formatCreatedAt(project.createdAt)}
               </span>
             </TableCell>
-            <TableCell>
+            <TableCell className="text-right">
               <span className="whitespace-nowrap">
                 {formatUpdatedAt(project.updatedAt)}
               </span>

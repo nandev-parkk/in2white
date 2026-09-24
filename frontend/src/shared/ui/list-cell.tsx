@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from 'cn'
+import { cn } from '@/shared/lib/utils'
 import { ChevronRight } from 'lucide-react'
 
 type ListCellProps = React.ComponentProps<'div'> & {

@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from 'cn'
+import { cn } from '@/shared/lib/utils'
 import { Avatar as AvatarPrimitive } from 'radix-ui'
 
 const avatarVariants = cva(

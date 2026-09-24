@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from 'cn'
+import { cn } from '@/shared/lib/utils'
 import { MousePointer2 } from 'lucide-react'
 
 type LiveCursorProps = React.ComponentProps<'div'> & {

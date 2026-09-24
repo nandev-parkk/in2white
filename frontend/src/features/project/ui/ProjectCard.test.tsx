@@ -40,11 +40,11 @@ describe('ProjectCard', () => {
     expect(card).toHaveClass('min-h-[204px]')
     expect(card).not.toHaveClass('h-[204px]')
     expect(screen.getByText(/수정일/).parentElement?.parentElement).toHaveClass(
-      'pb-3',
+      'pb-2',
     )
     expect(screen.getByText('김민지').parentElement).toHaveClass(
       'border-t',
-      'pt-3',
+      'pt-2',
     )
   })
 

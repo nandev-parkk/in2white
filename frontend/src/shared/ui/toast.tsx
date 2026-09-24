@@ -1,7 +1,7 @@
 import { CircleAlert, CircleCheck, Info, TriangleAlert } from 'lucide-react'
 import { toast, Toaster as SonnerToaster, type ToasterProps } from 'sonner'
 import 'sonner/dist/styles.css'
-import { cn } from 'cn'
+import { cn } from '@/shared/lib/utils'
 
 const DEFAULT_TOAST_DURATION = 4000
 

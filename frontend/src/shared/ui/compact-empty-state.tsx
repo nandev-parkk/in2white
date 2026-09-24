@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from 'cn'
+import { cn } from '@/shared/lib/utils'
 
 type CompactEmptyStateProps = React.ComponentProps<'div'> & {
   icon: React.ReactNode

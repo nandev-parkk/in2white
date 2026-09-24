@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from 'cn'
+import { cn } from '@/shared/lib/utils'
 import { Search as SearchIcon, X } from 'lucide-react'
 
 type SearchProps = React.ComponentProps<'input'> & {
