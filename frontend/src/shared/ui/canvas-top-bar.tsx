@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from 'cn'
+import { cn } from '@/shared/lib/utils'
 import { ArrowLeft, CircleAlert, CircleCheck } from 'lucide-react'
 import { Spinner } from '@/shared/ui/spinner'
 import {
@@ -11,7 +11,7 @@ type SaveStatus = 'saved' | 'saving' | 'disconnected' | 'connecting' | 'error'
 
 type CanvasTopBarProps = React.ComponentProps<'div'> & {
   title: string
-  saveStatus: SaveStatus
+  saveStatus?: SaveStatus
   users?: PresenceUser[]
   onBack?: () => void
   actions?: React.ReactNode
@@ -32,7 +32,7 @@ const saveStatusConfig: Record<
   disconnected: {
     icon: CircleAlert,
     label: '동기화가 끊겼어요',
-    className: 'text-status-warning',
+    className: 'text-status-danger',
   },
 }
 
@@ -49,7 +49,7 @@ function CanvasTopBar({
     icon: StatusIcon,
     label,
     className: statusClassName,
-  } = saveStatusConfig[saveStatus]
+  } = saveStatusConfig[saveStatus ?? 'connecting']
 
   return (
     <div
@@ -60,34 +60,47 @@ function CanvasTopBar({
       )}
       {...props}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
           onClick={onBack}
           aria-label="뒤로 가기"
-          className="text-foreground-default flex size-5 items-center justify-center"
+          className="text-foreground-default flex size-5 shrink-0 items-center justify-center"
         >
           <ArrowLeft className="size-5" />
         </button>
-        <p className="text-heading3 text-foreground-strong">{title}</p>
-        <div
-          className={cn(
-            'text-caption text-foreground-secondary flex items-center gap-1.5',
-            statusClassName,
-          )}
-        >
-          <StatusIcon className="size-3.5" />
-          <span role="status" aria-live="polite">
-            {label}
-          </span>
-        </div>
-      </div>
-      <div className="flex items-center gap-3">
-        {users.length > 0 && (
-          <PresenceAvatarStack users={users} max={3} size="small" />
+        <p className="text-heading3 text-foreground-strong truncate">{title}</p>
+        {saveStatus && (
+          <div
+            className={cn(
+              'text-caption text-foreground-secondary flex shrink-0 items-center gap-1.5',
+              statusClassName,
+            )}
+          >
+            <StatusIcon
+              aria-hidden="true"
+              className={cn(
+                saveStatus === 'saving' || saveStatus === 'connecting'
+                  ? 'size-5'
+                  : 'size-3.5',
+                saveStatus === 'saved' && 'text-status-success',
+              )}
+            />
+            <span role="status" aria-live="polite">
+              {label}
+            </span>
+          </div>
         )}
-        {actions}
       </div>
+      {saveStatus && (
+        <div className="flex shrink-0 items-center gap-3">
+          {users.length > 0 &&
+            (saveStatus === 'saved' || saveStatus === 'saving') && (
+              <PresenceAvatarStack users={users} max={3} size="small" />
+            )}
+          {actions}
+        </div>
+      )}
     </div>
   )
 }

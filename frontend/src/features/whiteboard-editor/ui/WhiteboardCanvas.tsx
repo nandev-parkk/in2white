@@ -17,6 +17,14 @@ import '@excalidraw/excalidraw/index.css'
 import type { WhiteboardDocumentDetail } from '@/entities/whiteboard-document'
 import { CanvasTopBar } from '@/shared/ui/canvas-top-bar'
 import { Button } from '@/shared/ui/button'
+import { MoreVertical } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu'
 import { useWhiteboardEditor } from '../model/use-whiteboard-editor'
 import { diffScene, hasDelta, mergeScene } from '../model/scene-sync'
 import type { CanvasContent, WhiteboardElement } from '../model/protocol'
@@ -135,6 +143,33 @@ export default function WhiteboardCanvas({
     ) as Parameters<ExcalidrawImperativeAPI['updateScene']>[0]['collaborators']
     api.updateScene({ collaborators, captureUpdate: CaptureUpdateAction.NEVER })
   }, [api, editor.participants, userId])
+  function exportScene() {
+    const scene = api
+      ? {
+          elements: api.getSceneElementsIncludingDeleted(),
+          files: api.getFiles(),
+        }
+      : editor.scene
+    const url = URL.createObjectURL(
+      new Blob(
+        [
+          JSON.stringify({
+            type: 'excalidraw',
+            version: 2,
+            source: 'in2white',
+            ...scene,
+          }),
+        ],
+        { type: 'application/json' },
+      ),
+    )
+    const link = window.document.createElement('a')
+    link.href = url
+    link.download = document.name.replace(/[\\/:*?"<>|]/g, '_') + '.excalidraw'
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
   return (
     <main className="flex h-dvh min-h-0 flex-col">
       <CanvasTopBar
@@ -146,6 +181,26 @@ export default function WhiteboardCanvas({
           name: person.name,
           presenceIndex: person.presenceIndex + 1,
         }))}
+        actions={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="더 보기"
+                className="text-foreground-default flex size-8 items-center justify-center rounded-sm focus-visible:outline-2"
+              >
+                <MoreVertical className="size-4.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuGroup>
+                <DropdownMenuItem onSelect={exportScene}>
+                  파일로 내보내기
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
       />
       {(editor.error || editor.status === 'disconnected') && (
         <div

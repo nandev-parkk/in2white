@@ -1,6 +1,8 @@
 import * as React from 'react'
-import { cn } from 'cn'
+import { cn } from '@/shared/lib/utils'
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui'
+
+const DropdownMenuGroup = DropdownMenuPrimitive.Group
 
 function DropdownMenu({
   ...props
@@ -76,6 +78,7 @@ function DropdownMenuSeparator({
 
 export {
   DropdownMenu,
+  DropdownMenuGroup,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,

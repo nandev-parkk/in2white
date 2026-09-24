@@ -4,7 +4,7 @@ import { cn } from 'cn'
 import { Loader2 } from 'lucide-react'
 
 const spinnerVariants = cva(
-  'animate-spin text-foreground-tertiary motion-reduce:animate-none',
+  'animate-spin text-foreground-strong motion-reduce:animate-none',
   {
     variants: {
       size: {

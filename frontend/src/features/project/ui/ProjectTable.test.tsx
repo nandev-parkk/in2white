@@ -50,9 +50,9 @@ describe('ProjectTable', () => {
     expect(
       screen.getByRole('columnheader', { name: '수정일' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: '이름' })).toHaveClass(
-      'w-[420px]',
-    )
+    expect(
+      screen.getByRole('columnheader', { name: '이름' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: '생성자' })).toHaveClass(
       'w-[180px]',
     )

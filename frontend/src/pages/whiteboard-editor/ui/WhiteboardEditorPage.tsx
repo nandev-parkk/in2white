@@ -4,6 +4,7 @@ import { getWhiteboardDocumentRequest } from '@/entities/whiteboard-document'
 import { useSessionStore } from '@/entities/session'
 import { Button } from '@/shared/ui/button'
 import { LoadingState } from '@/shared/ui/loading-state'
+import { CanvasTopBar } from '@/shared/ui/canvas-top-bar'
 
 const WhiteboardCanvas = lazy(
   () => import('@/features/whiteboard-editor/ui/WhiteboardCanvas'),
@@ -55,14 +56,17 @@ function WhiteboardEditorContent({
     refetchOnWindowFocus: false,
   })
   if (!editorUser) return null
-  if (query.isPending)
-    return (
+  const loading = (label: string) => (
+    <main className="flex h-dvh flex-col">
+      <CanvasTopBar title={query.data?.name ?? '화이트보드'} onBack={onBack} />
       <LoadingState
-        label="화이트보드를 불러오는 중"
+        label={label}
         startedAt={startedAt}
-        className="min-h-dvh"
+        className="bg-background-subtle min-h-0"
       />
-    )
+    </main>
+  )
+  if (query.isPending) return loading('화이트보드를 불러오는 중')
   if (!query.data) {
     const missing =
       (query.error as { response?: { status?: number } }).response?.status ===
@@ -91,15 +95,7 @@ function WhiteboardEditorContent({
     )
   }
   return (
-    <Suspense
-      fallback={
-        <LoadingState
-          label="편집기를 준비하는 중"
-          startedAt={startedAt}
-          className="min-h-dvh"
-        />
-      }
-    >
+    <Suspense fallback={loading('편집기를 준비하는 중')}>
       <WhiteboardCanvas
         key={documentId}
         workspaceId={workspaceId}

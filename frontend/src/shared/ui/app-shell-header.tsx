@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from 'cn'
+import { cn } from '@/shared/lib/utils'
 import { ChevronsUpDown } from 'lucide-react'
 import { Search } from '@/shared/ui/search'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/avatar'

@@ -239,7 +239,7 @@ describe('Sidebar', () => {
       'opacity-0',
       'text-ellipsis',
     )
-    expect(navigation).toHaveClass('gap-1')
+    expect(navigation).toHaveClass('gap-3')
     expect(
       screen.getByRole('button', { name: '프로젝트' }).firstElementChild,
     ).toHaveClass('flex', 'items-center', 'gap-2')
@@ -705,13 +705,13 @@ describe('Sidebar', () => {
       '[data-slot="sidebar-profile"]',
     ) as HTMLElement
 
-    expect(profile).toHaveClass('min-h-16')
+    expect(profile).toHaveClass('min-h-14.5')
     expect(screen.getByRole('button', { name: '로그아웃' })).toHaveClass('h-11')
 
     await user.click(screen.getByRole('button', { name: '사이드바 접기' }))
     fireEvent.transitionEnd(sidebar, { propertyName: 'width' })
 
-    expect(profile).toHaveClass('min-h-16')
+    expect(profile).toHaveClass('min-h-14.5')
     expect(screen.getByRole('button', { name: '로그아웃' })).toHaveClass('h-11')
   })
 
@@ -732,16 +732,16 @@ describe('Sidebar', () => {
       '[data-slot="sidebar-navigation"]',
     ) as HTMLElement
 
-    expect(workspaceSection).toHaveClass('mt-2', 'min-h-[84px]')
+    expect(workspaceSection).toHaveClass('mt-0.5', 'min-h-[70px]')
     expect(workspaceMembers).toHaveClass('h-5')
-    expect(navigation).toHaveClass('mt-4')
+    expect(navigation).toHaveClass('mt-3')
 
     await user.click(screen.getByRole('button', { name: '사이드바 접기' }))
     fireEvent.transitionEnd(sidebar, { propertyName: 'width' })
 
     expect(workspaceMembers).toHaveClass('opacity-0', 'pointer-events-none')
     expect(workspaceMembers).toHaveClass('h-5')
-    expect(navigation).toHaveClass('mt-4')
+    expect(navigation).toHaveClass('mt-3')
   })
 
   it('드래그를 중간 폭에서 끝내면 해당 폭을 유지한다', () => {

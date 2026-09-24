@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from 'cn'
+import { cn } from '@/shared/lib/utils'
 
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
   return (
@@ -51,7 +51,7 @@ function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
     <th
       data-slot="table-head"
       className={cn(
-        'text-caption text-foreground-secondary h-auto px-4 py-3 text-left align-middle',
+        'text-caption text-foreground-secondary h-10 px-4 py-2 text-left align-middle',
         className,
       )}
       {...props}
@@ -64,7 +64,7 @@ function TableCell({ className, ...props }: React.ComponentProps<'td'>) {
     <td
       data-slot="table-cell"
       className={cn(
-        'text-body text-foreground-default px-4 py-3 align-middle',
+        'text-body text-foreground-default h-12 px-4 py-2 align-middle',
         className,
       )}
       {...props}

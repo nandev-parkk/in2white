@@ -21,10 +21,10 @@ import { MESSAGES } from '@/shared/constants/messages'
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
 import { Button } from '@/shared/ui/button'
 import { DelayedLoading } from '@/shared/ui/loading-state'
-import { SkeletonListCell } from '@/shared/ui/skeleton'
 import { Input } from '@/shared/ui/input'
 import { ListCell } from '@/shared/ui/list-cell'
 import { PageHeader } from '@/shared/ui/page-header'
+import { SkeletonListCell } from '@/shared/ui/skeleton'
 import type { SidebarNavKey } from '@/shared/ui/sidebar'
 import { toast } from '@/shared/ui/toast'
 
@@ -118,7 +118,7 @@ function AccountContent({
   }
 
   return (
-    <div className="flex w-full flex-col gap-7">
+    <div className="flex w-full flex-col gap-6">
       <PageHeader className="max-sm:pl-2" title="계정 설정" />
 
       <div className="mx-auto flex w-full max-w-[480px] flex-col gap-10">
@@ -178,7 +178,7 @@ function AccountContent({
             id="account-workspaces-title"
             className="text-foreground-strong text-[18px] font-semibold"
           >
-            참여 워크스페이스
+            참여 중인 워크스페이스
           </h2>
           {workspaceLoading ? (
             <DelayedLoading>

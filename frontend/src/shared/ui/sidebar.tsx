@@ -1,6 +1,6 @@
 import * as React from 'react'
-import { cn } from 'cn'
 import { DelayedLoading } from '@/shared/ui/loading-state'
+import { cn } from '@/shared/lib/utils'
 import {
   Check,
   ChevronLeft,
@@ -185,11 +185,11 @@ function WorkspaceSwitcher({
           else setOpen(true)
         }}
         className={cn(
-          'focus-visible:ring-action-focus-ring hover:bg-action-secondary-hover flex h-14 w-full min-w-0 items-center justify-start gap-2 overflow-hidden rounded-md px-1.5 text-left transition-colors duration-150 outline-none focus-visible:ring-3',
+          'focus-visible:ring-action-focus-ring hover:bg-action-secondary-hover flex h-10 w-full min-w-0 items-center justify-start gap-2 overflow-hidden rounded-md px-1.5 text-left transition-colors duration-150 outline-none focus-visible:ring-3',
         )}
       >
         <span className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-          <WorkspaceMark name={workspace?.name} />
+          {collapsed && <WorkspaceMark name={workspace?.name} />}
           <span
             data-slot="workspace-trigger-label"
             aria-hidden={collapsed}
@@ -725,7 +725,7 @@ function Sidebar({
 
       <div
         className={cn(
-          'mt-2 flex min-h-[84px] flex-col gap-2 transition-[margin,gap] duration-200 ease-out motion-reduce:transition-none',
+          'mt-0.5 flex min-h-[70px] flex-col gap-2.5 transition-[margin,gap] duration-200 ease-out motion-reduce:transition-none',
         )}
         data-slot="sidebar-workspace-section"
       >
@@ -772,7 +772,7 @@ function Sidebar({
       <div
         data-slot="sidebar-navigation"
         className={cn(
-          'mt-4 flex flex-col gap-1 transition-[gap,margin] duration-200 ease-out motion-reduce:transition-none',
+          'mt-3 flex flex-col gap-3 transition-[gap,margin] duration-200 ease-out motion-reduce:transition-none',
         )}
       >
         <SidebarNavItem
@@ -825,12 +825,12 @@ function Sidebar({
 
       <div className="bg-border h-px w-full" />
 
-      <div data-slot="sidebar-profile" className="min-h-16 w-full">
+      <div data-slot="sidebar-profile" className="min-h-14.5 w-full">
         <button
           type="button"
           aria-label={`사용자 정보: ${userName}`}
           onClick={() => onUserClick?.()}
-          className="focus-visible:ring-action-focus-ring hover:bg-action-secondary-hover flex min-h-16 w-full items-center gap-2 rounded-md py-3 pr-3 pl-1 text-left transition-colors duration-150 outline-none focus-visible:ring-3"
+          className="focus-visible:ring-action-focus-ring hover:bg-action-secondary-hover flex min-h-14.5 w-full items-center gap-2 rounded-md py-2.25 pr-3 pl-1 text-left transition-colors duration-150 outline-none focus-visible:ring-3"
         >
           <Avatar size="default">
             {userImageUrl && <AvatarImage src={userImageUrl} alt={userName} />}
