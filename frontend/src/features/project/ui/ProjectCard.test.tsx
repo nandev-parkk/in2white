@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -70,5 +70,22 @@ describe('ProjectCard', () => {
     )
     await userEvent.click(screen.getByRole('menuitem', { name: '삭제' }))
     expect(onDelete).toHaveBeenCalledWith(projectFixture)
+  })
+
+  it('포인터가 올라가면 카드를 살짝 들어 올린다', async () => {
+    const user = userEvent.setup()
+    render(
+      <ProjectCard
+        project={projectFixture}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+
+    const card = screen.getByRole('article')
+    await user.hover(card)
+    await waitFor(() =>
+      expect(card.style.transform).toContain('translateY(-2px)'),
+    )
   })
 })

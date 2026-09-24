@@ -1,4 +1,5 @@
 import { CalendarDays, Clock3, Folder, MoreVertical } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
 
 import type { Project } from '@/entities/project'
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
@@ -50,8 +51,15 @@ function ProjectCard({
   canManage = true,
   onOpen,
 }: ProjectCardProps) {
+  const prefersReducedMotion = useReducedMotion()
+
   return (
-    <article className="border-border bg-background-default flex min-h-[204px] min-w-0 flex-col rounded-md border p-4">
+    <motion.article
+      whileHover={prefersReducedMotion ? undefined : { y: -2 }}
+      whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
+      transition={{ type: 'tween', duration: 0.16, ease: 'easeOut' }}
+      className="border-border bg-background-default flex min-h-[204px] min-w-0 flex-col rounded-md border p-4 transition-shadow duration-150 hover:shadow-md motion-reduce:transition-none"
+    >
       <div className="flex items-center justify-between gap-2">
         <Folder className="text-foreground-default size-4" />
         {canManage && (
@@ -98,7 +106,7 @@ function ProjectCard({
           {project.creator.name}
         </span>
       </div>
-    </article>
+    </motion.article>
   )
 }
 
