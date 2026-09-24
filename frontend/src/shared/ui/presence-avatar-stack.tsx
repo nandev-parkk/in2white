@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { cn } from 'cn'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/avatar'
 
 type PresenceUser = {
@@ -30,6 +31,7 @@ function PresenceAvatarStack({
 }: PresenceAvatarStackProps) {
   const visible = users.slice(0, max)
   const overflow = users.length - visible.length
+  const prefersReducedMotion = useReducedMotion()
 
   return (
     <div
@@ -37,27 +39,47 @@ function PresenceAvatarStack({
       className={cn('flex items-center', className)}
       {...props}
     >
-      {visible.map((user) => (
-        <Avatar
-          key={user.id}
-          role="img"
-          aria-label={user.name}
-          title={user.name}
-          size={size}
-          className={cn(
-            '-mr-2.5 last:mr-0',
-            size === 'small' ? 'ring-1.5' : 'ring-2',
-          )}
-          style={
-            {
-              '--tw-ring-color': `var(--presence-${((user.presenceIndex - 1) % 6) + 1})`,
-            } as React.CSSProperties
-          }
-        >
-          {user.imageUrl && <AvatarImage src={user.imageUrl} alt={user.name} />}
-          <AvatarFallback size={size}>{user.name.slice(0, 2)}</AvatarFallback>
-        </Avatar>
-      ))}
+      <AnimatePresence initial={false}>
+        {visible.map((user) => (
+          <motion.div
+            key={user.id}
+            layout={prefersReducedMotion ? undefined : 'position'}
+            initial={
+              prefersReducedMotion
+                ? { opacity: 0 }
+                : { opacity: 0, scale: 0.82 }
+            }
+            animate={{ opacity: 1, scale: 1 }}
+            exit={
+              prefersReducedMotion
+                ? { opacity: 0 }
+                : { opacity: 0, scale: 0.82 }
+            }
+            transition={{ duration: 0.16, ease: 'easeOut' }}
+            className="-mr-2.5 flex last:mr-0"
+          >
+            <Avatar
+              role="img"
+              aria-label={user.name}
+              title={user.name}
+              size={size}
+              style={
+                {
+                  '--tw-ring-color': `var(--presence-${((user.presenceIndex - 1) % 6) + 1})`,
+                } as React.CSSProperties
+              }
+              className={size === 'small' ? 'ring-1.5' : 'ring-2'}
+            >
+              {user.imageUrl && (
+                <AvatarImage src={user.imageUrl} alt={user.name} />
+              )}
+              <AvatarFallback size={size}>
+                {user.name.slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+          </motion.div>
+        ))}
+      </AnimatePresence>
       {overflow > 0 && (
         <div
           className={cn(
