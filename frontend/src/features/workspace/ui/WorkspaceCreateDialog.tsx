@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogTitle,
 } from '@/shared/ui/dialog'
@@ -64,14 +65,19 @@ function WorkspaceCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="min-h-[227px] max-w-90 p-8">
-        <DialogTitle className="text-[20px] leading-7 font-bold tracking-[-0.012em]">
-          새 워크스페이스 만들기
-        </DialogTitle>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[440px] overflow-y-auto p-7">
+        <div>
+          <DialogTitle className="text-[20px] leading-7 font-semibold">
+            새 워크스페이스 만들기
+          </DialogTitle>
+          <DialogDescription className="mt-2">
+            함께 작업할 워크스페이스의 이름을 정해 주세요.
+          </DialogDescription>
+        </div>
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-1.5">
             <label
-              className="text-foreground-default text-[14px] leading-[17px] font-semibold tracking-[0.0145em]"
+              className="text-label text-foreground-default font-medium"
               htmlFor="workspace-name"
             >
               이름
@@ -99,29 +105,24 @@ function WorkspaceCreateDialog({
             )}
           </div>
           {error && (
-            <p className="text-caption text-status-danger" role="alert">
+            <p className="text-caption text-status-danger mt-3" role="alert">
               {error}
             </p>
           )}
           <DialogFooter
             role="group"
             aria-label="워크스페이스 생성 액션"
-            className="mt-5"
+            className="border-border mt-6 border-t pt-5"
           >
             <Button
               type="button"
               variant="tertiary"
-              className="h-9 rounded-md px-4"
               disabled={loading}
               onClick={() => handleOpenChange(false)}
             >
               취소
             </Button>
-            <Button
-              type="submit"
-              loading={loading}
-              className="h-9 rounded-md px-4"
-            >
+            <Button type="submit" loading={loading}>
               만들기
             </Button>
           </DialogFooter>

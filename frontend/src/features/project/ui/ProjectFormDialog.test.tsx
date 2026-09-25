@@ -5,6 +5,22 @@ import { describe, expect, it, vi } from 'vitest'
 import { ProjectFormDialog } from './ProjectFormDialog'
 
 describe('ProjectFormDialog', () => {
+  it('입력 목적을 접근 가능한 설명으로 제공한다', () => {
+    render(
+      <ProjectFormDialog
+        open
+        title="새 프로젝트 만들기"
+        submitLabel="만들기"
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    expect(
+      screen.getByRole('dialog', { name: '새 프로젝트 만들기' }),
+    ).toHaveAccessibleDescription('프로젝트 이름과 설명을 입력해 주세요.')
+  })
+
   it('이름이 비어 있으면 제출하지 않고 필수 오류를 표시한다', async () => {
     const onSubmit = vi.fn()
     render(
@@ -183,19 +199,5 @@ describe('ProjectFormDialog', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       '프로젝트를 만들지 못했어요',
     )
-  })
-
-  it('Figma 기준 360px 모달 폭을 사용한다', () => {
-    render(
-      <ProjectFormDialog
-        open
-        title="새 프로젝트 만들기"
-        submitLabel="만들기"
-        onOpenChange={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByRole('dialog')).toHaveClass('max-w-90')
   })
 })

@@ -123,55 +123,16 @@ describe('WorkspaceCreateDialog', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('Figma 규격에 맞는 227px 높이로 표시한다', () => {
+  it('생성 목적을 접근 가능한 설명으로 제공한다', () => {
     render(
       <WorkspaceCreateDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} />,
     )
 
-    expect(screen.getByRole('dialog')).toHaveClass('min-h-[227px]')
-  })
-
-  it('Figma 기준 제목, 필드 간격, 버튼 스타일을 사용한다', () => {
-    render(
-      <WorkspaceCreateDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} />,
-    )
-
-    const dialog = screen.getByRole('dialog')
-    const title = screen.getByRole('heading', {
-      name: '새 워크스페이스 만들기',
-    })
-    const input = screen.getByLabelText('이름')
-    const cancelButton = screen.getByRole('button', { name: '취소' })
-    const submitButton = screen.getByRole('button', { name: '만들기' })
-
-    expect(dialog).toHaveClass('rounded-lg', 'p-8')
-    expect(title).toHaveClass(
-      'text-foreground-strong',
-      'text-[20px]',
-      'leading-7',
-      'font-bold',
-      'tracking-[-0.012em]',
-    )
-    expect(input.parentElement).toHaveClass('gap-1.5')
     expect(
-      screen.getByRole('group', { name: '워크스페이스 생성 액션' }),
-    ).toHaveClass('mt-5', 'gap-3')
-    expect(cancelButton).toHaveClass('h-9', 'rounded-md', 'px-4')
-    expect(submitButton).toHaveClass('h-9', 'rounded-md', 'px-4')
-  })
-
-  it('오류 상태에서도 내부 스크롤 없이 콘텐츠 높이를 확장한다', () => {
-    render(
-      <WorkspaceCreateDialog
-        open
-        onOpenChange={vi.fn()}
-        onSubmit={vi.fn()}
-        error="워크스페이스를 만들지 못했어요"
-      />,
+      screen.getByRole('dialog', { name: '새 워크스페이스 만들기' }),
+    ).toHaveAccessibleDescription(
+      '함께 작업할 워크스페이스의 이름을 정해 주세요.',
     )
-
-    expect(screen.getByRole('dialog')).toHaveClass('min-h-[227px]')
-    expect(screen.getByRole('dialog')).not.toHaveClass('overflow-y-auto')
   })
 
   it('생성 오류를 모달 안에 표시한다', () => {

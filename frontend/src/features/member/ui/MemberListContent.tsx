@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { CircleAlert, Search as SearchIcon, X } from 'lucide-react'
+import {
+  CircleAlert,
+  Search as SearchIcon,
+  UserRoundMinus,
+  X,
+} from 'lucide-react'
 import type { Member } from '@/entities/member'
 import {
   useMembers,
@@ -268,7 +273,7 @@ export function MemberListContent({
         }}
       >
         <DialogContent
-          className="w-[calc(100%-32px)]"
+          className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[440px] overflow-y-auto p-0 [&>div]:gap-0"
           onCloseAutoFocus={(event) => {
             event.preventDefault()
             ;(returnFocus.current?.isConnected
@@ -277,19 +282,24 @@ export function MemberListContent({
             )?.focus()
           }}
         >
-          <DialogTitle className="break-words">
-            {target?.name}님을 내보낼까요?
-          </DialogTitle>
-          <DialogDescription>
-            내보내면 이 워크스페이스의 프로젝트와 화이트보드 문서에 더 이상
-            접근할 수 없어요.
-          </DialogDescription>
-          {remove.error && (
-            <p role="alert" className="text-body text-status-danger">
-              멤버를 내보내지 못했어요. 다시 시도해주세요.
-            </p>
-          )}
-          <DialogFooter>
+          <div className="flex flex-col px-6 py-7 text-center">
+            <span className="bg-status-danger-subtle-bg text-status-danger flex size-12 items-center justify-center self-center rounded-full">
+              <UserRoundMinus aria-hidden="true" className="size-6" />
+            </span>
+            <DialogTitle className="mt-4 text-[20px] leading-7 font-semibold break-words">
+              {target?.name}님을 내보낼까요?
+            </DialogTitle>
+            <DialogDescription className="mt-2">
+              내보내면 이 워크스페이스의 프로젝트와 화이트보드 문서에 더 이상
+              접근할 수 없어요.
+            </DialogDescription>
+            {remove.error && (
+              <p role="alert" className="text-caption text-status-danger mt-4">
+                멤버를 내보내지 못했어요. 다시 시도해주세요.
+              </p>
+            )}
+          </div>
+          <DialogFooter className="border-border w-full border-t px-6 py-4">
             <Button
               variant="tertiary"
               disabled={remove.isPending}

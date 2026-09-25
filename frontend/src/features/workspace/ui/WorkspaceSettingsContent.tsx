@@ -121,10 +121,10 @@ function WorkspaceSettingsContent({
       {!workspace.isDefault && (
         <section
           aria-labelledby="workspace-settings-danger-zone"
-          className="mt-12 rounded-xl border border-border bg-background-default p-6"
+          className="border-border bg-background-default mt-12 rounded-xl border p-6"
         >
           <div className="flex items-start gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-status-danger-subtle-bg text-status-danger">
+            <span className="bg-status-danger-subtle-bg text-status-danger flex size-10 shrink-0 items-center justify-center rounded-full">
               <CircleAlert aria-hidden="true" className="size-5" />
             </span>
             <div>
@@ -139,13 +139,14 @@ function WorkspaceSettingsContent({
               </p>
             </div>
           </div>
-          <div className="mt-5 flex flex-col gap-4 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="border-border mt-5 flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <h3 className="text-foreground-default text-label font-semibold">
                 워크스페이스 삭제
               </h3>
               <p className="text-caption text-foreground-secondary mt-1">
-                프로젝트와 화이트보드 문서를 삭제하고, 이 작업은 되돌릴 수 없어요.
+                프로젝트와 화이트보드 문서를 삭제하고, 이 작업은 되돌릴 수
+                없어요.
               </p>
             </div>
             <Button
@@ -166,18 +167,18 @@ function WorkspaceSettingsContent({
           if (!deleteMutation.isPending) setDeleteDialogOpen(open)
         }}
       >
-        <DialogContent className="max-w-[440px] gap-0 overflow-hidden p-0">
-          <div className="p-6">
-            <span className="flex size-11 items-center justify-center rounded-full bg-status-danger-subtle-bg text-status-danger">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[440px] overflow-y-auto p-0 [&>div]:gap-0">
+          <div className="flex flex-col px-6 py-7 text-center">
+            <span className="bg-status-danger-subtle-bg text-status-danger flex size-12 items-center justify-center self-center rounded-full">
               <CircleAlert aria-hidden="true" className="size-6" />
             </span>
-            <DialogTitle className="mt-4 text-[20px] leading-7 font-bold tracking-[-0.012em]">
+            <DialogTitle className="mt-4 text-[20px] leading-7 font-semibold break-words">
               {workspace.name}를 삭제할까요?
             </DialogTitle>
-            <DialogDescription className="mt-2">
+            <DialogDescription className="mt-2 break-words">
               워크스페이스 안의 모든 프로젝트와 화이트보드 문서가 함께 삭제돼요.
             </DialogDescription>
-            <p className="text-caption text-status-danger mt-4 rounded-md bg-status-danger-subtle-bg p-3">
+            <p className="text-caption text-status-danger bg-status-danger-subtle-bg mt-4 w-full rounded-md p-3">
               삭제 후에는 복구할 수 없어요.
             </p>
             {deleteMutation.error && (
@@ -189,7 +190,7 @@ function WorkspaceSettingsContent({
           <DialogFooter
             role="group"
             aria-label="워크스페이스 삭제 확인"
-            className="border-t border-border px-6 py-4"
+            className="border-border w-full border-t px-6 py-4"
           >
             <Button
               type="button"

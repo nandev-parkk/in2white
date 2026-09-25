@@ -1,3 +1,4 @@
+import { FileX } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
 import {
   Dialog,
@@ -31,18 +32,25 @@ function WhiteboardDocumentDeleteDialog({
         if (!loading) onOpenChange(nextOpen)
       }}
     >
-      <DialogContent className="max-w-90">
-        <DialogTitle>화이트보드 삭제</DialogTitle>
-        <DialogDescription>
-          <strong className="text-foreground-default">{documentName}</strong>
-          을(를) 삭제하면 되돌릴 수 없어요.
-        </DialogDescription>
-        {error && (
-          <p className="text-caption text-status-danger" role="alert">
-            {error}
-          </p>
-        )}
-        <DialogFooter>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[440px] overflow-y-auto p-0 [&>div]:gap-0">
+        <div className="flex flex-col px-6 py-7 text-center">
+          <span className="bg-status-danger-subtle-bg text-status-danger flex size-12 items-center justify-center self-center rounded-full">
+            <FileX aria-hidden="true" className="size-6" />
+          </span>
+          <DialogTitle className="mt-4 text-[20px] leading-7 font-semibold break-words">
+            화이트보드 삭제
+          </DialogTitle>
+          <DialogDescription className="mt-2 break-words">
+            <strong className="text-foreground-default">{documentName}</strong>
+            을(를) 삭제하면 되돌릴 수 없어요.
+          </DialogDescription>
+          {error && (
+            <p className="text-caption text-status-danger mt-4" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+        <DialogFooter className="border-border w-full border-t px-6 py-4">
           <Button
             type="button"
             variant="tertiary"
