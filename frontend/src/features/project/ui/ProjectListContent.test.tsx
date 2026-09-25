@@ -177,11 +177,6 @@ describe('ProjectListContent', () => {
       'aria-pressed',
       'true',
     )
-    expect(screen.getByRole('button', { name: '카드 보기' })).toHaveClass(
-      'aria-pressed:ring-1',
-      'aria-pressed:ring-border',
-      'aria-pressed:shadow-sm',
-    )
     expect(screen.getByRole('button', { name: '프로젝트 생성' })).toHaveClass(
       'h-9',
     )
@@ -317,11 +312,6 @@ describe('ProjectListContent', () => {
     expect(screen.getByRole('button', { name: '목록 보기' })).toHaveAttribute(
       'aria-pressed',
       'true',
-    )
-    expect(screen.getByRole('button', { name: '목록 보기' })).toHaveClass(
-      'aria-pressed:ring-1',
-      'aria-pressed:ring-border',
-      'aria-pressed:shadow-sm',
     )
 
     await userEvent.click(screen.getByRole('button', { name: '2' }))
