@@ -11,7 +11,7 @@ type ViewToggleProps = {
 }
 
 const BUTTON_CLASS =
-  'focus-visible:ring-action-focus-ring aria-pressed:bg-background-default aria-pressed:ring-border flex size-7 items-center justify-center rounded-md outline-none focus-visible:ring-3 aria-pressed:shadow-sm aria-pressed:ring-1'
+  'focus-visible:ring-action-focus-ring relative z-10 flex size-7 items-center justify-center rounded-md outline-none focus-visible:ring-3'
 
 function ViewToggle({
   value,
@@ -22,10 +22,14 @@ function ViewToggle({
 }: ViewToggleProps) {
   return (
     <div
-      className="bg-background-subtle flex h-9 items-center gap-0.5 rounded-lg p-1"
+      className="bg-background-subtle relative flex h-9 items-center gap-0.5 rounded-lg p-1"
       role="group"
       aria-label={label}
     >
+      <span
+        aria-hidden="true"
+        className={`bg-background-default ring-border pointer-events-none absolute top-1 left-1 size-7 rounded-md shadow-sm ring-1 transition-transform duration-200 ease-in-out motion-reduce:transition-none ${value === 'table' ? 'translate-x-[calc(100%+0.125rem)]' : 'translate-x-0'}`}
+      />
       <button
         type="button"
         aria-label={gridLabel}
