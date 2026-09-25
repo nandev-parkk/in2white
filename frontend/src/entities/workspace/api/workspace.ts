@@ -19,6 +19,9 @@ export type ListWorkspacesResponse = {
 export type CreateWorkspaceResponse = {
   workspace: Omit<WorkspaceSummary, 'role'>
 }
+type UpdateWorkspaceResponse = {
+  workspace: Omit<WorkspaceSummary, 'role'>
+}
 
 export async function listWorkspacesRequest(
   accessToken: string,
@@ -45,4 +48,30 @@ export async function createWorkspaceRequest(
     ...data.workspace,
     role: 'owner',
   }
+}
+
+export async function updateWorkspaceRequest(
+  workspaceId: string,
+  name: string,
+  accessToken: string,
+): Promise<WorkspaceSummary> {
+  const { data } = await axiosInstance.patch<UpdateWorkspaceResponse>(
+    `/workspaces/${workspaceId}`,
+    { name },
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  )
+
+  return {
+    ...data.workspace,
+    role: 'owner',
+  }
+}
+
+export async function deleteWorkspaceRequest(
+  workspaceId: string,
+  accessToken: string,
+): Promise<void> {
+  await axiosInstance.delete(`/workspaces/${workspaceId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
 }

@@ -32,7 +32,7 @@ vi.mock('@/pages/account', () => ({
   }: {
     workspaceId?: string
     onNavChange?: (
-      key: 'projects' | 'members',
+      key: 'projects' | 'members' | 'settings',
       workspaceId: string | null,
     ) => void
     onWorkspaceChange?: (workspaceId: string) => void
@@ -55,6 +55,12 @@ vi.mock('@/pages/account', () => ({
         onClick={() => onNavChange?.('members', 'workspace-current')}
       >
         멤버 메뉴
+      </button>
+      <button
+        type="button"
+        onClick={() => onNavChange?.('settings', 'workspace-current')}
+      >
+        설정 메뉴
       </button>
       <button
         type="button"
@@ -102,7 +108,7 @@ describe('account route', () => {
     expect(validateSearch({ workspaceId: 123 })).toEqual({})
   })
 
-  it('계정의 프로젝트 메뉴와 workspace 행은 선택 workspace의 project route로 이동한다', async () => {
+  it('계정의 workspace 메뉴는 선택 workspace의 route로 이동한다', async () => {
     useSessionStore.getState().setSession(createToken(2_000_000_000), {
       id: 'user-1',
       name: '테스터',
@@ -138,6 +144,11 @@ describe('account route', () => {
     await userEvent.click(screen.getByRole('button', { name: '멤버 메뉴' }))
     expect(mockNavigate).toHaveBeenLastCalledWith({
       to: '/workspaces/$workspaceId/members',
+      params: { workspaceId: 'workspace-current' },
+    })
+    await userEvent.click(screen.getByRole('button', { name: '설정 메뉴' }))
+    expect(mockNavigate).toHaveBeenLastCalledWith({
+      to: '/workspaces/$workspaceId/settings',
       params: { workspaceId: 'workspace-current' },
     })
   })

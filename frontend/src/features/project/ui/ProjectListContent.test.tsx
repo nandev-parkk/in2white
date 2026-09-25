@@ -410,6 +410,9 @@ describe('ProjectListContent', () => {
         workspaceRole="owner"
       />,
     )
+    // user-event의 body 포커스 해제로 Radix 메뉴가 닫히는 것을 막는다.
+    document.documentElement.tabIndex = -1
+    document.documentElement.focus()
 
     await userEvent.click(
       screen.getByRole('button', { name: `${projectFixture.name} 메뉴` }),
@@ -418,6 +421,8 @@ describe('ProjectListContent', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('프로젝트 수정')
     await userEvent.click(screen.getByRole('button', { name: '취소' }))
 
+    document.documentElement.tabIndex = -1
+    document.documentElement.focus()
     await userEvent.click(
       screen.getByRole('button', { name: `${projectFixture.name} 메뉴` }),
     )

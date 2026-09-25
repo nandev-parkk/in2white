@@ -479,7 +479,7 @@ describe("GET /workspaces/:workspaceId", () => {
 
 describe("PATCH /workspaces/:workspaceId", () => {
   function mockWorkspaceUpdateTransaction({
-    membershipRows = [{ role: "owner" as const }],
+    membershipRows = [{ role: "owner" as const, isDefault: false }],
     updateRows = [
       {
         id: "workspace-1",
@@ -492,12 +492,13 @@ describe("PATCH /workspaces/:workspaceId", () => {
     ],
     updateError,
   }: {
-    membershipRows?: Array<{ role: "owner" | "member" }>;
+    membershipRows?: Array<{ role: "owner" | "member"; isDefault?: boolean }>;
     updateRows?: unknown[];
     updateError?: Error;
   } = {}) {
     const membershipQuery = {
       from: vi.fn().mockReturnThis(),
+      innerJoin: vi.fn().mockReturnThis(),
       where: vi.fn().mockResolvedValue(membershipRows),
     };
     const workspaceUpdate = {
@@ -545,8 +546,15 @@ describe("PATCH /workspaces/:workspaceId", () => {
     });
     expect(db.transaction).toHaveBeenCalledOnce();
     expect(transaction.select).toHaveBeenCalledOnce();
-    expect(transaction.select).toHaveBeenCalledWith({ role: workspaceMemberships.role });
+    expect(transaction.select).toHaveBeenCalledWith({
+      role: workspaceMemberships.role,
+      isDefault: workspaces.isDefault,
+    });
     expect(membershipQuery.from).toHaveBeenCalledWith(workspaceMemberships);
+    expect(membershipQuery.innerJoin).toHaveBeenCalledWith(
+      workspaces,
+      eq(workspaceMemberships.workspaceId, workspaces.id),
+    );
     expect(membershipQuery.where).toHaveBeenCalledWith(
       and(
         eq(workspaceMemberships.workspaceId, "workspace-1"),
@@ -561,6 +569,24 @@ describe("PATCH /workspaces/:workspaceId", () => {
     expect(workspaceUpdate.where).toHaveBeenCalledWith(
       and(eq(workspaces.id, "workspace-1"), eq(workspaces.ownerId, "user-1")),
     );
+  });
+
+  it("returns 403 when the owner tries to rename the default workspace", async () => {
+    const { transaction } = mockWorkspaceUpdateTransaction({
+      membershipRows: [{ role: "owner", isDefault: true }],
+    });
+
+    const response = await request(createApp())
+      .patch("/workspaces/workspace-1")
+      .set("Authorization", `Bearer ${await createAccessToken()}`)
+      .send({ name: "Renamed Workspace" });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toEqual({
+      code: "WORKSPACE_DEFAULT_UPDATE_FORBIDDEN",
+      message: "기본 워크스페이스의 이름은 변경할 수 없습니다",
+    });
+    expect(transaction.update).not.toHaveBeenCalled();
   });
 
   it("returns 401 when the request is not authenticated", async () => {

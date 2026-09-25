@@ -239,6 +239,9 @@ describe('WhiteboardDocumentListContent', () => {
       updateMutation as never,
     )
     renderContent({ workspaceRole: 'owner' })
+    // user-event의 body 포커스 해제로 Radix 메뉴가 닫히는 것을 막는다.
+    document.documentElement.tabIndex = -1
+    document.documentElement.focus()
 
     await userEvent.click(
       screen.getByRole('button', { name: '킥오프 화이트보드 메뉴' }),
@@ -262,6 +265,9 @@ describe('WhiteboardDocumentListContent', () => {
       deleteMutation as never,
     )
     renderContent({ workspaceRole: 'owner' })
+    // user-event의 body 포커스 해제로 Radix 메뉴가 닫히는 것을 막는다.
+    document.documentElement.tabIndex = -1
+    document.documentElement.focus()
 
     await userEvent.click(
       screen.getByRole('button', { name: '킥오프 화이트보드 메뉴' }),

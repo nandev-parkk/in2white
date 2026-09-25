@@ -34,9 +34,10 @@ const workspaceFixture: WorkspaceSummary = {
 
 const mockUseWorkspaces = vi.fn()
 const mockUseCreateWorkspace = vi.fn()
+const { mockNavigate } = vi.hoisted(() => ({ mockNavigate: vi.fn() }))
 
 vi.mock('@tanstack/react-router', () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
 }))
 
 vi.mock('@/features/auth/api/session', () => ({
@@ -68,6 +69,7 @@ function renderLayout(children: React.ReactNode) {
 describe('AuthenticatedWorkspaceLayout', () => {
   afterEach(() => vi.useRealTimers())
   beforeEach(() => {
+    mockNavigate.mockReset()
     useSessionStore.getState().clearSession()
     useSessionStore.getState().setSession('token-1', userFixture)
     mockUseWorkspaces.mockReset()
@@ -148,7 +150,25 @@ describe('AuthenticatedWorkspaceLayout', () => {
     expect(screen.getByText('workspace-default')).toBeInTheDocument()
   })
 
-  it('navigation callback에 선택 workspace ID를 전달한다', async () => {
+  it('일반 navigation callback에 선택 workspace ID를 전달한다', async () => {
+    const onNavChange = vi.fn()
+
+    renderLayout(
+      <AuthenticatedWorkspaceLayout
+        workspaceId="workspace-1"
+        activeNav="projects"
+        onNavChange={onNavChange}
+      >
+        {() => null}
+      </AuthenticatedWorkspaceLayout>,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: '프로젝트' }))
+
+    expect(onNavChange).toHaveBeenCalledWith('projects', 'workspace-1')
+  })
+
+  it('화면 callback이 있으면 설정 navigation을 선택 workspace ID와 함께 위임한다', async () => {
     const onNavChange = vi.fn()
 
     renderLayout(
@@ -164,6 +184,22 @@ describe('AuthenticatedWorkspaceLayout', () => {
     await userEvent.click(screen.getByRole('button', { name: '설정' }))
 
     expect(onNavChange).toHaveBeenCalledWith('settings', 'workspace-1')
+    expect(mockNavigate).not.toHaveBeenCalled()
+  })
+
+  it('화면 callback이 없는 경우에도 설정 메뉴는 선택 workspace로 이동한다', async () => {
+    renderLayout(
+      <AuthenticatedWorkspaceLayout workspaceId="workspace-1" activeNav="projects">
+        {() => null}
+      </AuthenticatedWorkspaceLayout>,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: '설정' }))
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/workspaces/$workspaceId/settings',
+      params: { workspaceId: 'workspace-1' },
+    })
   })
 
   it('사용자 정보 callback에 선택 workspace ID를 전달한다', async () => {

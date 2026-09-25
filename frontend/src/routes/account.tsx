@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { AccountPage } from '@/pages/account'
 
 import { redirectIfUnauthenticated } from './index'
-import { PROJECTS_ROUTE } from './workspaces/$workspaceId/projects'
+import { WORKSPACE_NAV_ROUTES } from './workspaces/$workspaceId/-route-paths'
 
 export const ACCOUNT_ROUTE = '/account' as const
 
@@ -31,14 +31,10 @@ function AccountRoute() {
         })
       }
       onNavChange={(key, selectedWorkspaceId) => {
-        if ((key !== 'projects' && key !== 'members') || !selectedWorkspaceId)
-          return
+        if (!selectedWorkspaceId) return
 
         void navigate({
-          to:
-            key === 'members'
-              ? '/workspaces/$workspaceId/members'
-              : PROJECTS_ROUTE,
+          to: WORKSPACE_NAV_ROUTES[key],
           params: { workspaceId: selectedWorkspaceId },
         })
       }}

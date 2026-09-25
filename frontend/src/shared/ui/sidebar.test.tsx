@@ -1047,7 +1047,20 @@ describe('Sidebar', () => {
     ).toBeInTheDocument()
   })
 
-  it('기존 내비게이션, 사용자 정보, 로그아웃 동작을 유지한다', async () => {
+  it('member에게 설정 메뉴를 표시하지 않는다', () => {
+    render(
+      <Sidebar
+        {...sidebarFixture}
+        workspace={{ ...workspaceFixture, isDefault: false, role: 'member' }}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: '설정' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('Owner는 기본 워크스페이스에서 설정으로 이동하고 기존 내비게이션 동작을 유지한다', async () => {
     const user = userEvent.setup()
     const onNavChange = vi.fn()
     const onUserClick = vi.fn()

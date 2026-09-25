@@ -246,15 +246,14 @@ function WorkspaceLayoutContent({
     setLoadingStartedAt(Date.now())
     setInternalActiveNav(key)
     if (onNavChange) onNavChange(key, resolvedSelectedWorkspaceId)
-    else if (
-      resolvedSelectedWorkspaceId &&
-      (key === 'projects' || key === 'members')
-    ) {
+    else if (resolvedSelectedWorkspaceId) {
       void navigate({
         to:
           key === 'members'
             ? '/workspaces/$workspaceId/members'
-            : '/workspaces/$workspaceId/projects',
+            : key === 'settings'
+              ? '/workspaces/$workspaceId/settings'
+              : '/workspaces/$workspaceId/projects',
         params: { workspaceId: resolvedSelectedWorkspaceId },
       })
     }

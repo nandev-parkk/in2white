@@ -1,1 +1,6 @@
-export { useCreateWorkspace, useWorkspaces } from './model/use-workspaces'
+export {
+  useCreateWorkspace,
+  useDeleteWorkspace,
+  useUpdateWorkspace,
+  useWorkspaces,
+} from './model/use-workspaces'

@@ -803,14 +803,16 @@ function Sidebar({
             )
           }
         />
-        <SidebarNavItem
-          collapsed={visualCollapsed}
-          compact={compact}
-          icon={SlidersHorizontal}
-          label="설정"
-          active={activeNav === 'settings'}
-          onClick={() => onNavChange('settings')}
-        />
+        {workspace?.role === 'owner' && (
+          <SidebarNavItem
+            collapsed={visualCollapsed}
+            compact={compact}
+            icon={SlidersHorizontal}
+            label="설정"
+            active={activeNav === 'settings'}
+            onClick={() => onNavChange('settings')}
+          />
+        )}
       </div>
 
       <div className="flex-1" />
