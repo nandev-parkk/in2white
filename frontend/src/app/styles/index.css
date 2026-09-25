@@ -47,6 +47,11 @@
   --status-info: oklch(0.563 0.241 261);
   --status-info-subtle-bg: oklch(0.954 0.022 250);
 
+  /* Color / toast */
+  --toast-success: oklch(0.52 0.16 144);
+  --toast-warning: oklch(0.54 0.128 56);
+  --toast-info: oklch(0.54 0.22 261);
+
   /* Color / presence (identical across light/dark, DESIGN.md §6.7) */
   --presence-1: oklch(0.756 0.232 138);
   --presence-2: oklch(0.736 0.131 216);
@@ -119,6 +124,10 @@
   --status-danger-subtle-bg: oklch(0.298 0.1 22 / 0.32);
   --status-info: oklch(0.715 0.155 255);
   --status-info-subtle-bg: oklch(0.149 0.069 257);
+
+  --toast-success: var(--status-success);
+  --toast-warning: var(--status-warning);
+  --toast-info: var(--status-info);
 }
 
 @theme inline {
@@ -220,6 +229,10 @@
   --color-status-danger-subtle-bg: var(--status-danger-subtle-bg);
   --color-status-info: var(--status-info);
   --color-status-info-subtle-bg: var(--status-info-subtle-bg);
+
+  --color-toast-success: var(--toast-success);
+  --color-toast-warning: var(--toast-warning);
+  --color-toast-info: var(--toast-info);
 
   --color-presence-1: var(--presence-1);
   --color-presence-2: var(--presence-2);
