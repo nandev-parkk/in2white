@@ -5,15 +5,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   createWorkspaceRequest,
+  deleteWorkspaceRequest,
   listWorkspacesRequest,
   type WorkspaceSummary,
+  updateWorkspaceRequest,
 } from '@/entities/workspace'
 
-import { useCreateWorkspace, useWorkspaces } from './use-workspaces'
+import {
+  useCreateWorkspace,
+  useDeleteWorkspace,
+  useUpdateWorkspace,
+  useWorkspaces,
+} from './use-workspaces'
 
 vi.mock('@/entities/workspace', () => ({
   createWorkspaceRequest: vi.fn(),
+  deleteWorkspaceRequest: vi.fn(),
   listWorkspacesRequest: vi.fn(),
+  updateWorkspaceRequest: vi.fn(),
 }))
 
 const workspaceFixture: WorkspaceSummary = {
@@ -104,5 +113,78 @@ describe('workspace hooks', () => {
       expect(listWorkspacesRequest).toHaveBeenLastCalledWith('token-2'),
     )
     expect(result.current.data).toBeUndefined()
+  })
+
+  it('워크스페이스를 수정하면 API 인자를 전달하고 목록을 무효화한다', async () => {
+    const updatedWorkspace = { ...workspaceFixture, name: '브랜드 스튜디오 2' }
+    vi.mocked(updateWorkspaceRequest).mockResolvedValue(updatedWorkspace)
+
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false } },
+    })
+    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useUpdateWorkspace('token-1'), {
+      wrapper: createQueryClientWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        workspaceId: 'workspace-1',
+        name: '브랜드 스튜디오 2',
+      })
+    })
+
+    expect(updateWorkspaceRequest).toHaveBeenCalledWith(
+      'workspace-1',
+      '브랜드 스튜디오 2',
+      'token-1',
+    )
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: ['workspaces'],
+    })
+  })
+
+  it('워크스페이스를 삭제하면 API 인자를 전달하고 목록을 무효화한다', async () => {
+    vi.mocked(deleteWorkspaceRequest).mockResolvedValue(undefined)
+
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false } },
+    })
+    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useDeleteWorkspace('token-1'), {
+      wrapper: createQueryClientWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current.mutateAsync('workspace-1')
+    })
+
+    expect(deleteWorkspaceRequest).toHaveBeenCalledWith(
+      'workspace-1',
+      'token-1',
+    )
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+      queryKey: ['workspaces'],
+    })
+  })
+
+  it('워크스페이스 수정이 실패하면 목록을 무효화하지 않는다', async () => {
+    vi.mocked(updateWorkspaceRequest).mockRejectedValueOnce(new Error('fail'))
+
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false } },
+    })
+    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useUpdateWorkspace('token-1'), {
+      wrapper: createQueryClientWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({ workspaceId: 'workspace-1', name: '새 이름' }),
+      ).rejects.toThrow('fail')
+    })
+
+    expect(invalidateQueriesSpy).not.toHaveBeenCalled()
   })
 })

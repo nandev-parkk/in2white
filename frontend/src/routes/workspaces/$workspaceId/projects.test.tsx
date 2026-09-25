@@ -24,7 +24,10 @@ vi.mock('@/pages/home', () => ({
     onWorkspaceChange,
   }: {
     workspaceId?: string
-    onNavChange?: (key: 'settings', workspaceId: string | null) => void
+    onNavChange?: (
+      key: 'projects' | 'members' | 'settings',
+      workspaceId: string | null,
+    ) => void
     onUserClick?: (workspaceId: string | null) => void
     onWorkspaceChange?: (workspaceId: string) => void
   }) => {
@@ -47,6 +50,12 @@ vi.mock('@/pages/home', () => ({
           onClick={() => onNavChange?.('settings', 'workspace-current')}
         >
           설정
+        </button>
+        <button
+          type="button"
+          onClick={() => onNavChange?.('settings', null)}
+        >
+          workspace 없음
         </button>
         <button
           type="button"
@@ -171,7 +180,7 @@ describe('project route', () => {
     })
   })
 
-  it('사이드바 설정은 account route로 이동하지 않는다', async () => {
+  it('사이드바 설정은 현재 workspace 설정 route로 이동한다', async () => {
     useSessionStore.getState().setSession(createToken(2_000_000_000), {
       id: 'user-1',
       name: '테스터',
@@ -187,10 +196,34 @@ describe('project route', () => {
     render(<RouterProvider router={router} />)
 
     await userEvent.click(await screen.findByRole('button', { name: '설정' }))
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(
+        '/workspaces/workspace-current/settings',
+      ),
+    )
+  })
+
+  it('workspace ID가 없으면 설정 route 이동을 건너뛴다', async () => {
+    useSessionStore.getState().setSession(createToken(2_000_000_000), {
+      id: 'user-1',
+      name: '테스터',
+      email: 'user@in2white.team',
+    })
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/workspaces/workspace-current/projects'],
+      }),
+    })
+
+    render(<RouterProvider router={router} />)
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'workspace 없음' }),
+    )
 
     expect(router.state.location.pathname).toBe(
       '/workspaces/workspace-current/projects',
     )
   })
+
 })

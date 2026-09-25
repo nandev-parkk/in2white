@@ -117,6 +117,20 @@ it('프로젝트와 멤버 사이드바가 실제 경로로 이동한다', async
     expect(router.state.location.pathname).toBe('/workspaces/ws/projects'),
   )
 })
+it('멤버 화면의 설정 메뉴는 현재 workspace 설정 경로로 이동한다', async () => {
+  const router = await mount()
+  await screen.findByRole('heading', { name: '멤버' }, { timeout: 4000 })
+
+  await userEvent.click(
+    within(screen.getByRole('complementary')).getByRole('button', {
+      name: '설정',
+    }),
+  )
+
+  await waitFor(() =>
+    expect(router.state.location.pathname).toBe('/workspaces/ws/settings'),
+  )
+})
 it('비로그인 멤버 경로 접근은 로그인으로 이동한다', async () => {
   useSessionStore.getState().clearSession()
   const router = await mount()

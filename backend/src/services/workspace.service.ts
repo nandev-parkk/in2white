@@ -162,8 +162,9 @@ export async function updateWorkspace({
 }: UpdateWorkspaceInput): Promise<typeof workspaces.$inferSelect> {
   return db.transaction(async (tx) => {
     const [membership] = await tx
-      .select({ role: workspaceMemberships.role })
+      .select({ role: workspaceMemberships.role, isDefault: workspaces.isDefault })
       .from(workspaceMemberships)
+      .innerJoin(workspaces, eq(workspaceMemberships.workspaceId, workspaces.id))
       .where(
         and(
           eq(workspaceMemberships.workspaceId, workspaceId),
@@ -180,6 +181,14 @@ export async function updateWorkspace({
         403,
         "WORKSPACE_UPDATE_FORBIDDEN",
         ERROR_MESSAGES.WORKSPACE_UPDATE_FORBIDDEN,
+      );
+    }
+
+    if (membership.isDefault) {
+      throw new HttpError(
+        403,
+        "WORKSPACE_DEFAULT_UPDATE_FORBIDDEN",
+        ERROR_MESSAGES.WORKSPACE_DEFAULT_UPDATE_FORBIDDEN,
       );
     }
 

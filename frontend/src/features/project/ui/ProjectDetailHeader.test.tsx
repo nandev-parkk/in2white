@@ -76,6 +76,9 @@ describe('ProjectDetailHeader', () => {
 
   it('메뉴에서 수정과 삭제를 호출한다', async () => {
     const props = renderHeader()
+    // user-event의 body 포커스 해제로 Radix 메뉴가 닫히는 것을 막는다.
+    document.documentElement.tabIndex = -1
+    document.documentElement.focus()
 
     await userEvent.click(
       screen.getByRole('button', { name: '2026 브랜드 리뉴얼 메뉴' }),

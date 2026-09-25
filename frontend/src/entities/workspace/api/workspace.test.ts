@@ -2,12 +2,14 @@ import { axiosInstance } from '@/shared/api'
 
 import {
   createWorkspaceRequest,
+  deleteWorkspaceRequest,
   listWorkspacesRequest,
+  updateWorkspaceRequest,
   type WorkspaceSummary,
 } from './workspace'
 
 vi.mock('@/shared/api', () => ({
-  axiosInstance: { get: vi.fn(), post: vi.fn() },
+  axiosInstance: { delete: vi.fn(), get: vi.fn(), patch: vi.fn(), post: vi.fn() },
 }))
 
 const workspaceFixture: WorkspaceSummary = {
@@ -61,5 +63,40 @@ describe('workspace API requests', () => {
       { name: '새 팀' },
       { headers: { Authorization: 'Bearer token-1' } },
     )
+  })
+
+  it('워크스페이스 이름을 수정하고 owner 역할을 붙여 반환한다', async () => {
+    const updatedWorkspaceResponse = {
+      ...createdWorkspaceResponseFixture,
+      id: workspaceFixture.id,
+      name: '브랜드 스튜디오 2',
+    }
+    vi.mocked(axiosInstance.patch).mockResolvedValueOnce({
+      data: { workspace: updatedWorkspaceResponse },
+    })
+
+    await expect(
+      updateWorkspaceRequest(
+        workspaceFixture.id,
+        '브랜드 스튜디오 2',
+        'token-1',
+      ),
+    ).resolves.toEqual({ ...updatedWorkspaceResponse, role: 'owner' })
+    expect(axiosInstance.patch).toHaveBeenCalledWith(
+      '/workspaces/workspace-1',
+      { name: '브랜드 스튜디오 2' },
+      { headers: { Authorization: 'Bearer token-1' } },
+    )
+  })
+
+  it('워크스페이스를 삭제하고 응답 본문 없이 완료한다', async () => {
+    vi.mocked(axiosInstance.delete).mockResolvedValueOnce({ data: undefined })
+
+    await expect(deleteWorkspaceRequest('workspace-1', 'token-1')).resolves.toBe(
+      undefined,
+    )
+    expect(axiosInstance.delete).toHaveBeenCalledWith('/workspaces/workspace-1', {
+      headers: { Authorization: 'Bearer token-1' },
+    })
   })
 })

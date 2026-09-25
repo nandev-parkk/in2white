@@ -1,31 +1,31 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
-import { HomePage } from '@/pages/home'
+import { WorkspaceSettingsPage } from '@/pages/workspace-settings'
 
 import { redirectIfUnauthenticated } from '../../index'
 import {
-  PROJECT_DETAIL_ROUTE,
   PROJECTS_ROUTE,
+  SETTINGS_ROUTE,
   WORKSPACE_NAV_ROUTES,
 } from './-route-paths'
 
-export { PROJECTS_ROUTE }
+export { SETTINGS_ROUTE }
 
-export const Route = createFileRoute('/workspaces/$workspaceId/projects')({
+export const Route = createFileRoute('/workspaces/$workspaceId/settings')({
   beforeLoad: redirectIfUnauthenticated,
-  component: WorkspaceProjectsRoute,
+  component: WorkspaceSettingsRoute,
 })
 
-function WorkspaceProjectsRoute() {
+function WorkspaceSettingsRoute() {
   const { workspaceId } = Route.useParams()
   const navigate = useNavigate()
 
   return (
-    <HomePage
+    <WorkspaceSettingsPage
       workspaceId={workspaceId}
       onWorkspaceChange={(nextWorkspaceId) =>
         navigate({
-          to: PROJECTS_ROUTE,
+          to: SETTINGS_ROUTE,
           params: { workspaceId: nextWorkspaceId },
         })
       }
@@ -45,11 +45,9 @@ function WorkspaceProjectsRoute() {
           },
         })
       }}
-      onProjectOpen={(projectId) =>
-        void navigate({
-          to: PROJECT_DETAIL_ROUTE,
-          params: { workspaceId, projectId },
-        })
+      onDeleted={() => void navigate({ to: '/' })}
+      onReturn={() =>
+        void navigate({ to: PROJECTS_ROUTE, params: { workspaceId } })
       }
     />
   )
