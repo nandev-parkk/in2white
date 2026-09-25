@@ -18,10 +18,10 @@ function Toaster({
       offset={{ top: 24, right: 24 }}
       duration={duration}
       icons={{
-        success: <CircleCheck className="text-status-success size-5" />,
+        success: <CircleCheck className="text-toast-success size-5" />,
         error: <CircleAlert className="text-status-danger size-5" />,
-        info: <Info className="text-status-info size-5" />,
-        warning: <TriangleAlert className="text-status-warning size-5" />,
+        info: <Info className="text-toast-info size-5" />,
+        warning: <TriangleAlert className="text-toast-warning size-5" />,
       }}
       toastOptions={{
         unstyled: true,
@@ -34,16 +34,19 @@ function Toaster({
           ),
           content: cn('min-w-0', toastOptions?.classNames?.content),
           success: cn(
-            'bg-status-success-subtle-bg',
+            'border border-toast-success bg-status-success-subtle-bg text-toast-success',
             toastOptions?.classNames?.success,
           ),
           error: cn(
-            'bg-status-danger-subtle-bg',
+            'border border-status-danger bg-status-danger-subtle-bg text-status-danger',
             toastOptions?.classNames?.error,
           ),
-          info: cn('bg-status-info-subtle-bg', toastOptions?.classNames?.info),
+          info: cn(
+            'border border-toast-info bg-status-info-subtle-bg text-toast-info',
+            toastOptions?.classNames?.info,
+          ),
           warning: cn(
-            'bg-status-warning-subtle-bg',
+            'border border-toast-warning bg-status-warning-subtle-bg text-toast-warning',
             toastOptions?.classNames?.warning,
           ),
         },
