@@ -70,13 +70,17 @@ function UserPicker({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[calc(100svh-32px)] w-[calc(100%-32px)] max-w-95 overflow-y-auto p-6 [&>div]:gap-4"
+        className="max-h-[calc(100svh-32px)] w-[calc(100%-2rem)] max-w-[440px] overflow-y-auto p-7 [&>div]:gap-4"
         onCloseAutoFocus={onCloseAutoFocus}
       >
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription className="sr-only">
-          사용자를 검색하고 선택하면 워크스페이스에 바로 추가해요.
-        </DialogDescription>
+        <div>
+          <DialogTitle className="text-[20px] leading-7 font-semibold">
+            {title}
+          </DialogTitle>
+          <DialogDescription className="mt-2">
+            사용자를 검색하고 선택하면 워크스페이스에 바로 추가해요.
+          </DialogDescription>
+        </div>
         <Search
           aria-label="추가할 사용자 검색"
           className="w-full"

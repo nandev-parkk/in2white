@@ -6,6 +6,7 @@ import { Button } from '@/shared/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogTitle,
 } from '@/shared/ui/dialog'
@@ -84,13 +85,20 @@ function ProjectFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-90">
-        <DialogTitle>{title}</DialogTitle>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[440px] overflow-y-auto p-7">
+        <div>
+          <DialogTitle className="text-[20px] leading-7 font-semibold">
+            {title}
+          </DialogTitle>
+          <DialogDescription className="mt-2">
+            프로젝트 이름과 설명을 입력해 주세요.
+          </DialogDescription>
+        </div>
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-1.5">
               <label
-                className="text-label text-foreground-default"
+                className="text-label text-foreground-default font-medium"
                 htmlFor="project-name"
               >
                 이름
@@ -124,7 +132,7 @@ function ProjectFormDialog({
             </div>
             <div className="flex flex-col gap-1.5">
               <label
-                className="text-label text-foreground-default"
+                className="text-label text-foreground-default font-medium"
                 htmlFor="project-description"
               >
                 설명 <span className="text-foreground-tertiary">(선택)</span>
@@ -164,7 +172,7 @@ function ProjectFormDialog({
               {error}
             </p>
           )}
-          <DialogFooter className="mt-5">
+          <DialogFooter className="border-border mt-6 border-t pt-5">
             <Button
               type="button"
               variant="tertiary"

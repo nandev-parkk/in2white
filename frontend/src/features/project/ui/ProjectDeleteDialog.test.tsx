@@ -21,6 +21,23 @@ describe('ProjectDeleteDialog', () => {
     )
   })
 
+  it('삭제 설명을 연결하고 장식 아이콘을 숨긴다', () => {
+    render(
+      <ProjectDeleteDialog
+        open
+        projectName="홈페이지 개편"
+        onOpenChange={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    const dialog = screen.getByRole('dialog', { name: '프로젝트 삭제' })
+    expect(dialog).toHaveAccessibleDescription(
+      /홈페이지 개편.*되돌릴 수 없어요/,
+    )
+    expect(dialog.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument()
+  })
+
   it('확인하면 삭제 콜백을 호출한다', async () => {
     const onConfirm = vi.fn()
     render(
