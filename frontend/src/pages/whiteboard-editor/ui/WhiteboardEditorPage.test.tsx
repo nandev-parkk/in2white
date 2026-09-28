@@ -98,12 +98,19 @@ it('접근할 수 없는 문서에서 편집기를 열지 않는다', async () =
     response: { status: 404 },
   })
   show()
-  expect(
-    await screen.findByText('화이트보드를 찾을 수 없어요'),
-  ).toBeInTheDocument()
+  const missing = await screen.findByText('화이트보드를 찾을 수 없어요')
+  expect(missing).toBeInTheDocument()
   expect(
     screen.getByRole('button', { name: '프로젝트로 돌아가기' }),
   ).toBeInTheDocument()
+  // 부재 상태는 실패가 아니므로 위험 아이콘과 role="alert", 재시도를 두지 않는다.
+  const emptyState = missing.closest('[data-slot="empty-state"]')
+  expect(emptyState).not.toBeNull()
+  expect(emptyState!.querySelector('.lucide-file-x')).not.toBeNull()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: '다시 시도' }),
+  ).not.toBeInTheDocument()
 })
 it('세션 초기화 후에도 이미 열린 편집기를 보존한다', async () => {
   vi.mocked(getWhiteboardDocumentRequest).mockResolvedValue({
@@ -134,5 +141,15 @@ it('일시 조회 실패에서 재시도를 제공한다', async () => {
   show()
   expect(
     await screen.findByRole('button', { name: '다시 시도' }),
+  ).toBeInTheDocument()
+  const failure = screen.getByRole('alert')
+  expect(failure).toHaveTextContent('화이트보드를 불러오지 못했어요')
+  expect(failure).toHaveTextContent('잠시 후 다시 시도해보세요')
+  expect(failure.querySelector('.lucide-circle-alert')).toHaveClass(
+    'text-status-danger',
+    'size-8',
+  )
+  expect(
+    screen.getByRole('button', { name: '프로젝트로 돌아가기' }),
   ).toBeInTheDocument()
 })

@@ -11,6 +11,7 @@ import {
 } from '@/features/project'
 import { Button } from '@/shared/ui/button'
 import { EmptyState } from '@/shared/ui/empty-state'
+import { ErrorState } from '@/shared/ui/error-state'
 import { ListPagination } from '@/shared/ui/list-pagination'
 import { DelayedLoading } from '@/shared/ui/loading-state'
 import { ResourceListSkeleton } from '@/shared/ui/resource-list-skeleton'
@@ -205,20 +206,21 @@ function ProjectListContent({
       )}
 
       {projectsQuery.isError && (
-        <div className="flex min-h-48 flex-col items-center justify-center gap-4">
-          <p className="text-body text-foreground-secondary">
-            프로젝트를 불러오지 못했어요
-          </p>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setLoadingStartedAt(Date.now())
-              void projectsQuery.refetch()
-            }}
-          >
-            다시 시도
-          </Button>
-        </div>
+        <ErrorState
+          className="min-h-48"
+          title="프로젝트를 불러오지 못했어요"
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setLoadingStartedAt(Date.now())
+                void projectsQuery.refetch()
+              }}
+            >
+              다시 시도
+            </Button>
+          }
+        />
       )}
 
       {!projectsQuery.isLoading &&

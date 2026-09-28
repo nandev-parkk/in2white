@@ -195,6 +195,13 @@ it('초기 로딩에는 skeleton, 실패에는 다시 시도, 빈 검색에는 �
       },
     }),
   )
+  const failure = await screen.findByRole('alert')
+  expect(failure).toHaveTextContent('멤버를 불러오지 못했어요')
+  expect(failure).toHaveTextContent('잠시 후 다시 시도해보세요')
+  expect(failure.querySelector('.lucide-circle-alert')).toHaveClass(
+    'text-status-danger',
+    'size-8',
+  )
   await userEvent.click(
     await screen.findByRole('button', { name: '다시 시도' }),
   )

@@ -1,10 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  CircleAlert,
-  Search as SearchIcon,
-  UserRoundMinus,
-  X,
-} from 'lucide-react'
+import { Search as SearchIcon, UserRoundMinus, X } from 'lucide-react'
 import type { Member } from '@/entities/member'
 import {
   useMembers,
@@ -24,6 +19,7 @@ import {
   DialogFooter,
 } from '@/shared/ui/dialog'
 import { EmptyState } from '@/shared/ui/empty-state'
+import { ErrorState } from '@/shared/ui/error-state'
 import { ListCell } from '@/shared/ui/list-cell'
 import {
   Pagination,
@@ -155,8 +151,7 @@ export function MemberListContent({
           </div>
         </DelayedLoading>
       ) : query.isError ? (
-        <EmptyState
-          icon={<CircleAlert className="text-status-danger size-6" />}
+        <ErrorState
           title="멤버를 불러오지 못했어요"
           description="잠시 후 다시 시도해보세요"
           action={
@@ -173,7 +168,7 @@ export function MemberListContent({
         />
       ) : query.data?.members.length === 0 ? (
         <EmptyState
-          icon={<SearchIcon className="size-6" />}
+          icon={<SearchIcon className="size-8" />}
           title={resultSearch ? '검색 결과가 없어요' : '멤버가 없어요'}
           description="다른 검색어로 다시 시도해보세요"
           action={

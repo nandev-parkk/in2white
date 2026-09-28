@@ -1,8 +1,11 @@
 import { lazy, Suspense, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { FileX } from 'lucide-react'
 import { getWhiteboardDocumentRequest } from '@/entities/whiteboard-document'
 import { useSessionStore } from '@/entities/session'
 import { Button } from '@/shared/ui/button'
+import { EmptyState } from '@/shared/ui/empty-state'
+import { ErrorState } from '@/shared/ui/error-state'
 import { LoadingState } from '@/shared/ui/loading-state'
 import { CanvasTopBar } from '@/shared/ui/canvas-top-bar'
 
@@ -71,26 +74,42 @@ function WhiteboardEditorContent({
     const missing =
       (query.error as { response?: { status?: number } }).response?.status ===
       404
+    // 부재(404)는 실패가 아니라 빈 상태로, 로딩 실패만 ErrorState로 안내한다.
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-4">
-        <h1>
-          {missing
-            ? '화이트보드를 찾을 수 없어요'
-            : '화이트보드를 불러오지 못했어요'}
-        </h1>
-        {!missing && (
-          <Button
-            onClick={() => {
-              setStartedAt(Date.now())
-              void query.refetch()
-            }}
-          >
-            다시 시도
-          </Button>
+      <main className="bg-background-default flex min-h-dvh items-center justify-center">
+        {missing ? (
+          <EmptyState
+            className="w-full max-w-90"
+            icon={<FileX className="size-8" />}
+            title="화이트보드를 찾을 수 없어요"
+            description="삭제되었거나 접근할 수 없는 화이트보드예요"
+            action={
+              <Button variant="secondary" onClick={onBack}>
+                프로젝트로 돌아가기
+              </Button>
+            }
+          />
+        ) : (
+          <ErrorState
+            className="w-full max-w-90"
+            title="화이트보드를 불러오지 못했어요"
+            action={
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    setStartedAt(Date.now())
+                    void query.refetch()
+                  }}
+                >
+                  다시 시도
+                </Button>
+                <Button variant="secondary" onClick={onBack}>
+                  프로젝트로 돌아가기
+                </Button>
+              </div>
+            }
+          />
         )}
-        <Button variant="secondary" onClick={onBack}>
-          프로젝트로 돌아가기
-        </Button>
       </main>
     )
   }

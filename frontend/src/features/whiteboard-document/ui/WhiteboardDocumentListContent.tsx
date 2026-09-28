@@ -15,6 +15,7 @@ import {
 import { formatCreatedAt, formatUpdatedAt } from '@/shared/lib/resource-date'
 import { Button } from '@/shared/ui/button'
 import { EmptyState } from '@/shared/ui/empty-state'
+import { ErrorState } from '@/shared/ui/error-state'
 import { ListPagination } from '@/shared/ui/list-pagination'
 import { DelayedLoading } from '@/shared/ui/loading-state'
 import { ResourceListSkeleton } from '@/shared/ui/resource-list-skeleton'
@@ -207,20 +208,21 @@ function WhiteboardDocumentListContent({
       )}
 
       {documentsQuery.isError && (
-        <div className="flex min-h-48 flex-col items-center justify-center gap-4">
-          <p className="text-body text-foreground-secondary">
-            화이트보드를 불러오지 못했어요
-          </p>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setLoadingStartedAt(Date.now())
-              void documentsQuery.refetch()
-            }}
-          >
-            다시 시도
-          </Button>
-        </div>
+        <ErrorState
+          className="min-h-48"
+          title="화이트보드를 불러오지 못했어요"
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setLoadingStartedAt(Date.now())
+                void documentsQuery.refetch()
+              }}
+            >
+              다시 시도
+            </Button>
+          }
+        />
       )}
 
       {!documentsQuery.isLoading &&

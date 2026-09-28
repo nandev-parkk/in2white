@@ -20,6 +20,7 @@ import { AuthenticatedWorkspaceLayout } from '@/pages/shared/ui/AuthenticatedWor
 import { MESSAGES } from '@/shared/constants/messages'
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
 import { Button } from '@/shared/ui/button'
+import { ErrorState } from '@/shared/ui/error-state'
 import { DelayedLoading } from '@/shared/ui/loading-state'
 import { Input } from '@/shared/ui/input'
 import { ListCell } from '@/shared/ui/list-cell'
@@ -190,20 +191,18 @@ function AccountContent({
               </div>
             </DelayedLoading>
           ) : workspaceError ? (
-            <div
-              className="flex items-center justify-between gap-4"
-              role="alert"
-            >
-              <p className="text-status-danger text-[12px]">
-                워크스페이스를 불러오지 못했어요
-              </p>
-              <Button
-                variant="secondary"
-                onClick={() => void refetchWorkspaces()}
-              >
-                다시 시도
-              </Button>
-            </div>
+            <ErrorState
+              size="compact"
+              title="워크스페이스를 불러오지 못했어요"
+              action={
+                <Button
+                  variant="secondary"
+                  onClick={() => void refetchWorkspaces()}
+                >
+                  다시 시도
+                </Button>
+              }
+            />
           ) : (
             <div className="flex flex-col gap-2">
               <div className="relative">
