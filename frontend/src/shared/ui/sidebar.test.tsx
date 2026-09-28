@@ -1022,10 +1022,12 @@ describe('Sidebar', () => {
     render(<Sidebar {...sidebarFixture} workspaceLoading />)
 
     const trigger = screen.getByRole('button', {
-      name: '워크스페이스 불러오는 중',
+      name: '워크스페이스를 불러오는 중',
     })
     expect(trigger).toBeDisabled()
-    expect(screen.getByText('워크스페이스 불러오는 중')).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-busy', 'true')
+    // 스켈레톤은 장식이다. 알림은 트리거 버튼과 본문 영역이 맡는다.
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('빈 워크스페이스 상태에서도 생성 진입점을 제공한다', async () => {

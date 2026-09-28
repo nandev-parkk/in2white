@@ -162,7 +162,7 @@ function WorkspaceSwitcher({
   }
 
   const triggerLabel = loading
-    ? MESSAGES.workspace.a11y.loadingShort
+    ? MESSAGES.workspace.a11y.loading
     : (workspace?.name ?? MESSAGES.workspace.action.select)
 
   function handleWorkspaceSelect(workspaceId: string) {
@@ -203,14 +203,12 @@ function WorkspaceSwitcher({
           >
             {loading ? (
               <DelayedLoading as="span" className="min-w-0 flex-1">
-                <span
-                  role="status"
-                  aria-label={MESSAGES.workspace.a11y.loadingShort}
-                  className="flex flex-col gap-1.5"
-                >
-                  <span className="sr-only">
-                    {MESSAGES.workspace.a11y.loadingShort}
-                  </span>
+                {/*
+                  트리거 버튼이 aria-label과 aria-busy로 로딩을 알리고,
+                  본문 영역이 role="status"를 맡는다. 여기서 또 알리면
+                  스크린 리더가 같은 문구를 두 번 읽는다.
+                */}
+                <span aria-hidden="true" className="flex flex-col gap-1.5">
                   <span
                     aria-hidden="true"
                     className="bg-background-subtle h-4 w-24 max-w-full animate-pulse rounded-sm motion-reduce:animate-none"
