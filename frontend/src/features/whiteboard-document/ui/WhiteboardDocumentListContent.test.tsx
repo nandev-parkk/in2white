@@ -327,9 +327,14 @@ describe('WhiteboardDocumentListContent', () => {
     )
     renderContent()
 
-    expect(
-      screen.getByText('화이트보드를 불러오지 못했어요'),
-    ).toBeInTheDocument()
+    const failure = screen.getByRole('alert')
+    expect(failure).toHaveTextContent('화이트보드를 불러오지 못했어요')
+    expect(failure).toHaveTextContent('잠시 후 다시 시도해보세요')
+    expect(failure.querySelector('.lucide-circle-alert')).toHaveClass(
+      'text-status-danger',
+      'size-8',
+    )
+    expect(failure).toHaveClass('min-h-48')
 
     await userEvent.click(screen.getByRole('button', { name: '다시 시도' }))
 

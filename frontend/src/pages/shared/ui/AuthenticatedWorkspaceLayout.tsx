@@ -23,6 +23,7 @@ import { useCreateWorkspace, useWorkspaces } from '@/features/workspace'
 import { WorkspaceCreateDialog } from '@/features/workspace/ui/WorkspaceCreateDialog'
 import { WorkspaceAccessDeniedPage } from '@/pages/workspace-access-denied'
 import { Button } from '@/shared/ui/button'
+import { ErrorState } from '@/shared/ui/error-state'
 import { DelayedLoading } from '@/shared/ui/loading-state'
 import {
   ListToolbarSkeleton,
@@ -182,19 +183,22 @@ function WorkspaceLayoutContent({
 
   if (isError && !isWorkspaceOptional) {
     return (
-      <main className="flex min-h-svh flex-col items-center justify-center gap-4">
-        <p className="text-body text-foreground-secondary">
-          워크스페이스를 불러오지 못했어요
-        </p>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            setLoadingStartedAt(Date.now())
-            void refetch()
-          }}
-        >
-          다시 시도
-        </Button>
+      <main className="bg-background-default flex min-h-svh items-center justify-center">
+        <ErrorState
+          className="w-full max-w-90"
+          title="워크스페이스를 불러오지 못했어요"
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setLoadingStartedAt(Date.now())
+                void refetch()
+              }}
+            >
+              다시 시도
+            </Button>
+          }
+        />
       </main>
     )
   }

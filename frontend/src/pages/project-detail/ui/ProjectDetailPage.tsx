@@ -17,6 +17,7 @@ import { WhiteboardDocumentListContent } from '@/features/whiteboard-document'
 import { AuthenticatedWorkspaceLayout } from '@/pages/shared/ui/AuthenticatedWorkspaceLayout'
 import { Button } from '@/shared/ui/button'
 import { EmptyState } from '@/shared/ui/empty-state'
+import { ErrorState } from '@/shared/ui/error-state'
 import type { SidebarNavKey } from '@/shared/ui/sidebar'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { DelayedLoading } from '@/shared/ui/loading-state'
@@ -161,20 +162,21 @@ function ProjectDetailContent({
 
   if (projectQuery.isError || !project) {
     return (
-      <div className="flex min-h-48 flex-1 flex-col items-center justify-center gap-4">
-        <p className="text-body text-foreground-secondary">
-          프로젝트를 불러오지 못했어요
-        </p>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            setStartedAt(Date.now())
-            void projectQuery.refetch()
-          }}
-        >
-          다시 시도
-        </Button>
-      </div>
+      <ErrorState
+        className="min-h-48 flex-1"
+        title="프로젝트를 불러오지 못했어요"
+        action={
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setStartedAt(Date.now())
+              void projectQuery.refetch()
+            }}
+          >
+            다시 시도
+          </Button>
+        }
+      />
     )
   }
 

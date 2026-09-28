@@ -523,8 +523,15 @@ describe('AccountPage', () => {
     expect(
       screen.getByRole('heading', { name: '기본 정보' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      '워크스페이스를 불러오지 못했어요',
+    const failure = screen.getByRole('alert')
+    expect(failure).toHaveTextContent('워크스페이스를 불러오지 못했어요')
+    expect(failure).toHaveTextContent('잠시 후 다시 시도해보세요')
+    expect(
+      failure.querySelector('[data-slot="compact-empty-state"]'),
+    ).not.toBeNull()
+    expect(failure.querySelector('.lucide-circle-alert')).toHaveClass(
+      'text-status-danger',
+      'size-5',
     )
     await user.click(screen.getByRole('button', { name: '다시 시도' }))
     expect(mockWorkspaceShellState.refetchWorkspaces).toHaveBeenCalledOnce()
