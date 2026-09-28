@@ -2,6 +2,7 @@ import * as React from 'react'
 import { cn } from '@/shared/lib/utils'
 import { ArrowLeft, CircleAlert, CircleCheck } from 'lucide-react'
 import { Spinner } from '@/shared/ui/spinner'
+import { Badge } from '@/shared/ui/badge'
 import {
   PresenceAvatarStack,
   type PresenceUser,
@@ -17,22 +18,24 @@ type CanvasTopBarProps = React.ComponentProps<'div'> & {
   actions?: React.ReactNode
 }
 
+type BadgeSemantic = React.ComponentProps<typeof Badge>['semantic']
+
 const saveStatusConfig: Record<
   SaveStatus,
-  { icon: React.ElementType; label: string; className?: string }
+  { icon: React.ElementType; label: string; semantic: BadgeSemantic }
 > = {
-  saved: { icon: CircleCheck, label: '저장됨' },
-  connecting: { icon: Spinner, label: '연결 중...' },
+  saved: { icon: CircleCheck, label: '저장 완료', semantic: 'success' },
+  connecting: { icon: Spinner, label: '연결 중', semantic: 'neutral' },
   error: {
     icon: CircleAlert,
     label: '저장 상태 확인 필요',
-    className: 'text-status-danger',
+    semantic: 'danger',
   },
-  saving: { icon: Spinner, label: '저장 중...' },
+  saving: { icon: Spinner, label: '저장 중', semantic: 'neutral' },
   disconnected: {
     icon: CircleAlert,
     label: '동기화가 끊겼어요',
-    className: 'text-status-danger',
+    semantic: 'danger',
   },
 }
 
@@ -48,7 +51,7 @@ function CanvasTopBar({
   const {
     icon: StatusIcon,
     label,
-    className: statusClassName,
+    semantic,
   } = saveStatusConfig[saveStatus ?? 'connecting']
 
   return (
@@ -71,25 +74,16 @@ function CanvasTopBar({
         </button>
         <p className="text-heading3 text-foreground-strong truncate">{title}</p>
         {saveStatus && (
-          <div
-            className={cn(
-              'text-caption text-foreground-secondary flex shrink-0 items-center gap-1.5',
-              statusClassName,
-            )}
+          <Badge
+            semantic={semantic}
+            role="status"
+            aria-live="polite"
+            className="gap-1.5"
           >
-            <StatusIcon
-              aria-hidden="true"
-              className={cn(
-                saveStatus === 'saving' || saveStatus === 'connecting'
-                  ? 'size-5'
-                  : 'size-3.5',
-                saveStatus === 'saved' && 'text-status-success',
-              )}
-            />
-            <span role="status" aria-live="polite">
-              {label}
-            </span>
-          </div>
+            {/* Spinner에 size-3을 명시해 회전 애니메이션은 유지하면서 크기를 Badge의 아이콘 규칙에 맞춘다 */}
+            <StatusIcon aria-hidden="true" className="size-3" />
+            {label}
+          </Badge>
         )}
       </div>
       {saveStatus && (
