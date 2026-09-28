@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { cn } from '@/shared/lib/utils'
 import { Search as SearchIcon, X } from 'lucide-react'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type SearchProps = React.ComponentProps<'input'> & {
   onClear?: () => void
@@ -30,7 +31,7 @@ function Search({ className, onClear, value, ...props }: SearchProps) {
       {onClear && value ? (
         <button
           type="button"
-          aria-label="검색어 지우기"
+          aria-label={MESSAGES.common.a11y.clearSearchInput}
           onClick={onClear}
           className="text-foreground-tertiary hover:text-foreground-default focus-visible:ring-action-focus-ring absolute right-3 flex size-5 items-center justify-center rounded-full outline-none focus-visible:ring-2"
         >

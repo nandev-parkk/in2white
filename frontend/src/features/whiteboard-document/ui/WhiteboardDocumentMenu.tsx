@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type WhiteboardDocumentMenuProps = {
   document: WhiteboardDocument
@@ -24,7 +25,7 @@ function WhiteboardDocumentMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label={`${document.name} 메뉴`}
+          aria-label={MESSAGES.common.a11y.menu(document.name)}
           className="text-foreground-tertiary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-md outline-none focus-visible:ring-3"
         >
           <MoreVertical className="size-4" />
@@ -32,10 +33,10 @@ function WhiteboardDocumentMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onSelect={() => onRename(document)}>
-          이름 변경
+          {MESSAGES.whiteboard.action.rename}
         </DropdownMenuItem>
         <DropdownMenuItem variant="danger" onSelect={() => onDelete(document)}>
-          삭제
+          {MESSAGES.common.action.delete}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

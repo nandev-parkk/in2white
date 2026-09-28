@@ -8,6 +8,7 @@ import { EmptyState } from '@/shared/ui/empty-state'
 import { ErrorState } from '@/shared/ui/error-state'
 import { LoadingState } from '@/shared/ui/loading-state'
 import { CanvasTopBar } from '@/shared/ui/canvas-top-bar'
+import { MESSAGES } from '@/shared/constants/messages'
 
 const WhiteboardCanvas = lazy(
   () => import('@/features/whiteboard-editor/ui/WhiteboardCanvas'),
@@ -61,7 +62,10 @@ function WhiteboardEditorContent({
   if (!editorUser) return null
   const loading = (label: string) => (
     <main className="flex h-dvh flex-col">
-      <CanvasTopBar title={query.data?.name ?? '화이트보드'} onBack={onBack} />
+      <CanvasTopBar
+        title={query.data?.name ?? MESSAGES.whiteboard.heading.fallbackTitle}
+        onBack={onBack}
+      />
       <LoadingState
         label={label}
         startedAt={startedAt}
@@ -69,7 +73,7 @@ function WhiteboardEditorContent({
       />
     </main>
   )
-  if (query.isPending) return loading('화이트보드를 불러오는 중')
+  if (query.isPending) return loading(MESSAGES.whiteboard.a11y.loading)
   if (!query.data) {
     const missing =
       (query.error as { response?: { status?: number } }).response?.status ===
@@ -81,18 +85,18 @@ function WhiteboardEditorContent({
           <EmptyState
             className="w-full max-w-90"
             icon={<FileX className="size-8" />}
-            title="화이트보드를 찾을 수 없어요"
-            description="삭제되었거나 접근할 수 없는 화이트보드예요"
+            title={MESSAGES.whiteboard.error.notFound}
+            description={MESSAGES.whiteboard.error.notFoundDescription}
             action={
               <Button variant="secondary" onClick={onBack}>
-                프로젝트로 돌아가기
+                {MESSAGES.whiteboard.action.backToProject}
               </Button>
             }
           />
         ) : (
           <ErrorState
             className="w-full max-w-90"
-            title="화이트보드를 불러오지 못했어요"
+            title={MESSAGES.whiteboard.error.loadFailed}
             action={
               <div className="flex gap-2">
                 <Button
@@ -101,10 +105,10 @@ function WhiteboardEditorContent({
                     void query.refetch()
                   }}
                 >
-                  다시 시도
+                  {MESSAGES.common.action.retry}
                 </Button>
                 <Button variant="secondary" onClick={onBack}>
-                  프로젝트로 돌아가기
+                  {MESSAGES.whiteboard.action.backToProject}
                 </Button>
               </div>
             }
@@ -114,7 +118,7 @@ function WhiteboardEditorContent({
     )
   }
   return (
-    <Suspense fallback={loading('편집기를 준비하는 중')}>
+    <Suspense fallback={loading(MESSAGES.whiteboard.a11y.editorLoading)}>
       <WhiteboardCanvas
         key={documentId}
         workspaceId={workspaceId}

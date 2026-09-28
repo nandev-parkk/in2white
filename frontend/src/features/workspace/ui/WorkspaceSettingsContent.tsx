@@ -13,6 +13,7 @@ import {
 } from '@/shared/ui/dialog'
 import { Input } from '@/shared/ui/input'
 import { toast } from '@/shared/ui/toast'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type WorkspaceSettingsContentProps = {
   workspace: WorkspaceSummary
@@ -48,7 +49,7 @@ function WorkspaceSettingsContent({
         name: normalizedName,
       })
       setName(normalizedName)
-      toast.success('워크스페이스 이름을 변경했어요')
+      toast.success(MESSAGES.workspace.toast.renamed)
     } catch {
       // Keep the entered name and let the mutation error explain the retry.
     }
@@ -57,7 +58,7 @@ function WorkspaceSettingsContent({
   async function handleDelete() {
     try {
       await deleteMutation.mutateAsync(workspace.id)
-      toast.success('워크스페이스를 삭제했어요')
+      toast.success(MESSAGES.workspace.toast.deleted)
       onDeleted()
     } catch {
       // Keep the dialog open so the user can retry.
@@ -67,14 +68,14 @@ function WorkspaceSettingsContent({
   return (
     <div className="flex flex-col">
       <h1 className="text-foreground-strong text-[20px] leading-7 font-semibold tracking-[-0.012em]">
-        설정
+        {MESSAGES.workspace.heading.settings}
       </h1>
       <section aria-labelledby="workspace-settings-general" className="mt-6">
         <h2
           id="workspace-settings-general"
           className="text-foreground-default text-[16px] leading-6 font-semibold"
         >
-          일반
+          {MESSAGES.workspace.heading.generalSection}
         </h2>
         <form
           className="mt-4 flex w-full max-w-[400px] flex-col items-start gap-4"
@@ -85,7 +86,7 @@ function WorkspaceSettingsContent({
               className="text-foreground-default text-[14px] leading-5 font-semibold tracking-[0.0145em]"
               htmlFor="workspace-settings-name"
             >
-              워크스페이스 이름
+              {MESSAGES.workspace.form.nameLabel}
             </label>
             <Input
               id="workspace-settings-name"
@@ -103,17 +104,17 @@ function WorkspaceSettingsContent({
                 id="workspace-settings-name-note"
                 className="text-caption text-foreground-secondary"
               >
-                기본 워크스페이스의 이름은 변경할 수 없어요.
+                {MESSAGES.workspace.form.defaultNameLocked}
               </p>
             )}
           </div>
           {updateMutation.error && (
             <p className="text-caption text-status-danger" role="alert">
-              워크스페이스 이름을 저장하지 못했어요. 다시 시도해주세요.
+              {MESSAGES.workspace.error.renameFailed}
             </p>
           )}
           <Button type="submit" disabled={!canSave}>
-            저장
+            {MESSAGES.common.action.save}
           </Button>
         </form>
       </section>
@@ -132,21 +133,20 @@ function WorkspaceSettingsContent({
                 id="workspace-settings-danger-zone"
                 className="text-foreground-default text-[16px] leading-6 font-semibold"
               >
-                위험 구역
+                {MESSAGES.workspace.heading.dangerZone}
               </h2>
               <p className="text-caption text-foreground-secondary mt-1">
-                워크스페이스와 내부 데이터가 함께 삭제됩니다.
+                {MESSAGES.workspace.confirm.dangerZoneDescription}
               </p>
             </div>
           </div>
           <div className="border-border mt-5 flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <h3 className="text-foreground-default text-label font-semibold">
-                워크스페이스 삭제
+                {MESSAGES.workspace.action.delete}
               </h3>
               <p className="text-caption text-foreground-secondary mt-1">
-                프로젝트와 화이트보드 문서를 삭제하고, 이 작업은 되돌릴 수
-                없어요.
+                {MESSAGES.workspace.confirm.deleteScope}
               </p>
             </div>
             <Button
@@ -155,7 +155,7 @@ function WorkspaceSettingsContent({
               className="w-full shrink-0 sm:w-auto"
               onClick={() => setDeleteDialogOpen(true)}
             >
-              워크스페이스 삭제
+              {MESSAGES.workspace.action.delete}
             </Button>
           </div>
         </section>
@@ -173,23 +173,23 @@ function WorkspaceSettingsContent({
               <CircleAlert aria-hidden="true" className="size-6" />
             </span>
             <DialogTitle className="mt-4 text-[20px] leading-7 font-semibold break-words">
-              {workspace.name}를 삭제할까요?
+              {MESSAGES.workspace.confirm.deleteTitle(workspace.name)}
             </DialogTitle>
             <DialogDescription className="mt-2 break-words">
-              워크스페이스 안의 모든 프로젝트와 화이트보드 문서가 함께 삭제돼요.
+              {MESSAGES.workspace.confirm.deleteDescription}
             </DialogDescription>
             <p className="text-caption text-status-danger bg-status-danger-subtle-bg mt-4 w-full rounded-md p-3">
-              삭제 후에는 복구할 수 없어요.
+              {MESSAGES.workspace.confirm.deleteIrreversible}
             </p>
             {deleteMutation.error && (
               <p className="text-caption text-status-danger mt-3" role="alert">
-                워크스페이스를 삭제하지 못했어요. 다시 시도해주세요.
+                {MESSAGES.workspace.error.deleteFailed}
               </p>
             )}
           </div>
           <DialogFooter
             role="group"
-            aria-label="워크스페이스 삭제 확인"
+            aria-label={MESSAGES.workspace.a11y.deleteConfirm}
             className="border-border w-full border-t px-6 py-4"
           >
             <Button
@@ -198,7 +198,7 @@ function WorkspaceSettingsContent({
               disabled={deleteMutation.isPending}
               onClick={() => setDeleteDialogOpen(false)}
             >
-              취소
+              {MESSAGES.common.action.cancel}
             </Button>
             <Button
               type="button"
@@ -206,7 +206,7 @@ function WorkspaceSettingsContent({
               loading={deleteMutation.isPending}
               onClick={() => void handleDelete()}
             >
-              워크스페이스 삭제
+              {MESSAGES.workspace.action.delete}
             </Button>
           </DialogFooter>
         </DialogContent>

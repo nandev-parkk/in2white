@@ -10,6 +10,7 @@ import {
 } from '@/shared/ui/table'
 
 import { WhiteboardDocumentMenu } from './WhiteboardDocumentMenu'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type WhiteboardDocumentTableProps = {
   documents: WhiteboardDocument[]
@@ -30,11 +31,22 @@ function WhiteboardDocumentTable({
     <Table className="min-w-[1008px] table-fixed">
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[420px]">이름</TableHead>
-          <TableHead className="w-[180px]">생성자</TableHead>
-          <TableHead className="w-[180px]">생성일</TableHead>
-          <TableHead className="w-[180px]">수정일</TableHead>
-          <TableHead className="w-12" aria-label="작업" />
+          <TableHead className="w-[420px]">
+            {MESSAGES.common.label.name}
+          </TableHead>
+          <TableHead className="w-[180px]">
+            {MESSAGES.common.label.creator}
+          </TableHead>
+          <TableHead className="w-[180px]">
+            {MESSAGES.common.label.createdAt}
+          </TableHead>
+          <TableHead className="w-[180px]">
+            {MESSAGES.common.label.updatedAt}
+          </TableHead>
+          <TableHead
+            className="w-12"
+            aria-label={MESSAGES.common.a11y.rowActions}
+          />
         </TableRow>
       </TableHeader>
       <TableBody>

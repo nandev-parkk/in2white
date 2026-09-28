@@ -7,6 +7,7 @@ import {
   PresenceAvatarStack,
   type PresenceUser,
 } from '@/shared/ui/presence-avatar-stack'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type SaveStatus = 'saved' | 'saving' | 'disconnected' | 'connecting' | 'error'
 
@@ -24,17 +25,29 @@ const saveStatusConfig: Record<
   SaveStatus,
   { icon: React.ElementType; label: string; semantic: BadgeSemantic }
 > = {
-  saved: { icon: CircleCheck, label: '저장 완료', semantic: 'success' },
-  connecting: { icon: Spinner, label: '연결 중', semantic: 'neutral' },
+  saved: {
+    icon: CircleCheck,
+    label: MESSAGES.whiteboard.saveStatus.saved,
+    semantic: 'success',
+  },
+  connecting: {
+    icon: Spinner,
+    label: MESSAGES.whiteboard.saveStatus.connecting,
+    semantic: 'neutral',
+  },
   error: {
     icon: CircleAlert,
-    label: '저장 상태 확인 필요',
+    label: MESSAGES.whiteboard.saveStatus.error,
     semantic: 'danger',
   },
-  saving: { icon: Spinner, label: '저장 중', semantic: 'neutral' },
+  saving: {
+    icon: Spinner,
+    label: MESSAGES.whiteboard.saveStatus.saving,
+    semantic: 'neutral',
+  },
   disconnected: {
     icon: CircleAlert,
-    label: '동기화가 끊겼어요',
+    label: MESSAGES.whiteboard.saveStatus.disconnected,
     semantic: 'danger',
   },
 }
@@ -67,7 +80,7 @@ function CanvasTopBar({
         <button
           type="button"
           onClick={onBack}
-          aria-label="뒤로 가기"
+          aria-label={MESSAGES.whiteboard.a11y.back}
           className="text-foreground-default flex size-5 shrink-0 items-center justify-center"
         >
           <ArrowLeft className="size-5" />

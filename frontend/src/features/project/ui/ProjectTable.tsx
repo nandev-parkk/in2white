@@ -10,6 +10,7 @@ import {
 
 import { formatCreatedAt, formatUpdatedAt } from '@/shared/lib/resource-date'
 import { ProjectMenu } from './ProjectCard'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type ProjectTableProps = {
   projects: Project[]
@@ -30,11 +31,20 @@ function ProjectTable({
     <Table className="min-w-[1008px] table-fixed">
       <TableHeader>
         <TableRow>
-          <TableHead>이름</TableHead>
-          <TableHead className="w-[180px]">생성자</TableHead>
-          <TableHead className="w-[180px] text-right">생성일</TableHead>
-          <TableHead className="w-[180px] text-right">수정일</TableHead>
-          <TableHead className="w-12" aria-label="작업" />
+          <TableHead>{MESSAGES.common.label.name}</TableHead>
+          <TableHead className="w-[180px]">
+            {MESSAGES.common.label.creator}
+          </TableHead>
+          <TableHead className="w-[180px] text-right">
+            {MESSAGES.common.label.createdAt}
+          </TableHead>
+          <TableHead className="w-[180px] text-right">
+            {MESSAGES.common.label.updatedAt}
+          </TableHead>
+          <TableHead
+            className="w-12"
+            aria-label={MESSAGES.common.a11y.rowActions}
+          />
         </TableRow>
       </TableHeader>
       <TableBody>

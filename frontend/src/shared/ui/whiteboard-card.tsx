@@ -4,6 +4,7 @@ import { cn } from '@/shared/lib/utils'
 import { Calendar, Clock } from 'lucide-react'
 import { useCardMotion } from '@/shared/lib/hooks/use-card-motion'
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
+import { MESSAGES } from '@/shared/constants/messages'
 
 // motion.article과 이름이 겹치는 drag·animation 핸들러만 제외하고 article 속성을 받는다
 type WhiteboardCardProps = Omit<
@@ -60,11 +61,15 @@ function WhiteboardCard({
         <div className="flex flex-col gap-1">
           <div className="text-foreground-tertiary flex items-center gap-1.5">
             <Calendar className="size-3.5" />
-            <span className="text-caption">생성일 {createdAtLabel}</span>
+            <span className="text-caption">
+              {MESSAGES.common.label.createdAt} {createdAtLabel}
+            </span>
           </div>
           <div className="text-foreground-tertiary flex items-center gap-1.5">
             <Clock className="size-3.5" />
-            <span className="text-caption">수정일 {updatedAtLabel}</span>
+            <span className="text-caption">
+              {MESSAGES.common.label.updatedAt} {updatedAtLabel}
+            </span>
           </div>
         </div>
         <div className="bg-border-subtle h-px w-full" />

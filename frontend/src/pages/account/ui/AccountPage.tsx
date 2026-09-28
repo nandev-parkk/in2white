@@ -36,7 +36,9 @@ export type AccountPageProps = {
 }
 
 function getWorkspaceRoleLabel(workspace: WorkspaceSummary) {
-  return workspace.role === 'owner' ? '소유자' : '멤버'
+  return workspace.role === 'owner'
+    ? MESSAGES.member.role.owner
+    : MESSAGES.member.role.member
 }
 
 function AccountContent({
@@ -79,7 +81,7 @@ function AccountContent({
     try {
       await updateAccount.mutateAsync(input)
       setProfileFormKey((current) => current + 1)
-      toast.success(MESSAGES.ACCOUNT_UPDATED)
+      toast.success(MESSAGES.account.toast.nameUpdated)
     } catch (error) {
       setProfileError(getAccountApiError(error).message)
     }
@@ -91,7 +93,7 @@ function AccountContent({
     try {
       await changePassword.mutateAsync(input)
       setPasswordFormKey((current) => current + 1)
-      toast.success(MESSAGES.PASSWORD_UPDATED)
+      toast.success(MESSAGES.account.toast.passwordUpdated)
     } catch (error) {
       const accountError = getAccountApiError(error)
 
@@ -120,16 +122,19 @@ function AccountContent({
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <PageHeader className="max-sm:pl-2" title="계정 설정" />
+      <PageHeader
+        className="max-sm:pl-2"
+        title={MESSAGES.account.heading.page}
+      />
 
       <div className="mx-auto flex w-full max-w-[480px] flex-col gap-10">
         {account.isError && (
           <div className="flex items-center justify-between gap-4" role="alert">
             <p className="text-status-danger text-[12px]">
-              {MESSAGES.ACCOUNT_LOAD_FAILED}
+              {MESSAGES.account.error.loadFailed}
             </p>
             <Button variant="secondary" onClick={() => void account.refetch()}>
-              다시 시도
+              {MESSAGES.common.action.retry}
             </Button>
           </div>
         )}
@@ -142,7 +147,7 @@ function AccountContent({
             id="account-profile-title"
             className="text-foreground-strong text-[18px] font-semibold"
           >
-            기본 정보
+            {MESSAGES.account.heading.profileSection}
           </h2>
           <AccountProfileForm
             key={`${displayUser.id}-${profileFormKey}`}
@@ -161,7 +166,7 @@ function AccountContent({
             id="account-password-title"
             className="text-foreground-strong text-[18px] font-semibold"
           >
-            비밀번호 변경
+            {MESSAGES.account.heading.passwordSection}
           </h2>
           <AccountPasswordForm
             key={passwordFormKey}
@@ -179,12 +184,14 @@ function AccountContent({
             id="account-workspaces-title"
             className="text-foreground-strong text-[18px] font-semibold"
           >
-            참여 중인 워크스페이스
+            {MESSAGES.account.heading.workspaceSection}
           </h2>
           {workspaceLoading ? (
             <DelayedLoading>
-              <div role="status" aria-label="워크스페이스를 불러오는 중">
-                <span className="sr-only">워크스페이스를 불러오는 중</span>
+              <div role="status" aria-label={MESSAGES.workspace.a11y.loading}>
+                <span className="sr-only">
+                  {MESSAGES.workspace.a11y.loading}
+                </span>
                 {Array.from({ length: 3 }, (_, index) => (
                   <SkeletonListCell key={index} aria-hidden="true" />
                 ))}
@@ -193,13 +200,13 @@ function AccountContent({
           ) : workspaceError ? (
             <ErrorState
               size="compact"
-              title="워크스페이스를 불러오지 못했어요"
+              title={MESSAGES.workspace.error.loadFailed}
               action={
                 <Button
                   variant="secondary"
                   onClick={() => void refetchWorkspaces()}
                 >
-                  다시 시도
+                  {MESSAGES.common.action.retry}
                 </Button>
               }
             />
@@ -209,8 +216,8 @@ function AccountContent({
                 <SearchIcon className="text-foreground-tertiary pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                 <Input
                   type="search"
-                  aria-label="워크스페이스 검색"
-                  placeholder="워크스페이스 검색"
+                  aria-label={MESSAGES.workspace.form.searchPlaceholder}
+                  placeholder={MESSAGES.workspace.form.searchPlaceholder}
                   value={workspaceSearch}
                   onChange={(event) => setWorkspaceSearch(event.target.value)}
                   className="bg-background-subtle rounded-full border-transparent pl-9 focus:border-transparent"
@@ -255,7 +262,7 @@ function AccountContent({
                 })}
                 {filteredWorkspaces.length === 0 && (
                   <p className="text-body-small text-foreground-tertiary px-2 py-4 text-center">
-                    워크스페이스가 없습니다
+                    {MESSAGES.workspace.empty.title}
                   </p>
                 )}
               </div>

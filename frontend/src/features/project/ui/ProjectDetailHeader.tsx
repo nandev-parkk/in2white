@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type ProjectDetailHeaderProps = {
   project: Project
@@ -44,7 +45,7 @@ function ProjectDetailHeader({
                 onBack()
               }}
             >
-              프로젝트
+              {MESSAGES.project.heading.list}
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
@@ -58,7 +59,7 @@ function ProjectDetailHeader({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            aria-label="프로젝트 목록으로"
+            aria-label={MESSAGES.project.action.backToList}
             onClick={onBack}
             className="text-foreground-secondary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-md outline-none focus-visible:ring-3"
           >
@@ -72,16 +73,18 @@ function ProjectDetailHeader({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  aria-label={`${project.name} 메뉴`}
+                  aria-label={MESSAGES.common.a11y.menu(project.name)}
                   className="text-foreground-tertiary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-md outline-none focus-visible:ring-3"
                 >
                   <MoreVertical className="size-4" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={onEdit}>수정</DropdownMenuItem>
+                <DropdownMenuItem onSelect={onEdit}>
+                  {MESSAGES.common.action.edit}
+                </DropdownMenuItem>
                 <DropdownMenuItem variant="danger" onSelect={onDelete}>
-                  삭제
+                  {MESSAGES.common.action.delete}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -102,7 +105,7 @@ function ProjectDetailHeader({
           </AvatarFallback>
         </Avatar>
         <span className="text-body text-foreground-secondary">
-          생성자 {project.creator.name}
+          {MESSAGES.common.label.creator} {project.creator.name}
         </span>
       </div>
     </header>

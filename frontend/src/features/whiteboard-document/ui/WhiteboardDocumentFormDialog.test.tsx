@@ -30,7 +30,7 @@ describe('WhiteboardDocumentFormDialog', () => {
     await userEvent.click(screen.getByRole('button', { name: '만들기' }))
 
     expect(
-      screen.getByText(MESSAGES.WHITEBOARD_NAME_REQUIRED),
+      screen.getByText(MESSAGES.whiteboard.form.nameRequired),
     ).toBeInTheDocument()
     expect(props.onSubmit).not.toHaveBeenCalled()
   })

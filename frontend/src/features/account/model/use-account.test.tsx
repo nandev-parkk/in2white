@@ -310,7 +310,7 @@ describe('account query hooks', () => {
     ).toEqual({ code: 'INVALID_PASSWORD', message: '비밀번호가 틀렸어요' })
     expect(getAccountApiError(new Error('network'))).toEqual({
       code: 'NETWORK_ERROR',
-      message: MESSAGES.NETWORK_ERROR,
+      message: MESSAGES.common.error.network,
     })
   })
 })

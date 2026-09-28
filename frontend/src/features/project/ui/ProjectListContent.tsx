@@ -23,6 +23,7 @@ import { ProjectCard } from './ProjectCard'
 import { ProjectDeleteDialog } from './ProjectDeleteDialog'
 import { ProjectFormDialog } from './ProjectFormDialog'
 import { ProjectTable } from './ProjectTable'
+import { MESSAGES } from '@/shared/constants/messages'
 
 const PROJECTS_PER_PAGE = 12
 
@@ -97,7 +98,7 @@ function ProjectListContent({
   }) {
     try {
       await createProject.mutateAsync(input)
-      toast.success('프로젝트를 만들었어요')
+      toast.success(MESSAGES.project.toast.created)
       handleCreateOpenChange(false)
     } catch {
       return
@@ -128,7 +129,7 @@ function ProjectListContent({
         projectId: editingProject.id,
         input,
       })
-      toast.success('프로젝트를 수정했어요')
+      toast.success(MESSAGES.project.toast.updated)
       handleEditOpenChange(false)
     } catch {
       return
@@ -153,7 +154,7 @@ function ProjectListContent({
 
     try {
       await deleteProject.mutateAsync(deletingProject.id)
-      toast.success('프로젝트를 삭제했어요')
+      toast.success(MESSAGES.project.toast.deleted)
       if (projects.length === 1 && page > 1) {
         setPage((current) => Math.max(1, current - 1))
       }
@@ -166,7 +167,9 @@ function ProjectListContent({
   return (
     <section className="flex min-w-0 flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-heading1 text-foreground-strong">프로젝트</h1>
+        <h1 className="text-heading1 text-foreground-strong">
+          {MESSAGES.project.heading.list}
+        </h1>
       </div>
 
       {!(
@@ -177,8 +180,8 @@ function ProjectListContent({
       ) && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Search
-            aria-label="프로젝트 검색"
-            placeholder="프로젝트 이름으로 검색"
+            aria-label={MESSAGES.project.form.searchLabel}
+            placeholder={MESSAGES.project.form.searchPlaceholder}
             value={search}
             onClear={() => handleSearchChange('')}
             onChange={(event) => handleSearchChange(event.target.value)}
@@ -188,10 +191,10 @@ function ProjectListContent({
             <ViewToggle
               value={view}
               onChange={setView}
-              label="프로젝트 보기 방식"
+              label={MESSAGES.project.a11y.viewToggle}
             />
             <Button className="h-9" onClick={openCreateDialog}>
-              프로젝트 생성
+              {MESSAGES.project.action.create}
             </Button>
           </div>
         </div>
@@ -199,7 +202,7 @@ function ProjectListContent({
 
       {projectsQuery.isLoading && (
         <DelayedLoading startedAt={loadingStartedAt}>
-          <div role="status" aria-label="프로젝트를 불러오는 중">
+          <div role="status" aria-label={MESSAGES.project.a11y.loading}>
             <ResourceListSkeleton view={view} kind="project" />
           </div>
         </DelayedLoading>
@@ -208,7 +211,7 @@ function ProjectListContent({
       {projectsQuery.isError && (
         <ErrorState
           className="min-h-48"
-          title="프로젝트를 불러오지 못했어요"
+          title={MESSAGES.project.error.loadFailed}
           action={
             <Button
               variant="secondary"
@@ -217,7 +220,7 @@ function ProjectListContent({
                 void projectsQuery.refetch()
               }}
             >
-              다시 시도
+              {MESSAGES.common.action.retry}
             </Button>
           }
         />
@@ -235,11 +238,15 @@ function ProjectListContent({
                 <Folder className="size-8" />
               )
             }
-            title={hasSearch ? '검색 결과가 없어요' : '아직 프로젝트가 없어요'}
+            title={
+              hasSearch
+                ? MESSAGES.common.empty.searchTitle
+                : MESSAGES.project.empty.title
+            }
             description={
               hasSearch
-                ? '다른 검색어로 다시 시도해보세요'
-                : '새 프로젝트를 만들어 팀과 화이트보드로 협업을 시작해보세요'
+                ? MESSAGES.common.empty.searchDescription
+                : MESSAGES.project.empty.description
             }
             action={
               hasSearch ? (
@@ -247,11 +254,11 @@ function ProjectListContent({
                   variant="secondary"
                   onClick={() => handleSearchChange('')}
                 >
-                  검색 결과 초기화
+                  {MESSAGES.common.action.clearSearch}
                 </Button>
               ) : (
                 <Button size="large" onClick={openCreateDialog}>
-                  새 프로젝트 만들기
+                  {MESSAGES.project.action.createFirst}
                 </Button>
               )
             }
@@ -302,27 +309,33 @@ function ProjectListContent({
       {createOpen && (
         <ProjectFormDialog
           open
-          title="새 프로젝트 만들기"
-          submitLabel="만들기"
+          title={MESSAGES.project.action.createFirst}
+          submitLabel={MESSAGES.common.action.create}
           onOpenChange={handleCreateOpenChange}
           onSubmit={handleCreate}
           loading={createProject.isPending}
-          error={createProject.error ? '프로젝트를 만들지 못했어요' : undefined}
+          error={
+            createProject.error
+              ? MESSAGES.project.error.createFailed
+              : undefined
+          }
         />
       )}
 
       {editingProject && (
         <ProjectFormDialog
           open
-          title="프로젝트 수정"
-          submitLabel="저장"
+          title={MESSAGES.project.heading.editDialog}
+          submitLabel={MESSAGES.common.action.save}
           initialName={editingProject.name}
           initialDescription={editingProject.description}
           onOpenChange={handleEditOpenChange}
           onSubmit={handleUpdate}
           loading={updateProject.isPending}
           error={
-            updateProject.error ? '프로젝트를 수정하지 못했어요' : undefined
+            updateProject.error
+              ? MESSAGES.project.error.updateFailed
+              : undefined
           }
         />
       )}
@@ -333,7 +346,9 @@ function ProjectListContent({
         onOpenChange={handleDeleteOpenChange}
         onConfirm={() => void handleDelete()}
         loading={deleteProject.isPending}
-        error={deleteProject.error ? '프로젝트를 삭제하지 못했어요' : undefined}
+        error={
+          deleteProject.error ? MESSAGES.project.error.deleteFailed : undefined
+        }
       />
     </section>
   )

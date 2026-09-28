@@ -8,6 +8,7 @@ import {
   TableRow,
 } from '@/shared/ui/table'
 import type { ListView } from '@/shared/ui/view-toggle'
+import { MESSAGES } from '@/shared/constants/messages'
 
 export function ListToolbarSkeleton() {
   return (
@@ -35,22 +36,26 @@ export function ResourceListSkeleton({
         <Table className="min-w-[1008px] table-fixed">
           <TableHeader>
             <TableRow>
-              {['이름', '생성자', '생성일', '수정일', ''].map(
-                (label, index) => (
-                  <TableHead
-                    key={index}
-                    className={
-                      index === 0
-                        ? 'w-[420px]'
-                        : index === 4
-                          ? 'w-12'
-                          : 'w-[180px]'
-                    }
-                  >
-                    {label}
-                  </TableHead>
-                ),
-              )}
+              {[
+                MESSAGES.common.label.name,
+                MESSAGES.common.label.creator,
+                MESSAGES.common.label.createdAt,
+                MESSAGES.common.label.updatedAt,
+                '',
+              ].map((label, index) => (
+                <TableHead
+                  key={index}
+                  className={
+                    index === 0
+                      ? 'w-[420px]'
+                      : index === 4
+                        ? 'w-12'
+                        : 'w-[180px]'
+                  }
+                >
+                  {label}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>

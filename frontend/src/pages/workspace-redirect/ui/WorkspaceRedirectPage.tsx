@@ -5,6 +5,7 @@ import type { SessionUser } from '@/entities/session'
 import { useWorkspaces } from '@/features/workspace'
 import { Button } from '@/shared/ui/button'
 import { LoadingState } from '@/shared/ui/loading-state'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type WorkspaceRedirectPageProps = {
   accessToken: string
@@ -33,7 +34,7 @@ export function WorkspaceRedirectPage({
   if (isLoading) {
     return (
       <main className="flex min-h-svh items-center justify-center">
-        <LoadingState label="워크스페이스로 이동하는 중" />
+        <LoadingState label={MESSAGES.workspace.a11y.redirecting} />
       </main>
     )
   }
@@ -42,10 +43,10 @@ export function WorkspaceRedirectPage({
     return (
       <main className="flex min-h-svh flex-col items-center justify-center gap-4">
         <p className="text-body text-foreground-secondary">
-          워크스페이스로 이동하지 못했어요
+          {MESSAGES.workspace.error.redirectFailed}
         </p>
         <Button variant="secondary" onClick={() => void refetch()}>
-          다시 시도
+          {MESSAGES.common.action.retry}
         </Button>
       </main>
     )
@@ -55,7 +56,7 @@ export function WorkspaceRedirectPage({
     return (
       <main className="flex min-h-svh items-center justify-center">
         <p className="text-body text-foreground-secondary">
-          이동할 워크스페이스가 없어요
+          {MESSAGES.workspace.error.notAvailable}
         </p>
       </main>
     )
@@ -63,7 +64,7 @@ export function WorkspaceRedirectPage({
 
   return (
     <main className="flex min-h-svh items-center justify-center">
-      <LoadingState label="프로젝트로 이동하는 중" />
+      <LoadingState label={MESSAGES.workspace.a11y.redirectingToProject} />
     </main>
   )
 }

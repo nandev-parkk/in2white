@@ -8,6 +8,7 @@ import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 
 import { accountNameSchema } from '../model/account-form-schema'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type AccountProfileFormValues = z.infer<typeof accountNameSchema>
 
@@ -59,7 +60,7 @@ export function AccountProfileForm({
           className="text-foreground-default text-[14px] leading-[1.429] font-semibold tracking-[0.0145em]"
           htmlFor="account-id"
         >
-          아이디
+          {MESSAGES.account.form.idLabel}
         </label>
         <Input
           id="account-id"
@@ -75,7 +76,7 @@ export function AccountProfileForm({
           className="text-foreground-default text-[14px] leading-[1.429] font-semibold tracking-[0.0145em]"
           htmlFor="account-name"
         >
-          이름
+          {MESSAGES.common.label.name}
         </label>
         <Input
           id="account-name"
@@ -91,7 +92,7 @@ export function AccountProfileForm({
       </div>
 
       <Button className="self-end" type="submit" loading={loading}>
-        저장
+        {MESSAGES.common.action.save}
       </Button>
     </form>
   )

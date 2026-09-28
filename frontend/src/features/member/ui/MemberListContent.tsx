@@ -31,6 +31,7 @@ import { Search } from '@/shared/ui/search'
 import { SkeletonListCell } from '@/shared/ui/skeleton'
 import { DelayedLoading } from '@/shared/ui/loading-state'
 import { toast } from '@/shared/ui/toast'
+import { MESSAGES } from '@/shared/constants/messages'
 
 function joinedDate(value: string) {
   const parts = new Intl.DateTimeFormat('en', {
@@ -105,7 +106,7 @@ export function MemberListContent({
     try {
       await remove.mutateAsync(target.userId)
       setTarget(null)
-      toast.success('멤버를 내보냈어요')
+      toast.success(MESSAGES.member.toast.removed)
     } catch {
       /* 오류는 확인 모달에서 안내한다. */
     } finally {
@@ -121,12 +122,12 @@ export function MemberListContent({
         tabIndex={-1}
         className="text-heading1 text-foreground-strong outline-none max-sm:pl-3"
       >
-        멤버
+        {MESSAGES.member.heading.list}
       </h1>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Search
-          aria-label="멤버 검색"
-          placeholder="이름 또는 이메일로 검색"
+          aria-label={MESSAGES.member.a11y.search}
+          placeholder={MESSAGES.member.form.searchPlaceholder}
           className="w-full max-w-80"
           maxLength={100}
           value={search}
@@ -134,7 +135,7 @@ export function MemberListContent({
         />
         {canAdd && (
           <Button ref={addButton} onClick={() => setAdding(true)}>
-            멤버 추가
+            {MESSAGES.member.action.add}
           </Button>
         )}
       </div>
@@ -142,7 +143,7 @@ export function MemberListContent({
         <DelayedLoading startedAt={loadingStartedAt}>
           <div
             role="status"
-            aria-label="멤버 불러오는 중"
+            aria-label={MESSAGES.member.a11y.loading}
             className="divide-border-subtle divide-y"
           >
             {Array.from({ length: 5 }, (_, index) => (
@@ -152,8 +153,8 @@ export function MemberListContent({
         </DelayedLoading>
       ) : query.isError ? (
         <ErrorState
-          title="멤버를 불러오지 못했어요"
-          description="잠시 후 다시 시도해보세요"
+          title={MESSAGES.member.error.loadFailed}
+          description={MESSAGES.common.error.retryHint}
           action={
             <Button
               variant="secondary"
@@ -162,25 +163,32 @@ export function MemberListContent({
                 void query.refetch()
               }}
             >
-              다시 시도
+              {MESSAGES.common.action.retry}
             </Button>
           }
         />
       ) : query.data?.members.length === 0 ? (
         <EmptyState
           icon={<SearchIcon className="size-8" />}
-          title={resultSearch ? '검색 결과가 없어요' : '멤버가 없어요'}
-          description="다른 검색어로 다시 시도해보세요"
+          title={
+            resultSearch
+              ? MESSAGES.common.empty.searchTitle
+              : MESSAGES.member.empty.title
+          }
+          description={MESSAGES.common.empty.searchDescription}
           action={
             resultSearch && (
               <Button variant="secondary" onClick={() => setSearch('')}>
-                검색 결과 초기화
+                {MESSAGES.common.action.clearSearch}
               </Button>
             )
           }
         />
       ) : (
-        <div className="divide-border-subtle divide-y" aria-label="멤버 목록">
+        <div
+          className="divide-border-subtle divide-y"
+          aria-label={MESSAGES.member.a11y.list}
+        >
           {query.data?.members.map((member) => (
             <ListCell
               key={member.userId}
@@ -197,10 +205,13 @@ export function MemberListContent({
                   <Badge
                     semantic={member.role === 'owner' ? 'info' : 'neutral'}
                   >
-                    {member.role === 'owner' ? '소유자' : '멤버'}
+                    {member.role === 'owner'
+                      ? MESSAGES.member.role.owner
+                      : MESSAGES.member.role.member}
                   </Badge>
                   <span className="text-caption text-foreground-tertiary whitespace-nowrap">
-                    합류일 {joinedDate(member.joinedAt)}
+                    {MESSAGES.member.label.joinedAt}{' '}
+                    {joinedDate(member.joinedAt)}
                   </span>
                   {owner &&
                   member.userId !== userId &&
@@ -208,7 +219,7 @@ export function MemberListContent({
                     <Button
                       variant="ghost"
                       className="size-7 p-0"
-                      aria-label={`${member.name} 내보내기`}
+                      aria-label={MESSAGES.member.a11y.remove(member.name)}
                       onClick={(event) => {
                         returnFocus.current = event.currentTarget
                         remove.reset()
@@ -282,15 +293,14 @@ export function MemberListContent({
               <UserRoundMinus aria-hidden="true" className="size-6" />
             </span>
             <DialogTitle className="mt-4 text-[20px] leading-7 font-semibold break-words">
-              {target?.name}님을 내보낼까요?
+              {MESSAGES.member.confirm.removeTitle(target?.name ?? '')}
             </DialogTitle>
             <DialogDescription className="mt-2">
-              내보내면 이 워크스페이스의 프로젝트와 화이트보드 문서에 더 이상
-              접근할 수 없어요.
+              {MESSAGES.member.confirm.removeDescription}
             </DialogDescription>
             {remove.error && (
               <p role="alert" className="text-caption text-status-danger mt-4">
-                멤버를 내보내지 못했어요. 다시 시도해주세요.
+                {MESSAGES.member.error.removeFailed}
               </p>
             )}
           </div>
@@ -300,14 +310,14 @@ export function MemberListContent({
               disabled={remove.isPending}
               onClick={() => setTarget(null)}
             >
-              취소
+              {MESSAGES.common.action.cancel}
             </Button>
             <Button
               variant="destructive"
               loading={remove.isPending}
               onClick={() => void confirm()}
             >
-              내보내기
+              {MESSAGES.member.action.remove}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -3,6 +3,7 @@ import { cn } from '@/shared/lib/utils'
 import { ChevronsUpDown } from 'lucide-react'
 import { Search } from '@/shared/ui/search'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/avatar'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type AppShellHeaderProps = React.ComponentProps<'div'> & {
   workspaceName: string
@@ -15,7 +16,7 @@ type AppShellHeaderProps = React.ComponentProps<'div'> & {
 function AppShellHeader({
   className,
   workspaceName,
-  searchPlaceholder = '프로젝트 검색',
+  searchPlaceholder = MESSAGES.project.form.searchLabel,
   userName,
   userImageUrl,
   onSearchChange,

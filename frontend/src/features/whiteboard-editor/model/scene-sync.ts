@@ -4,6 +4,7 @@ import type {
   WhiteboardElement,
   WhiteboardFile,
 } from './protocol'
+import { MESSAGES } from '@/shared/constants/messages'
 
 function newer(a: WhiteboardElement, b?: WhiteboardElement) {
   return (
@@ -87,9 +88,7 @@ export function nextBatch(delta: SceneDelta): SceneDelta {
   for (const [id, file] of Object.entries(delta.fileUpdates ?? {})) {
     const length = size({ [id]: file })
     if (length + 1024 > 1_048_576)
-      throw new Error(
-        '이미지가 전송 한도(1 MiB)를 초과했어요. 이미지를 줄여 다시 시도하세요.',
-      )
+      throw new Error(MESSAGES.whiteboard.sync.imageTooLarge)
     if (bytes + length > 1_048_576) return batch
     batch.fileUpdates ??= {}
     Object.defineProperty(batch.fileUpdates, id, {
@@ -101,7 +100,7 @@ export function nextBatch(delta: SceneDelta): SceneDelta {
   for (const element of delta.elements) {
     const length = size(element)
     if (length + 1024 > 1_048_576)
-      throw new Error('요소가 전송 한도를 초과했어요.')
+      throw new Error(MESSAGES.whiteboard.sync.elementTooLarge)
     if (batch.elements.length >= 2000 || bytes + length > 1_048_576) break
     batch.elements.push(element)
     bytes += length

@@ -1,6 +1,7 @@
 import { Users } from 'lucide-react'
 
 import { Button } from '@/shared/ui/button'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type WorkspaceAccessDeniedPageProps = {
   workspaceName: string
@@ -21,13 +22,13 @@ export function WorkspaceAccessDeniedPage({
           <Users className="text-foreground-secondary size-6" />
         </div>
         <h1 className="text-heading1 text-foreground-strong">
-          존재하지 않는 워크스페이스예요
+          {MESSAGES.workspace.error.notFound}
         </h1>
         <p className="text-body text-foreground-secondary">
-          입력한 워크스페이스를 찾을 수 없어요
+          {MESSAGES.workspace.error.notFoundDescription}
         </p>
         <Button variant="secondary" onClick={onReturn}>
-          {workspaceName}로 돌아가기
+          {MESSAGES.workspace.action.backTo(workspaceName)}
         </Button>
       </div>
     </main>

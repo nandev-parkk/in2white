@@ -4,6 +4,7 @@ import { CircleAlert } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { CompactEmptyState } from '@/shared/ui/compact-empty-state'
 import { EmptyState } from '@/shared/ui/empty-state'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type ErrorStateSize = 'default' | 'compact'
 
@@ -19,7 +20,7 @@ type ErrorStateProps = {
 
 function ErrorState({
   title,
-  description = '잠시 후 다시 시도해보세요',
+  description = MESSAGES.common.error.retryHint,
   action,
   icon,
   size = 'default',
