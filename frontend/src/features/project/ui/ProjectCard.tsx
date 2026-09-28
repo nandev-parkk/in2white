@@ -1,5 +1,5 @@
 import { CalendarDays, Clock3, Folder, MoreVertical } from 'lucide-react'
-import { motion, useReducedMotion } from 'motion/react'
+import { motion } from 'motion/react'
 
 import type { Project } from '@/entities/project'
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
 
+import { useCardMotion } from '@/shared/lib/hooks/use-card-motion'
 import { formatCreatedAt, formatUpdatedAt } from '@/shared/lib/resource-date'
 
 type ProjectCardProps = {
@@ -51,13 +52,11 @@ function ProjectCard({
   canManage = true,
   onOpen,
 }: ProjectCardProps) {
-  const prefersReducedMotion = useReducedMotion()
+  const cardMotion = useCardMotion()
 
   return (
     <motion.article
-      whileHover={prefersReducedMotion ? undefined : { y: -2 }}
-      whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
-      transition={{ type: 'tween', duration: 0.16, ease: 'easeOut' }}
+      {...cardMotion}
       className="border-border bg-background-default flex min-h-[204px] min-w-0 flex-col rounded-md border p-4 transition-shadow duration-150 hover:shadow-md motion-reduce:transition-none"
     >
       <div className="flex items-center justify-between gap-2">
