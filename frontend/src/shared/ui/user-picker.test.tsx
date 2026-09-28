@@ -39,7 +39,7 @@ it('로딩과 오류·재시도 및 후보 페이지 이동을 표시한다', as
   }
   const { rerender } = render(<UserPicker {...props} loading />)
   expect(
-    await screen.findByRole('status', { name: '사용자 불러오는 중' }),
+    await screen.findByRole('status', { name: '사용자를 불러오는 중' }),
   ).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /민지/ })).not.toBeInTheDocument()
   rerender(
@@ -62,7 +62,7 @@ it('로딩은 지연된 스켈레톤 셀로, 빈 결과는 공용 상태 컴포�
   const { rerender } = render(<UserPicker {...props} searchValue="" loading />)
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
   const loading = await screen.findByRole('status', {
-    name: '사용자 불러오는 중',
+    name: '사용자를 불러오는 중',
   })
   expect(
     loading.querySelectorAll('[data-slot="skeleton-list-cell"]'),

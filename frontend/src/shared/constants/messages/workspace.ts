@@ -53,8 +53,6 @@ export const WORKSPACE_MESSAGES = {
   },
   a11y: {
     loading: '워크스페이스를 불러오는 중',
-    /** 사이드바는 조사 없는 표기를 쓴다. 두 문구를 통일하려면 별도 작업이 필요하다. */
-    loadingShort: '워크스페이스 불러오는 중',
     list: '워크스페이스 목록',
     redirecting: '워크스페이스로 이동하는 중',
     redirectingToProject: '프로젝트로 이동하는 중',

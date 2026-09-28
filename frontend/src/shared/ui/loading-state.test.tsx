@@ -42,7 +42,7 @@ it('스켈레톤 영역은 유지하지만 빠른 요청에서는 보이거나 �
   vi.useFakeTimers()
   render(
     <DelayedLoading className="min-h-64">
-      <div role="status" aria-label="멤버 불러오는 중">
+      <div role="status" aria-label="멤버를 불러오는 중">
         스켈레톤
       </div>
     </DelayedLoading>,
