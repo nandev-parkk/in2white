@@ -1,9 +1,15 @@
 import * as React from 'react'
+import { motion } from 'motion/react'
 import { cn } from '@/shared/lib/utils'
 import { Calendar, Clock } from 'lucide-react'
+import { useCardMotion } from '@/shared/lib/hooks/use-card-motion'
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
 
-type WhiteboardCardProps = React.ComponentProps<'div'> & {
+// motion.article과 이름이 겹치는 drag·animation 핸들러만 제외하고 article 속성을 받는다
+type WhiteboardCardProps = Omit<
+  React.ComponentProps<'article'>,
+  'onDrag' | 'onDragStart' | 'onDragEnd' | 'onAnimationStart' | 'onAnimationEnd'
+> & {
   title: string
   createdAtLabel: string
   updatedAtLabel: string
@@ -22,11 +28,14 @@ function WhiteboardCard({
   onOpen,
   ...props
 }: WhiteboardCardProps) {
+  const cardMotion = useCardMotion()
+
   return (
-    <div
+    <motion.article
       data-slot="whiteboard-card"
+      {...cardMotion}
       className={cn(
-        'border-border-subtle bg-background-default flex w-full flex-col overflow-hidden rounded-md border',
+        'border-border-subtle bg-background-default flex w-full flex-col overflow-hidden rounded-md border transition-shadow duration-150 hover:shadow-md motion-reduce:transition-none',
         className,
       )}
       {...props}
@@ -70,7 +79,7 @@ function WhiteboardCard({
           </span>
         </div>
       </div>
-    </div>
+    </motion.article>
   )
 }
 
