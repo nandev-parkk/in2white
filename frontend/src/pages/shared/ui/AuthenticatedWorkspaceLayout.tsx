@@ -30,7 +30,7 @@ import {
   ResourceListSkeleton,
 } from '@/shared/ui/resource-list-skeleton'
 import { Skeleton, SkeletonListCell } from '@/shared/ui/skeleton'
-import { Sidebar, type SidebarNavKey } from '@/shared/ui/sidebar'
+import { Sidebar, type SidebarNavKey } from '@/widgets/sidebar'
 import { toast } from '@/shared/ui/toast'
 import { MESSAGES } from '@/shared/constants/messages'
 

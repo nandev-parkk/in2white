@@ -1,7 +1,7 @@
 import { MemberListContent } from '@/features/member/ui/MemberListContent'
 import { ProjectListContent } from '@/features/project/ui/ProjectListContent'
 import { AuthenticatedWorkspaceLayout } from '@/pages/shared/ui/AuthenticatedWorkspaceLayout'
-import type { SidebarNavKey } from '@/shared/ui/sidebar'
+import type { SidebarNavKey } from '@/widgets/sidebar'
 import { MESSAGES } from '@/shared/constants/messages'
 
 export function HomePage({

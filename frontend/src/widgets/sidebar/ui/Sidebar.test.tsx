@@ -5,7 +5,7 @@ import { vi } from 'vitest'
 
 import type { WorkspaceSummary } from '@/entities/workspace'
 
-import { Sidebar } from './sidebar'
+import { Sidebar } from './Sidebar'
 
 const workspaceFixture: WorkspaceSummary = {
   id: 'workspace-1',
@@ -78,6 +78,15 @@ function emitSidebarWidth(width: number) {
 }
 
 describe('Sidebar', () => {
+  it('in2white 로고 마크를 표시한다', () => {
+    render(<Sidebar {...sidebarFixture} />)
+
+    expect(screen.getByAltText('in2white')).toHaveAttribute(
+      'src',
+      '/logo-mark.png',
+    )
+  })
+
   it('Figma 기준 사이드바 시각 규칙을 적용한다', async () => {
     const user = userEvent.setup()
     render(<Sidebar {...sidebarFixture} />)

@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import type { WorkspaceSummary } from '@/entities/workspace'
 import type { PresenceUser } from '@/shared/ui/presence-avatar-stack'
-import { Sidebar, type SidebarNavKey } from '@/shared/ui/sidebar'
+
+import { Sidebar, type SidebarNavKey } from './Sidebar'
 
 const PROFILE_IMAGE =
   'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"%3E%3Crect width="80" height="80" fill="%23dce8ff"/%3E%3Ccircle cx="40" cy="31" r="15" fill="%23efb394"/%3E%3Cpath d="M22 29c2-13 10-20 19-20 11 0 18 8 18 21-7-3-12-8-17-14-5 7-11 11-20 13Z" fill="%233a4055"/%3E%3Cpath d="M12 80c3-20 14-30 28-30s25 10 28 30" fill="%235b75d6"/%3E%3C/svg%3E'
@@ -119,7 +120,7 @@ function SidebarExample({
 }
 
 const meta = {
-  title: 'Shared UI/Compositions/Sidebar',
+  title: 'Widgets/Sidebar',
   component: Sidebar,
   parameters: { layout: 'fullscreen' },
   args: {

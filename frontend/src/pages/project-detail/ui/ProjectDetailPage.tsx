@@ -18,7 +18,7 @@ import { AuthenticatedWorkspaceLayout } from '@/pages/shared/ui/AuthenticatedWor
 import { Button } from '@/shared/ui/button'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { ErrorState } from '@/shared/ui/error-state'
-import type { SidebarNavKey } from '@/shared/ui/sidebar'
+import type { SidebarNavKey } from '@/widgets/sidebar'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { DelayedLoading } from '@/shared/ui/loading-state'
 import {

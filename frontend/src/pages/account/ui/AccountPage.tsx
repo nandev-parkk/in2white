@@ -26,7 +26,7 @@ import { Input } from '@/shared/ui/input'
 import { ListCell } from '@/shared/ui/list-cell'
 import { PageHeader } from '@/shared/ui/page-header'
 import { SkeletonListCell } from '@/shared/ui/skeleton'
-import type { SidebarNavKey } from '@/shared/ui/sidebar'
+import type { SidebarNavKey } from '@/widgets/sidebar'
 import { toast } from '@/shared/ui/toast'
 
 export type AccountPageProps = {
