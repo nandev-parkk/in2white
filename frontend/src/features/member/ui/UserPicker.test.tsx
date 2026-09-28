@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { UserPicker } from './user-picker'
+import { UserPicker } from './UserPicker'
 const users = [
   { id: '1', name: '민지', email: 'minji@example.com' },
   { id: '2', name: '서준', email: 'seo@example.com', isMember: true },

@@ -15,7 +15,7 @@ import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import type { RemoteExcalidrawElement } from '@excalidraw/excalidraw/data/reconcile'
 import '@excalidraw/excalidraw/index.css'
 import type { WhiteboardDocumentDetail } from '@/entities/whiteboard-document'
-import { CanvasTopBar } from '@/shared/ui/canvas-top-bar'
+import { CanvasTopBar } from './CanvasTopBar'
 import { Button } from '@/shared/ui/button'
 import { MoreVertical } from 'lucide-react'
 import {

@@ -2,7 +2,7 @@ import { useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import { Button } from '@/shared/ui/button'
-import { CanvasTopBar } from '@/shared/ui/canvas-top-bar'
+import { CanvasTopBar } from './CanvasTopBar'
 import type { PresenceUser } from '@/shared/ui/presence-avatar-stack'
 
 type SaveStatus = ComponentProps<typeof CanvasTopBar>['saveStatus']
@@ -64,7 +64,7 @@ function SaveStatusExample({ initialStatus }: { initialStatus: SaveStatus }) {
 }
 
 const meta = {
-  title: 'Shared UI/Compositions/Canvas Top Bar',
+  title: 'Features/Whiteboard Editor/Canvas Top Bar',
   component: CanvasTopBar,
   parameters: { layout: 'fullscreen' },
   decorators: [

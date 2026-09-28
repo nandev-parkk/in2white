@@ -2,7 +2,7 @@ import { useMemo, useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
 import { Button } from '@/shared/ui/button'
-import { UserPicker, type PickableUser } from '@/shared/ui/user-picker'
+import { UserPicker, type PickableUser } from './UserPicker'
 
 const USERS: PickableUser[] = [
   {
@@ -89,7 +89,7 @@ function UserPickerExample({
 }
 
 const meta = {
-  title: 'Shared UI/Compositions/User Picker',
+  title: 'Features/Member/User Picker',
   component: UserPicker,
   parameters: { layout: 'centered' },
   args: {

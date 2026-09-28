@@ -6,7 +6,7 @@ import {
   memberErrorCode,
 } from '../model/use-members'
 import { useMemberSearch } from '../model/use-member-search'
-import { UserPicker, type PickableUser } from '@/shared/ui/user-picker'
+import { UserPicker, type PickableUser } from './UserPicker'
 import { toast } from '@/shared/ui/toast'
 import { MESSAGES } from '@/shared/constants/messages'
 export function MemberAddDialog({
