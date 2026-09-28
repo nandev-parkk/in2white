@@ -32,3 +32,6 @@ dist/
 /frontend/**/*.njsproj
 /frontend/**/*.sln
 /frontend/**/*.sw?
+
+# AI 코드 도구 로컬 설정
+.serena/
