@@ -7,7 +7,7 @@ import { Button } from '@/shared/ui/button'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { ErrorState } from '@/shared/ui/error-state'
 import { LoadingState } from '@/shared/ui/loading-state'
-import { CanvasTopBar } from '@/shared/ui/canvas-top-bar'
+import { CanvasTopBar } from '@/features/whiteboard-editor/ui/CanvasTopBar'
 import { MESSAGES } from '@/shared/constants/messages'
 
 const WhiteboardCanvas = lazy(

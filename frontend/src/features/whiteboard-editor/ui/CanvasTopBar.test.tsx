@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { CanvasTopBar } from './canvas-top-bar'
+import { CanvasTopBar } from './CanvasTopBar'
 
 it('빈 더 보기 버튼 없이 참여자 아바타를 표시하고 참여자 변경을 반영한다', async () => {
   const users = [

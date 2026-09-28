@@ -39,6 +39,7 @@ const meta = {
   ],
   args: {
     workspaceName: '인투화이트 디자인팀',
+    searchPlaceholder: '프로젝트 검색',
     userName: '김민지',
     userImageUrl: PROFILE_IMAGE,
   },
