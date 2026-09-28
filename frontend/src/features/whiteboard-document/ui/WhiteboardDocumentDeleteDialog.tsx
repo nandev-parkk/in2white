@@ -7,6 +7,7 @@ import {
   DialogFooter,
   DialogTitle,
 } from '@/shared/ui/dialog'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type WhiteboardDocumentDeleteDialogProps = {
   open: boolean
@@ -38,11 +39,11 @@ function WhiteboardDocumentDeleteDialog({
             <FileX aria-hidden="true" className="size-6" />
           </span>
           <DialogTitle className="mt-4 text-[20px] leading-7 font-semibold break-words">
-            화이트보드 삭제
+            {MESSAGES.whiteboard.heading.deleteDialog}
           </DialogTitle>
           <DialogDescription className="mt-2 break-words">
             <strong className="text-foreground-default">{documentName}</strong>
-            을(를) 삭제하면 되돌릴 수 없어요.
+            {MESSAGES.common.confirm.deleteSuffix}
           </DialogDescription>
           {error && (
             <p className="text-caption text-status-danger mt-4" role="alert">
@@ -57,7 +58,7 @@ function WhiteboardDocumentDeleteDialog({
             disabled={loading}
             onClick={() => onOpenChange(false)}
           >
-            취소
+            {MESSAGES.common.action.cancel}
           </Button>
           <Button
             type="button"
@@ -65,7 +66,7 @@ function WhiteboardDocumentDeleteDialog({
             loading={loading}
             onClick={onConfirm}
           >
-            삭제
+            {MESSAGES.common.action.delete}
           </Button>
         </DialogFooter>
       </DialogContent>

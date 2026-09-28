@@ -16,6 +16,7 @@ import type {
   SceneUpdate,
   ServerEvents,
 } from './protocol'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type Props = {
   workspaceId: string
@@ -152,7 +153,9 @@ export function useWhiteboardEditor({
         }
       } catch (cause) {
         fail(
-          cause instanceof Error ? cause.message : '변경을 전송하지 못했어요.',
+          cause instanceof Error
+            ? cause.message
+            : MESSAGES.whiteboard.sync.sendFailed,
         )
         return
       }
@@ -166,9 +169,7 @@ export function useWhiteboardEditor({
           if (attempts < 3) attempt()
           else {
             cancelFlight()
-            fail(
-              '응답을 확인하지 못했어요. 변경은 이 화면에 보관 중입니다. 다시 연결해 주세요.',
-            )
+            fail(MESSAGES.whiteboard.sync.ackFailed)
           }
         }, 5000)
         socket.emit('whiteboard:scene:update', payload, (ack) => {
@@ -207,7 +208,7 @@ export function useWhiteboardEditor({
       connection = 'connected'
       const generation = epoch
       joinTimer = setTimeout(
-        () => fail('문서에 연결하지 못했어요. 다시 시도해 주세요.'),
+        () => fail(MESSAGES.whiteboard.sync.connectFailed),
         10000,
       )
       socket.emit(
@@ -244,9 +245,7 @@ export function useWhiteboardEditor({
           savedRevision = ack.savedRevision
           participants = ack.participants
           blocked = ack.persistenceState === 'blocked'
-          error = blocked
-            ? '저장 서버에 연결할 수 없어 편집을 잠시 멈췄어요.'
-            : null
+          error = blocked ? MESSAGES.whiteboard.sync.serverUnavailable : null
           joined = true
           publish()
           schedule()
@@ -257,10 +256,7 @@ export function useWhiteboardEditor({
     async function refresh() {
       if (disposed || terminal || refreshing) return
       if (refreshed) {
-        fail(
-          '로그인이 만료됐어요. 변경을 내보낸 뒤 다시 로그인해 주세요.',
-          true,
-        )
+        fail(MESSAGES.whiteboard.sync.sessionExpired, true)
         return
       }
       refreshed = true
@@ -276,11 +272,7 @@ export function useWhiteboardEditor({
         socket.auth = { accessToken: nextToken }
         socket.connect()
       } catch {
-        if (!disposed)
-          fail(
-            '로그인이 만료됐어요. 변경을 내보낸 뒤 다시 로그인해 주세요.',
-            true,
-          )
+        if (!disposed) fail(MESSAGES.whiteboard.sync.sessionExpired, true)
       } finally {
         refreshing = false
       }
@@ -343,15 +335,13 @@ export function useWhiteboardEditor({
       revision = event.snapshot.revision
       savedRevision = event.savedRevision
       blocked = event.persistenceState === 'blocked'
-      error = blocked
-        ? '저장 서버에 연결할 수 없어 편집을 잠시 멈췄어요.'
-        : null
+      error = blocked ? MESSAGES.whiteboard.sync.serverUnavailable : null
       publish()
       schedule()
     })
     socket.on('whiteboard:document:deleted', (event) => {
       if (!disposed && event.documentId === documentId)
-        fail('삭제된 화이트보드입니다. 프로젝트로 돌아가 주세요.', true)
+        fail(MESSAGES.whiteboard.sync.documentDeleted, true)
     })
     socket.on('whiteboard:error', (event) => {
       if (!disposed && !terminal && event.code !== 'RATE_LIMITED')
@@ -380,11 +370,7 @@ export function useWhiteboardEditor({
       publish()
     })
     actions.current = {
-      expire: () =>
-        fail(
-          '로그인이 만료됐어요. 변경을 내보낸 뒤 다시 로그인해 주세요.',
-          true,
-        ),
+      expire: () => fail(MESSAGES.whiteboard.sync.sessionExpired, true),
       change: (scene) => {
         if (disposed || !joined || blocked || error) return
         const delta = diffScene(desired, scene)

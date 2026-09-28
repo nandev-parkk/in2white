@@ -12,6 +12,7 @@ import {
 
 import { useCardMotion } from '@/shared/lib/hooks/use-card-motion'
 import { formatCreatedAt, formatUpdatedAt } from '@/shared/lib/resource-date'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type ProjectCardProps = {
   project: Project
@@ -27,7 +28,7 @@ function ProjectMenu({ project, onEdit, onDelete }: ProjectCardProps) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label={`${project.name} 메뉴`}
+          aria-label={MESSAGES.common.a11y.menu(project.name)}
           className="text-foreground-tertiary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-md outline-none focus-visible:ring-3"
         >
           <MoreVertical className="size-4" />
@@ -35,10 +36,10 @@ function ProjectMenu({ project, onEdit, onDelete }: ProjectCardProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onSelect={() => onEdit(project)}>
-          수정
+          {MESSAGES.common.action.edit}
         </DropdownMenuItem>
         <DropdownMenuItem variant="danger" onSelect={() => onDelete(project)}>
-          삭제
+          {MESSAGES.common.action.delete}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -81,16 +82,18 @@ function ProjectCard({
           )}
         </h2>
         <p className="text-body text-foreground-secondary mt-2 line-clamp-2">
-          {project.description || '설명 없음'}
+          {project.description || MESSAGES.project.empty.noDescription}
         </p>
         <div className="text-caption text-foreground-tertiary mt-2 flex flex-col gap-1">
           <span className="flex items-center gap-1.5">
             <CalendarDays className="size-3.25" />
-            생성일 {formatCreatedAt(project.createdAt)}
+            {MESSAGES.common.label.createdAt}{' '}
+            {formatCreatedAt(project.createdAt)}
           </span>
           <span className="flex items-center gap-1.5">
             <Clock3 className="size-3.25" />
-            수정일 {formatUpdatedAt(project.updatedAt)}
+            {MESSAGES.common.label.updatedAt}{' '}
+            {formatUpdatedAt(project.updatedAt)}
           </span>
         </div>
       </div>

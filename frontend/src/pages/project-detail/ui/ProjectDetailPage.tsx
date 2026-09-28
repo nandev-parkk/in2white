@@ -26,6 +26,7 @@ import {
   ResourceListSkeleton,
 } from '@/shared/ui/resource-list-skeleton'
 import { toast } from '@/shared/ui/toast'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type ProjectDetailPageProps = {
   onDocumentOpen?: (documentId: string) => void
@@ -54,7 +55,7 @@ function ProjectDetailHeaderSkeleton({ startedAt }: { startedAt?: number }) {
       <div
         data-testid="project-detail-header-skeleton"
         role="status"
-        aria-label="프로젝트를 불러오는 중"
+        aria-label={MESSAGES.project.a11y.loading}
         className="flex min-w-0 flex-col gap-6"
       >
         <div className="flex h-[130px] flex-col gap-4" aria-hidden="true">
@@ -110,7 +111,7 @@ function ProjectDetailContent({
 
     try {
       await updateProject.mutateAsync({ projectId: project.id, input })
-      toast.success('프로젝트를 수정했어요')
+      toast.success(MESSAGES.project.toast.updated)
       handleEditOpenChange(false)
     } catch {
       return
@@ -133,7 +134,7 @@ function ProjectDetailContent({
 
     try {
       await deleteProject.mutateAsync(project.id)
-      toast.success('프로젝트를 삭제했어요')
+      toast.success(MESSAGES.project.toast.deleted)
       handleDeleteOpenChange(false)
       onBack()
     } catch {
@@ -149,11 +150,11 @@ function ProjectDetailContent({
       <EmptyState
         className="flex-1"
         icon={<FolderX className="size-8" />}
-        title="프로젝트를 찾을 수 없어요"
-        description="삭제되었거나 접근할 수 없는 프로젝트예요"
+        title={MESSAGES.project.error.notFound}
+        description={MESSAGES.project.error.notFoundDescription}
         action={
           <Button variant="secondary" onClick={onBack}>
-            프로젝트 목록으로
+            {MESSAGES.project.action.backToList}
           </Button>
         }
       />
@@ -164,7 +165,7 @@ function ProjectDetailContent({
     return (
       <ErrorState
         className="min-h-48 flex-1"
-        title="프로젝트를 불러오지 못했어요"
+        title={MESSAGES.project.error.loadFailed}
         action={
           <Button
             variant="secondary"
@@ -173,7 +174,7 @@ function ProjectDetailContent({
               void projectQuery.refetch()
             }}
           >
-            다시 시도
+            {MESSAGES.common.action.retry}
           </Button>
         }
       />
@@ -206,15 +207,17 @@ function ProjectDetailContent({
       {editOpen && (
         <ProjectFormDialog
           open
-          title="프로젝트 수정"
-          submitLabel="저장"
+          title={MESSAGES.project.heading.editDialog}
+          submitLabel={MESSAGES.common.action.save}
           initialName={project.name}
           initialDescription={project.description}
           onOpenChange={handleEditOpenChange}
           onSubmit={handleUpdate}
           loading={updateProject.isPending}
           error={
-            updateProject.error ? '프로젝트를 수정하지 못했어요' : undefined
+            updateProject.error
+              ? MESSAGES.project.error.updateFailed
+              : undefined
           }
         />
       )}
@@ -225,7 +228,9 @@ function ProjectDetailContent({
         onOpenChange={handleDeleteOpenChange}
         onConfirm={() => void handleDelete()}
         loading={deleteProject.isPending}
-        error={deleteProject.error ? '프로젝트를 삭제하지 못했어요' : undefined}
+        error={
+          deleteProject.error ? MESSAGES.project.error.deleteFailed : undefined
+        }
       />
     </div>
   )

@@ -28,6 +28,7 @@ import {
 import { useWhiteboardEditor } from '../model/use-whiteboard-editor'
 import { diffScene, hasDelta, mergeScene } from '../model/scene-sync'
 import type { CanvasContent, WhiteboardElement } from '../model/protocol'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type Props = {
   workspaceId: string
@@ -69,9 +70,7 @@ export default function WhiteboardCanvas({
   useBlocker({
     shouldBlockFn: () =>
       editor.hasUnsavedChanges &&
-      !window.confirm(
-        '아직 저장되지 않은 변경이 있어요. 내보내지 않고 나갈까요?',
-      ),
+      !window.confirm(MESSAGES.whiteboard.confirm.leaveWithUnsaved),
     enableBeforeUnload: editor.hasUnsavedChanges,
   })
   useEffect(() => {
@@ -186,7 +185,7 @@ export default function WhiteboardCanvas({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                aria-label="더 보기"
+                aria-label={MESSAGES.whiteboard.a11y.moreActions}
                 className="text-foreground-default flex size-8 items-center justify-center rounded-sm focus-visible:outline-2"
               >
                 <MoreVertical className="size-4.5" />
@@ -195,7 +194,7 @@ export default function WhiteboardCanvas({
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
                 <DropdownMenuItem onSelect={exportScene}>
-                  파일로 내보내기
+                  {MESSAGES.whiteboard.action.exportFile}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
@@ -207,32 +206,25 @@ export default function WhiteboardCanvas({
           role="alert"
           className="flex flex-wrap items-center gap-3 border-b p-3"
         >
-          <p>
-            {editor.error ??
-              '연결이 끊겨 편집을 멈췄어요. 변경은 이 화면에 보관 중입니다.'}
-          </p>
+          <p>{editor.error ?? MESSAGES.whiteboard.sync.disconnected}</p>
           <Button variant="secondary" onClick={editor.retry}>
-            다시 연결
+            {MESSAGES.whiteboard.action.reconnect}
           </Button>
           <Button
             variant="secondary"
             onClick={() => {
-              if (
-                window.confirm(
-                  '서버가 확인하지 않은 변경을 버리고 서버 장면으로 돌아갈까요?',
-                )
-              ) {
+              if (window.confirm(MESSAGES.whiteboard.confirm.discardPending)) {
                 editor.discard()
               }
             }}
           >
-            미전송 변경 버리기
+            {MESSAGES.whiteboard.action.discardPending}
           </Button>
         </div>
       )}
       <div
         className="min-h-0 flex-1 [&_label:has(.default-sidebar-trigger)]:hidden!"
-        aria-label="화이트보드 편집기"
+        aria-label={MESSAGES.whiteboard.a11y.editor}
       >
         <Excalidraw
           excalidrawAPI={setApi}

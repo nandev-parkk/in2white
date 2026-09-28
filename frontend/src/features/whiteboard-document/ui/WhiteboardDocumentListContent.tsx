@@ -28,6 +28,7 @@ import { WhiteboardDocumentDeleteDialog } from './WhiteboardDocumentDeleteDialog
 import { WhiteboardDocumentFormDialog } from './WhiteboardDocumentFormDialog'
 import { WhiteboardDocumentMenu } from './WhiteboardDocumentMenu'
 import { WhiteboardDocumentTable } from './WhiteboardDocumentTable'
+import { MESSAGES } from '@/shared/constants/messages'
 
 const DOCUMENTS_PER_PAGE = 12
 
@@ -113,7 +114,7 @@ function WhiteboardDocumentListContent({
   async function handleCreate(input: WhiteboardDocumentInput) {
     try {
       await createDocument.mutateAsync(input)
-      toast.success('화이트보드를 만들었어요')
+      toast.success(MESSAGES.whiteboard.toast.created)
       handleCreateOpenChange(false)
     } catch {
       return
@@ -141,7 +142,7 @@ function WhiteboardDocumentListContent({
         documentId: renamingDocument.id,
         input,
       })
-      toast.success('화이트보드 이름을 변경했어요')
+      toast.success(MESSAGES.whiteboard.toast.renamed)
       handleRenameOpenChange(false)
     } catch {
       return
@@ -166,7 +167,7 @@ function WhiteboardDocumentListContent({
 
     try {
       await deleteDocument.mutateAsync(deletingDocument.id)
-      toast.success('화이트보드를 삭제했어요')
+      toast.success(MESSAGES.whiteboard.toast.deleted)
       if (documents.length === 1 && page > 1) {
         setPage((current) => Math.max(1, current - 1))
       }
@@ -180,8 +181,8 @@ function WhiteboardDocumentListContent({
     <section className="flex min-w-0 flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Search
-          aria-label="화이트보드 검색"
-          placeholder="화이트보드 이름으로 검색"
+          aria-label={MESSAGES.whiteboard.a11y.search}
+          placeholder={MESSAGES.whiteboard.form.searchPlaceholder}
           value={search}
           onClear={() => handleSearchChange('')}
           onChange={(event) => handleSearchChange(event.target.value)}
@@ -191,17 +192,17 @@ function WhiteboardDocumentListContent({
           <ViewToggle
             value={view}
             onChange={setView}
-            label="화이트보드 보기 방식"
+            label={MESSAGES.whiteboard.a11y.viewToggle}
           />
           <Button className="h-9" onClick={openCreateDialog}>
-            화이트보드 생성
+            {MESSAGES.whiteboard.action.create}
           </Button>
         </div>
       </div>
 
       {documentsQuery.isLoading && (
         <DelayedLoading startedAt={loadingStartedAt}>
-          <div role="status" aria-label="화이트보드를 불러오는 중">
+          <div role="status" aria-label={MESSAGES.whiteboard.a11y.loading}>
             <ResourceListSkeleton view={view} kind="whiteboard" />
           </div>
         </DelayedLoading>
@@ -210,7 +211,7 @@ function WhiteboardDocumentListContent({
       {documentsQuery.isError && (
         <ErrorState
           className="min-h-48"
-          title="화이트보드를 불러오지 못했어요"
+          title={MESSAGES.whiteboard.error.loadFailed}
           action={
             <Button
               variant="secondary"
@@ -219,7 +220,7 @@ function WhiteboardDocumentListContent({
                 void documentsQuery.refetch()
               }}
             >
-              다시 시도
+              {MESSAGES.common.action.retry}
             </Button>
           }
         />
@@ -238,12 +239,14 @@ function WhiteboardDocumentListContent({
               )
             }
             title={
-              hasSearch ? '검색 결과가 없어요' : '아직 화이트보드가 없어요'
+              hasSearch
+                ? MESSAGES.common.empty.searchTitle
+                : MESSAGES.whiteboard.empty.title
             }
             description={
               hasSearch
-                ? '다른 검색어로 다시 시도해보세요'
-                : '새 화이트보드를 만들어 팀과 함께 아이디어를 그려보세요'
+                ? MESSAGES.common.empty.searchDescription
+                : MESSAGES.whiteboard.empty.description
             }
             action={
               hasSearch ? (
@@ -251,11 +254,11 @@ function WhiteboardDocumentListContent({
                   variant="secondary"
                   onClick={() => handleSearchChange('')}
                 >
-                  검색 결과 초기화
+                  {MESSAGES.common.action.clearSearch}
                 </Button>
               ) : (
                 <Button size="large" onClick={openCreateDialog}>
-                  새 화이트보드 만들기
+                  {MESSAGES.whiteboard.action.createFirst}
                 </Button>
               )
             }
@@ -319,13 +322,15 @@ function WhiteboardDocumentListContent({
       {createOpen && (
         <WhiteboardDocumentFormDialog
           open
-          title="새 화이트보드 만들기"
-          submitLabel="만들기"
+          title={MESSAGES.whiteboard.action.createFirst}
+          submitLabel={MESSAGES.common.action.create}
           onOpenChange={handleCreateOpenChange}
           onSubmit={handleCreate}
           loading={createDocument.isPending}
           error={
-            createDocument.error ? '화이트보드를 만들지 못했어요' : undefined
+            createDocument.error
+              ? MESSAGES.whiteboard.error.createFailed
+              : undefined
           }
         />
       )}
@@ -333,15 +338,15 @@ function WhiteboardDocumentListContent({
       {renamingDocument && (
         <WhiteboardDocumentFormDialog
           open
-          title="화이트보드 이름 변경"
-          submitLabel="저장"
+          title={MESSAGES.whiteboard.heading.renameDialog}
+          submitLabel={MESSAGES.common.action.save}
           initialName={renamingDocument.name}
           onOpenChange={handleRenameOpenChange}
           onSubmit={handleRename}
           loading={updateDocument.isPending}
           error={
             updateDocument.error
-              ? '화이트보드 이름을 변경하지 못했어요'
+              ? MESSAGES.whiteboard.error.renameFailed
               : undefined
           }
         />
@@ -354,7 +359,9 @@ function WhiteboardDocumentListContent({
         onConfirm={() => void handleDelete()}
         loading={deleteDocument.isPending}
         error={
-          deleteDocument.error ? '화이트보드를 삭제하지 못했어요' : undefined
+          deleteDocument.error
+            ? MESSAGES.whiteboard.error.deleteFailed
+            : undefined
         }
       />
     </section>

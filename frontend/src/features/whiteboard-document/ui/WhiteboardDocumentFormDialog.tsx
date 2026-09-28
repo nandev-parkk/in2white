@@ -63,7 +63,7 @@ function WhiteboardDocumentFormDialog({
             {title}
           </DialogTitle>
           <DialogDescription className="mt-2">
-            화이트보드의 이름을 정해 주세요.
+            {MESSAGES.whiteboard.form.dialogDescription}
           </DialogDescription>
         </div>
         <form onSubmit={handleSubmit}>
@@ -72,7 +72,7 @@ function WhiteboardDocumentFormDialog({
               className="text-label text-foreground-default font-medium"
               htmlFor="whiteboard-document-name"
             >
-              이름
+              {MESSAGES.common.label.name}
             </label>
             <Input
               id="whiteboard-document-name"
@@ -82,7 +82,7 @@ function WhiteboardDocumentFormDialog({
                 setName(event.target.value)
                 if (validationError) setValidationError(null)
               }}
-              placeholder="예: 킥오프 화이트보드"
+              placeholder={MESSAGES.whiteboard.form.namePlaceholder}
               maxLength={50}
               aria-invalid={Boolean(validationError)}
               aria-describedby={
@@ -110,7 +110,7 @@ function WhiteboardDocumentFormDialog({
               disabled={loading}
               onClick={() => onOpenChange(false)}
             >
-              취소
+              {MESSAGES.common.action.cancel}
             </Button>
             <Button type="submit" loading={loading}>
               {submitLabel}

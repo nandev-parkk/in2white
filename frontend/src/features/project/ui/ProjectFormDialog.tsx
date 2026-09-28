@@ -91,7 +91,7 @@ function ProjectFormDialog({
             {title}
           </DialogTitle>
           <DialogDescription className="mt-2">
-            프로젝트 이름과 설명을 입력해 주세요.
+            {MESSAGES.project.form.dialogDescription}
           </DialogDescription>
         </div>
         <form onSubmit={handleSubmit}>
@@ -101,7 +101,7 @@ function ProjectFormDialog({
                 className="text-label text-foreground-default font-medium"
                 htmlFor="project-name"
               >
-                이름
+                {MESSAGES.common.label.name}
               </label>
               <Input
                 id="project-name"
@@ -112,7 +112,7 @@ function ProjectFormDialog({
                   if (validationError?.field === 'name')
                     setValidationError(null)
                 }}
-                placeholder="예: 홈페이지 개편"
+                placeholder={MESSAGES.project.form.namePlaceholder}
                 maxLength={50}
                 aria-invalid={validationError?.field === 'name'}
                 aria-describedby={
@@ -135,7 +135,10 @@ function ProjectFormDialog({
                 className="text-label text-foreground-default font-medium"
                 htmlFor="project-description"
               >
-                설명 <span className="text-foreground-tertiary">(선택)</span>
+                {MESSAGES.project.form.descriptionLabel}{' '}
+                <span className="text-foreground-tertiary">
+                  {MESSAGES.project.form.optionalSuffix}
+                </span>
               </label>
               <Textarea
                 id="project-description"
@@ -147,7 +150,7 @@ function ProjectFormDialog({
                     setValidationError(null)
                   }
                 }}
-                placeholder="프로젝트에 대한 설명을 입력해주세요"
+                placeholder={MESSAGES.project.form.descriptionPlaceholder}
                 maxLength={200}
                 rows={3}
                 aria-invalid={validationError?.field === 'description'}
@@ -179,7 +182,7 @@ function ProjectFormDialog({
               disabled={loading}
               onClick={() => onOpenChange(false)}
             >
-              취소
+              {MESSAGES.common.action.cancel}
             </Button>
             <Button type="submit" loading={loading}>
               {submitLabel}
