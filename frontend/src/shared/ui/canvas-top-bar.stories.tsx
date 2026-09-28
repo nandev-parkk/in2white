@@ -15,6 +15,14 @@ const USERS: PresenceUser[] = [
   { id: 'doyun', name: '정도윤', presenceIndex: 5 },
 ]
 
+const SAVE_STATUS_LABELS: Record<NonNullable<SaveStatus>, string> = {
+  saved: '저장 완료',
+  saving: '저장 중',
+  connecting: '연결 중',
+  disconnected: '동기화가 끊겼어요',
+  error: '저장 상태 확인 필요',
+}
+
 function SaveStatusExample({ initialStatus }: { initialStatus: SaveStatus }) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(initialStatus)
   const [lastAction, setLastAction] = useState('선택한 작업이 없습니다.')
@@ -36,17 +44,15 @@ function SaveStatusExample({ initialStatus }: { initialStatus: SaveStatus }) {
         }
       />
       <div className="flex flex-wrap items-center gap-2 p-6">
-        {(['saved', 'saving', 'disconnected'] as const).map((status) => (
+        {(
+          ['saved', 'saving', 'connecting', 'disconnected', 'error'] as const
+        ).map((status) => (
           <Button
             key={status}
             variant={saveStatus === status ? 'primary' : 'tertiary'}
             onClick={() => setSaveStatus(status)}
           >
-            {status === 'saved'
-              ? '저장 완료'
-              : status === 'saving'
-                ? '저장 중'
-                : '연결 끊김'}
+            {SAVE_STATUS_LABELS[status]}
           </Button>
         ))}
         <span className="text-caption text-foreground-secondary ml-2">
@@ -72,7 +78,7 @@ const meta = {
   argTypes: {
     saveStatus: {
       control: 'select',
-      options: ['saved', 'saving', 'disconnected'],
+      options: ['saved', 'saving', 'connecting', 'disconnected', 'error'],
     },
   },
 } satisfies Meta<typeof CanvasTopBar>
@@ -90,8 +96,16 @@ export const Saving: Story = {
   args: { saveStatus: 'saving' },
 }
 
+export const Connecting: Story = {
+  args: { saveStatus: 'connecting' },
+}
+
 export const Disconnected: Story = {
   args: { saveStatus: 'disconnected' },
+}
+
+export const SaveError: Story = {
+  args: { saveStatus: 'error' },
 }
 
 export const CollaboratorOverflow: Story = {
