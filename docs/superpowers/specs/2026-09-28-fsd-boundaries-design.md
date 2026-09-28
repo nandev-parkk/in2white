@@ -76,7 +76,12 @@ app → pages → features → entities → shared
 
 ### 하지 않는다
 
-- **`sidebar.tsx` 이동.** 도메인 사전을 20곳 넘게 참조하고 파일이 870줄이다. 목적지도 결정이 필요하다. FSD라면 `widgets` 계층이지만 이 저장소에는 없고, `pages/shared/ui`도 후보다. #93으로 분리한다.
+- **`sidebar.tsx` 이동.** 도메인 사전을 20곳 넘게 참조하고 파일이 870줄이다. 목적지도 결정이 필요하다. FSD라면 `widgets` 계층이고 `pages/shared/ui`도 후보다. #93으로 분리한다.
+
+> 정정(#93): 이 문단은 처음에 "`widgets` 계층이지만 이 저장소에는 없고"라고 적었다.
+> 사실이 아니다. `src/widgets/.gitkeep`이 추적되고 있었고 `frontend/README.md`가 계층을
+> 문서화하고 있었다. #93은 `widgets/sidebar`를 목적지로 택했다.
+
 - **`app-shell-header.tsx` 삭제.** 앱에서 쓰이지 않지만 `brand-assets.test.tsx`가 로고 검증의 발판으로 쓴다. 죽은 코드 정리는 성격이 다른 작업이다.
 
 ## 오류 계약

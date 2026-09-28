@@ -11,13 +11,10 @@ const SRC = join(process.cwd(), 'src')
 const NEUTRAL_DOMAINS = ['common', 'validation']
 
 /**
- * shared에 남은 도메인 의존. 이 목록에 없는 위반은 실패로 잡는다.
+ * shared에 남긴 도메인 의존. 지금은 비어 있다.
  * 목록을 늘리지 말고 파일을 해당 계층으로 옮긴다.
  */
-const DOMAIN_COUPLED_IN_SHARED = [
-  // 앱 셸 위젯이라 도메인을 안다. 옮기는 작업은 #93.
-  'shared/ui/sidebar.tsx',
-]
+const DOMAIN_COUPLED_IN_SHARED: string[] = []
 
 /** `MESSAGES.project`처럼 도메인 묶음을 직접 짚는 표현. */
 function domainReference() {
@@ -62,11 +59,12 @@ describe('FSD 계층 경계', () => {
     expect(stale).toEqual([])
   })
 
-  it('도메인 컴포넌트는 shared가 아니라 feature에 있다', () => {
+  it('도메인 컴포넌트는 shared가 아니라 상위 계층에 있다', () => {
     const relocated = {
       'shared/ui/canvas-top-bar.tsx':
         'features/whiteboard-editor/ui/CanvasTopBar.tsx',
       'shared/ui/user-picker.tsx': 'features/member/ui/UserPicker.tsx',
+      'shared/ui/sidebar.tsx': 'widgets/sidebar/ui/Sidebar.tsx',
     }
 
     for (const [oldPath, newPath] of Object.entries(relocated)) {

@@ -5,19 +5,10 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
-/** #93에서 sidebar를 옮기면 함께 지운다. */
-const SIDEBAR_EXCEPTIONS = [
-  'src/shared/ui/sidebar.tsx',
-  'src/shared/ui/sidebar.test.tsx',
-  'src/shared/ui/sidebar.stories.tsx',
-  'src/shared/ui/brand-assets.test.tsx',
-]
-
 /** 각 계층이 참조하면 안 되는 상위 계층을 no-restricted-imports 설정으로 바꾼다. */
 function layerRules(forbiddenByLayer) {
   return Object.entries(forbiddenByLayer).map(([layer, forbidden]) => ({
     files: [`src/${layer}/**/*.{ts,tsx}`],
-    ...(layer === 'shared' ? { ignores: SIDEBAR_EXCEPTIONS } : {}),
     rules: {
       'no-restricted-imports': [
         'error',
@@ -75,10 +66,11 @@ export default tseslint.config(
    * 경우는 잡지 못하므로 src/architecture.test.ts가 함께 지킨다.
    */
   ...layerRules({
-    shared: ['app', 'pages', 'features', 'entities'],
-    entities: ['app', 'pages', 'features'],
-    features: ['app', 'pages'],
-    pages: ['app'],
+    shared: ['app', 'routes', 'pages', 'widgets', 'features', 'entities'],
+    entities: ['app', 'routes', 'pages', 'widgets', 'features'],
+    features: ['app', 'routes', 'pages', 'widgets'],
+    widgets: ['app', 'routes', 'pages'],
+    pages: ['app', 'routes'],
   }),
   eslintConfigPrettier,
 )
