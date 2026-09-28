@@ -20,6 +20,7 @@ import { Search as SearchField } from '@/shared/ui/search'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 import type { PresenceUser } from '@/shared/ui/presence-avatar-stack'
 import { useScrollActiveItem } from '@/shared/hooks/use-scroll-active-item'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type SidebarNavKey = 'projects' | 'members' | 'settings'
 
@@ -161,8 +162,8 @@ function WorkspaceSwitcher({
   }
 
   const triggerLabel = loading
-    ? '워크스페이스 불러오는 중'
-    : (workspace?.name ?? '워크스페이스 선택')
+    ? MESSAGES.workspace.a11y.loadingShort
+    : (workspace?.name ?? MESSAGES.workspace.action.select)
 
   function handleWorkspaceSelect(workspaceId: string) {
     onWorkspaceChange(workspaceId)
@@ -204,10 +205,12 @@ function WorkspaceSwitcher({
               <DelayedLoading as="span" className="min-w-0 flex-1">
                 <span
                   role="status"
-                  aria-label="워크스페이스 불러오는 중"
+                  aria-label={MESSAGES.workspace.a11y.loadingShort}
                   className="flex flex-col gap-1.5"
                 >
-                  <span className="sr-only">워크스페이스 불러오는 중</span>
+                  <span className="sr-only">
+                    {MESSAGES.workspace.a11y.loadingShort}
+                  </span>
                   <span
                     aria-hidden="true"
                     className="bg-background-subtle h-4 w-24 max-w-full animate-pulse rounded-sm motion-reduce:animate-none"
@@ -232,13 +235,15 @@ function WorkspaceSwitcher({
                   </span>
                 </span>
                 <span className="text-foreground-tertiary text-left text-[11px] whitespace-nowrap">
-                  {workspace.role === 'owner' ? '소유자' : '멤버'}
+                  {workspace.role === 'owner'
+                    ? MESSAGES.member.role.owner
+                    : MESSAGES.member.role.member}
                 </span>
               </span>
             ) : (
               <span className="flex w-full min-w-0 flex-1 items-center gap-1.5 text-left">
                 <span className="text-body-small text-foreground-secondary min-w-0 flex-1 truncate">
-                  워크스페이스 없음
+                  {MESSAGES.workspace.empty.none}
                 </span>
               </span>
             )}
@@ -263,8 +268,8 @@ function WorkspaceSwitcher({
           <div className="relative shrink-0">
             <SearchField
               autoFocus
-              aria-label="워크스페이스 검색"
-              placeholder="워크스페이스 검색"
+              aria-label={MESSAGES.workspace.form.searchPlaceholder}
+              placeholder={MESSAGES.workspace.form.searchPlaceholder}
               value={query}
               onClear={() => setQuery('')}
               onChange={(event) => setQuery(event.target.value)}
@@ -280,7 +285,7 @@ function WorkspaceSwitcher({
           <div
             ref={listboxRef}
             role="listbox"
-            aria-label="워크스페이스 목록"
+            aria-label={MESSAGES.workspace.a11y.list}
             onKeyDown={handleListboxKeyDown}
             data-scrollbar-hidden="true"
             className="flex min-h-0 flex-1 [scrollbar-width:none] flex-col gap-1.5 overflow-y-auto [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
@@ -306,7 +311,9 @@ function WorkspaceSwitcher({
                       {item.name}
                     </span>
                     <span className="text-caption text-foreground-tertiary">
-                      {item.role === 'owner' ? '소유자' : '멤버'}
+                      {item.role === 'owner'
+                        ? MESSAGES.member.role.owner
+                        : MESSAGES.member.role.member}
                     </span>
                   </span>
                   {selected && (
@@ -320,12 +327,12 @@ function WorkspaceSwitcher({
                 <CompactEmptyState
                   className="min-h-0"
                   icon={<Search className="size-4" />}
-                  title="검색 결과가 없어요"
-                  description="다른 검색어로 다시 시도해보세요"
+                  title={MESSAGES.common.empty.searchTitle}
+                  description={MESSAGES.common.empty.searchDescription}
                 />
               ) : (
                 <p className="text-body-small text-foreground-tertiary flex flex-1 items-center justify-center px-2 py-4 text-center">
-                  워크스페이스가 없습니다
+                  {MESSAGES.workspace.empty.title}
                 </p>
               ))}
           </div>
@@ -338,7 +345,8 @@ function WorkspaceSwitcher({
             }}
             className="text-body-small text-foreground-secondary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex h-9 shrink-0 items-center gap-2 rounded-md px-2 text-left transition-[background-color,transform] duration-150 ease-out outline-none focus-visible:ring-3 active:scale-[0.99] motion-reduce:transition-none"
           >
-            <Plus className="size-4" />새 워크스페이스 생성
+            <Plus className="size-4" />
+            {MESSAGES.workspace.action.createMenuItem}
           </button>
         </div>
       )}
@@ -674,7 +682,7 @@ function Sidebar({
       {...props}
       data-slot="sidebar"
       role="complementary"
-      aria-label="워크스페이스 사이드바"
+      aria-label={MESSAGES.nav.a11y.sidebar}
       style={{
         ...style,
         width: `${sidebarWidth}px`,
@@ -701,8 +709,8 @@ function Sidebar({
           onClick={handleToggleClick}
           aria-label={
             (pendingCollapsed ?? isCollapsed)
-              ? '사이드바 펼치기'
-              : '사이드바 접기'
+              ? MESSAGES.nav.a11y.expandSidebar
+              : MESSAGES.nav.a11y.collapseSidebar
           }
           className={cn(
             'text-foreground-strong hover:text-foreground-default hover:bg-background-default absolute z-40 flex cursor-default items-center justify-center transition-[left,top,height,border-radius,background-color,box-shadow,transform] duration-300 ease-in-out hover:shadow-sm active:scale-[0.98] motion-reduce:transition-none',
@@ -779,7 +787,7 @@ function Sidebar({
           collapsed={visualCollapsed}
           compact={compact}
           icon={Folder}
-          label="프로젝트"
+          label={MESSAGES.project.heading.list}
           active={activeNav === 'projects'}
           onClick={() => onNavChange('projects')}
         />
@@ -787,14 +795,14 @@ function Sidebar({
           collapsed={visualCollapsed}
           compact={compact}
           icon={Users}
-          label="멤버"
+          label={MESSAGES.member.heading.list}
           active={activeNav === 'members'}
           onClick={() => onNavChange('members')}
           trailing={
             onInviteMember && (
               <button
                 type="button"
-                aria-label="멤버 초대"
+                aria-label={MESSAGES.member.a11y.invite}
                 className="text-foreground-tertiary hover:text-foreground-default focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-sm outline-none focus-visible:ring-3"
                 onClick={onInviteMember}
               >
@@ -808,7 +816,7 @@ function Sidebar({
             collapsed={visualCollapsed}
             compact={compact}
             icon={SlidersHorizontal}
-            label="설정"
+            label={MESSAGES.workspace.heading.settings}
             active={activeNav === 'settings'}
             onClick={() => onNavChange('settings')}
           />
@@ -821,7 +829,7 @@ function Sidebar({
         collapsed={visualCollapsed}
         compact={compact}
         icon={LogOut}
-        label="로그아웃"
+        label={MESSAGES.nav.action.logout}
         onClick={() => onLogout?.()}
       />
 
@@ -830,7 +838,7 @@ function Sidebar({
       <div data-slot="sidebar-profile" className="min-h-14.5 w-full">
         <button
           type="button"
-          aria-label={`사용자 정보: ${userName}`}
+          aria-label={MESSAGES.nav.a11y.userInfo(userName)}
           onClick={() => onUserClick?.()}
           className="focus-visible:ring-action-focus-ring hover:bg-action-secondary-hover flex min-h-14.5 w-full items-center gap-2 rounded-md py-2.25 pr-3 pl-1 text-left transition-colors duration-150 outline-none focus-visible:ring-3"
         >
@@ -856,7 +864,7 @@ function Sidebar({
       <div
         data-slot="sidebar-resize-handle"
         role="separator"
-        aria-label="사이드바 크기 조절"
+        aria-label={MESSAGES.nav.a11y.resizeSidebar}
         aria-orientation="vertical"
         aria-valuemin={SIDEBAR_WIDTH_MIN}
         aria-valuemax={SIDEBAR_WIDTH_MAX}

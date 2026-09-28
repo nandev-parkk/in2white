@@ -44,6 +44,7 @@ export const MEMBER_MESSAGES = {
   },
   a11y: {
     search: '멤버 검색',
+    invite: '멤버 초대',
     loading: '멤버 불러오는 중',
     list: '멤버 목록',
     remove: (name: string) => `${name} 내보내기`,

@@ -180,7 +180,7 @@ function ProjectListContent({
       ) && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Search
-            aria-label={MESSAGES.project.a11y.search}
+            aria-label={MESSAGES.project.form.searchLabel}
             placeholder={MESSAGES.project.form.searchPlaceholder}
             value={search}
             onClear={() => handleSearchChange('')}

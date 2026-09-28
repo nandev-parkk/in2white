@@ -10,6 +10,8 @@ export const WORKSPACE_MESSAGES = {
     renameFailed: '워크스페이스 이름을 저장하지 못했어요. 다시 시도해주세요.',
     deleteFailed: '워크스페이스를 삭제하지 못했어요. 다시 시도해주세요.',
     redirectFailed: '워크스페이스로 이동하지 못했어요',
+    notFound: '존재하지 않는 워크스페이스예요',
+    notFoundDescription: '입력한 워크스페이스를 찾을 수 없어요',
     notAvailable: '이동할 워크스페이스가 없어요',
   },
   form: {
@@ -23,11 +25,15 @@ export const WORKSPACE_MESSAGES = {
   },
   action: {
     create: '새 워크스페이스 만들기',
+    createMenuItem: '새 워크스페이스 생성',
+    select: '워크스페이스 선택',
+    backTo: (name: string) => `${name}로 돌아가기`,
     /** 위험 구역 제목·버튼·확인 모달 제목이 같은 문구를 공유한다. */
     delete: '워크스페이스 삭제',
   },
   empty: {
     title: '워크스페이스가 없습니다',
+    none: '워크스페이스 없음',
   },
   heading: {
     settings: '설정',
@@ -47,6 +53,9 @@ export const WORKSPACE_MESSAGES = {
   },
   a11y: {
     loading: '워크스페이스를 불러오는 중',
+    /** 사이드바는 조사 없는 표기를 쓴다. 두 문구를 통일하려면 별도 작업이 필요하다. */
+    loadingShort: '워크스페이스 불러오는 중',
+    list: '워크스페이스 목록',
     redirecting: '워크스페이스로 이동하는 중',
     redirectingToProject: '프로젝트로 이동하는 중',
     createActions: '워크스페이스 생성 액션',

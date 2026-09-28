@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { cn } from '@/shared/lib/utils'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { MESSAGES } from '@/shared/constants/messages'
 
 function Pagination({ className, ...props }: React.ComponentProps<'nav'>) {
   return (
@@ -42,7 +43,7 @@ function PaginationPrevious({
   return (
     <button
       type="button"
-      aria-label="이전 페이지"
+      aria-label={MESSAGES.common.a11y.prevPage}
       data-slot="pagination-previous"
       disabled={disabled}
       className={cn(
@@ -64,7 +65,7 @@ function PaginationNext({
   return (
     <button
       type="button"
-      aria-label="다음 페이지"
+      aria-label={MESSAGES.common.a11y.nextPage}
       data-slot="pagination-next"
       disabled={disabled}
       className={cn(

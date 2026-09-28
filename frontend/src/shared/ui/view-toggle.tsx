@@ -1,4 +1,5 @@
 import { LayoutGrid, List } from 'lucide-react'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type ListView = 'grid' | 'table'
 
@@ -17,8 +18,8 @@ function ViewToggle({
   value,
   onChange,
   label,
-  gridLabel = '카드 보기',
-  tableLabel = '목록 보기',
+  gridLabel = MESSAGES.common.action.gridView,
+  tableLabel = MESSAGES.common.action.tableView,
 }: ViewToggleProps) {
   return (
     <div

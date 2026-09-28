@@ -1,4 +1,5 @@
 import { LoginForm } from '@/features/auth'
+import { MESSAGES } from '@/shared/constants/messages'
 
 export function LoginPage() {
   return (
@@ -12,7 +13,7 @@ export function LoginPage() {
             </p>
           </div>
           <p className="text-foreground-secondary text-[14px] leading-[1.429] font-medium tracking-[0.0145em]">
-            팀의 화이트보드를 함께 그려요.
+            {MESSAGES.auth.intro.tagline}
           </p>
         </div>
 
@@ -21,9 +22,9 @@ export function LoginPage() {
         <LoginForm />
 
         <p className="text-foreground-tertiary text-center text-[12px] leading-[1.334] tracking-[0.0252em]">
-          <span>계정은 관리자가 미리 만들어 드려요.</span>
+          <span>{MESSAGES.auth.intro.accountProvisioned}</span>
           <br />
-          <span>로그인이 안 되면 워크스페이스 소유자에게 문의해 주세요.</span>
+          <span>{MESSAGES.auth.intro.contactOwner}</span>
         </p>
       </div>
     </main>

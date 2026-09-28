@@ -5,11 +5,12 @@ import { ErrorBoundary } from 'react-error-boundary'
 
 import { queryClient } from '@/shared/api'
 import { Toaster } from '@/shared/ui/toast'
+import { MESSAGES } from '@/shared/constants/messages'
 
 function ErrorFallback() {
   return (
     <div role="alert">
-      <p>문제가 발생했습니다. 잠시 후 다시 시도해주세요.</p>
+      <p>{MESSAGES.common.error.unexpected}</p>
     </div>
   )
 }

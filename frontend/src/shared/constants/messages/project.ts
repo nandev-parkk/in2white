@@ -28,6 +28,8 @@ export const PROJECT_MESSAGES = {
     namePlaceholder: '예: 홈페이지 개편',
     descriptionPlaceholder: '프로젝트에 대한 설명을 입력해주세요',
     searchPlaceholder: '프로젝트 이름으로 검색',
+    /** 검색 입력의 aria-label과 앱 헤더 기본 placeholder가 같은 문구를 공유한다. */
+    searchLabel: '프로젝트 검색',
   },
   action: {
     create: '프로젝트 생성',
@@ -42,7 +44,6 @@ export const PROJECT_MESSAGES = {
     deleteDialog: '프로젝트 삭제',
   },
   a11y: {
-    search: '프로젝트 검색',
     loading: '프로젝트를 불러오는 중',
     viewToggle: '프로젝트 보기 방식',
   },

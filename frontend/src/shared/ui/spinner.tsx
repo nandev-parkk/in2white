@@ -2,6 +2,7 @@ import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from 'cn'
 import { Loader2 } from 'lucide-react'
+import { MESSAGES } from '@/shared/constants/messages'
 
 const spinnerVariants = cva(
   'animate-spin text-foreground-strong motion-reduce:animate-none',
@@ -26,7 +27,7 @@ function Spinner({
   return (
     <Loader2
       role="status"
-      aria-label="로딩 중"
+      aria-label={MESSAGES.common.a11y.loading}
       data-slot="spinner"
       className={cn(spinnerVariants({ size, className }))}
       {...props}

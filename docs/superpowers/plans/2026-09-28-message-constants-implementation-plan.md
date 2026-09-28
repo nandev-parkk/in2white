@@ -98,4 +98,51 @@ grep -rn "[가-힣]" frontend/src \
 
 ## 구현 결과
 
-작성 예정.
+### 실제 변경
+
+- 신규 사전 10개 파일: `shared/constants/messages/{index,common,validation,auth,account,member,nav,project,whiteboard,workspace}.ts`
+- 신규 테스트 1개: `shared/constants/messages/messages.test.ts` (3건)
+- 삭제: `shared/constants/messages.ts`
+- 수정: 소스 36개 파일 + 기존 `MESSAGES` 참조 테스트 4개
+- 사전을 참조하는 파일은 49개가 되었다.
+
+### 계획과 달라진 점
+
+| 항목 | 계획 | 실제 | 이유 |
+| --- | --- | --- | --- |
+| 기존 키 수 | 27개 | 25개 | 조사 단계의 집계 오류였다. 실제 파일에는 25개가 있었다. |
+| `validation.ts` 배치 | 검증 21개 전부 | 도메인 무관한 11개만 | 워크스페이스·프로젝트·화이트보드·계정의 이름 검증 문구는 각 도메인 `form`에 두는 쪽이 일관됐다. |
+| 용도 버킷 | 6개(`toast`·`error`·`empty`·`form`·`action`·`a11y`) | 10개 | 모달 제목·섹션 제목을 담을 `heading`, 확인 문구 `confirm`, 역할 배지 `role`, 화면 라벨 `label`이 필요했다. 화이트보드는 `saveStatus`·`sync`를, 인증은 `intro`를 추가로 쓴다. |
+| 파일 수 | 9개 | 10개 | 사이드바·앱 셸 내비게이션 문구를 담을 `nav.ts`를 더했다. |
+| 대상 파일 수 | 32개 | 36개 | 조사에서 빠졌던 `AppProviders.tsx`, `HomePage.tsx`, `WorkspaceAccessDeniedPage.tsx`, `LoginPage.tsx`를 포함했다. |
+| `shared/ui`는 `common.ts`만 참조 | 규칙 | 3개 파일 예외 | `canvas-top-bar.tsx`, `user-picker.tsx`, `app-shell-header.tsx`는 위치만 `shared/ui`이고 내용은 각각 화이트보드·멤버·프로젝트 전용이다. 파일을 옮기는 편이 맞지만 이번 범위를 넘어서므로 도메인 사전을 참조하게 두었다. |
+| 중복 통합 기준 | 3곳 이상 | 2곳도 포함 | 불변식 테스트가 같은 문자열의 두 경로 공존을 금지하므로, 도메인이 다르면 건수와 무관하게 `common`으로 올려야 했다. |
+
+`common.ts`로 올린 문구는 다음과 같다. `수정`·`삭제`·`취소`·`저장`·`만들기`·`닫기`·`다시 시도`·`검색 결과 초기화`·`카드 보기`·`목록 보기`·`검색 결과가 없어요`·`다른 검색어로 다시 시도해보세요`·`잠시 후 다시 시도해보세요`·`이름`·`생성자`·`생성일`·`수정일`·`작업`·`을(를) 삭제하면 되돌릴 수 없어요.`·`${name} 메뉴` 등.
+
+### 불변식 테스트의 허용 목록
+
+`member.heading.list`와 `member.role.member`는 둘 다 `멤버`다. 페이지 제목과 역할 배지로 뜻이 달라 경로를 나눠 두고, 테스트의 `intentional` 목록에 명시했다. 이 목록에 없는 중복은 실패로 잡는다.
+
+### 발견한 문구 불일치 (미수정)
+
+문구를 바꾸지 않는다는 원칙에 따라 그대로 두었지만, 같은 뜻을 다르게 쓰는 곳이 있다. 별도 작업으로 다룰 대상이다.
+
+- `워크스페이스를 불러오는 중` (레이아웃·계정 설정) vs `워크스페이스 불러오는 중` (사이드바) — `workspace.a11y.loading`과 `workspace.a11y.loadingShort`로 나눠 두었다.
+- `멤버 불러오는 중`·`사용자 불러오는 중`은 조사가 없고, `프로젝트를 불러오는 중`·`화이트보드를 불러오는 중`은 있다.
+
+### 실행한 검증
+
+| 명령 | 결과 |
+| --- | --- |
+| `pnpm test` | 79파일 440건 통과 (기존 437건 + 신규 3건) |
+| `pnpm lint` | exit 0, 경고 4건 (`badge`·`button`·`input`·`toast`의 기존 `react-refresh/only-export-components`) |
+| `pnpm build` | exit 0 |
+
+잔여 리터럴 점검 결과 소스(테스트·스토리 제외)에 남은 한글은 주석 20줄뿐이다. 사용자에게 보이는 문구는 남아 있지 않다.
+
+### 남은 후속 작업
+
+- 위에 적은 문구 불일치 통일.
+- `canvas-top-bar.tsx`·`user-picker.tsx`·`app-shell-header.tsx`를 해당 feature 폴더로 이동해 `shared/ui`의 도메인 의존을 없애기.
+- 테스트·스토리의 리터럴은 회귀 그물로 남겨 두었다. i18n을 도입할 때 함께 정리한다.
