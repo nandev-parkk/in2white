@@ -21,8 +21,8 @@ import { useLogin } from '../model/use-login'
 const loginSchema = z.object({
   email: z
     .string()
-    .min(1, MESSAGES.EMAIL_REQUIRED)
-    .email(MESSAGES.EMAIL_INVALID_FORMAT),
+    .min(1, MESSAGES.validation.emailRequired)
+    .email(MESSAGES.validation.emailInvalidFormat),
   password: loginPasswordSchema,
 })
 
@@ -39,7 +39,7 @@ function getErrorMessage(error: unknown): string {
     }
   }
 
-  return MESSAGES.NETWORK_ERROR
+  return MESSAGES.common.error.network
 }
 
 export function LoginForm() {
@@ -64,13 +64,13 @@ export function LoginForm() {
       try {
         workspaces = await listWorkspacesRequest(accessToken)
       } catch {
-        toast.error(MESSAGES.WORKSPACE_REDIRECT_FAILED)
+        toast.error(MESSAGES.workspace.error.redirectFailed)
         return
       }
 
       const workspace = selectDefaultWorkspace(workspaces)
       if (!workspace) {
-        toast.error(MESSAGES.WORKSPACE_NOT_AVAILABLE)
+        toast.error(MESSAGES.workspace.error.notAvailable)
         return
       }
 

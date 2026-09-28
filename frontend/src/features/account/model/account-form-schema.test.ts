@@ -29,7 +29,7 @@ describe('account form schema', () => {
     if (!result.success) {
       expect(result.error.issues[0]?.path).toEqual(['confirmPassword'])
       expect(result.error.issues[0]?.message).toBe(
-        MESSAGES.PASSWORD_CONFIRM_MISMATCH,
+        MESSAGES.validation.passwordConfirmMismatch,
       )
     }
   })

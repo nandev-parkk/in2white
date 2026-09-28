@@ -7,14 +7,22 @@ describe('passwordSchema', () => {
   })
 
   it.each([
-    ['short', 'Se1!', MESSAGES.PASSWORD_TOO_SHORT],
-    ['too long', `${'a'.repeat(31)}A1!`, MESSAGES.PASSWORD_TOO_LONG],
-    ['missing a letter', '12345678!', MESSAGES.PASSWORD_MISSING_LETTER],
-    ['missing a number', 'Password!', MESSAGES.PASSWORD_MISSING_NUMBER],
+    ['short', 'Se1!', MESSAGES.validation.passwordTooShort],
+    ['too long', `${'a'.repeat(31)}A1!`, MESSAGES.validation.passwordTooLong],
+    [
+      'missing a letter',
+      '12345678!',
+      MESSAGES.validation.passwordMissingLetter,
+    ],
+    [
+      'missing a number',
+      'Password!',
+      MESSAGES.validation.passwordMissingNumber,
+    ],
     [
       'missing a special character',
       'Password123',
-      MESSAGES.PASSWORD_MISSING_SPECIAL_CHAR,
+      MESSAGES.validation.passwordMissingSpecialChar,
     ],
   ])('rejects a password that is %s', (_reason, password, message) => {
     const result = passwordSchema.safeParse(password)
@@ -30,7 +38,9 @@ describe('passwordSchema', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error.issues[0]?.message).toBe(MESSAGES.PASSWORD_REQUIRED)
+      expect(result.error.issues[0]?.message).toBe(
+        MESSAGES.validation.passwordRequired,
+      )
     }
   })
 
@@ -47,7 +57,9 @@ describe('passwordSchema', () => {
 
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error.issues[0]?.message).toBe(MESSAGES.PASSWORD_INVALID)
+        expect(result.error.issues[0]?.message).toBe(
+          MESSAGES.validation.passwordInvalid,
+        )
       }
     },
   )

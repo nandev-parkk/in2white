@@ -55,14 +55,14 @@ function ProjectFormDialog({
     if (!trimmedName) {
       setValidationError({
         field: 'name',
-        message: MESSAGES.PROJECT_NAME_REQUIRED,
+        message: MESSAGES.project.form.nameRequired,
       })
       return
     }
     if (trimmedName.length > 50) {
       setValidationError({
         field: 'name',
-        message: MESSAGES.PROJECT_NAME_TOO_LONG,
+        message: MESSAGES.project.form.nameTooLong,
       })
       return
     }
@@ -71,7 +71,7 @@ function ProjectFormDialog({
     if (trimmedDescription.length > 200) {
       setValidationError({
         field: 'description',
-        message: MESSAGES.PROJECT_DESCRIPTION_TOO_LONG,
+        message: MESSAGES.project.form.descriptionTooLong,
       })
       return
     }

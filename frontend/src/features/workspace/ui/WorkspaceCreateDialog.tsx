@@ -100,7 +100,7 @@ function WorkspaceCreateDialog({
                 id="workspace-name-error"
                 className="text-caption text-status-danger"
               >
-                {MESSAGES.WORKSPACE_NAME_REQUIRED}
+                {MESSAGES.workspace.form.nameRequired}
               </p>
             )}
           </div>

@@ -79,7 +79,7 @@ function AccountContent({
     try {
       await updateAccount.mutateAsync(input)
       setProfileFormKey((current) => current + 1)
-      toast.success(MESSAGES.ACCOUNT_UPDATED)
+      toast.success(MESSAGES.account.toast.nameUpdated)
     } catch (error) {
       setProfileError(getAccountApiError(error).message)
     }
@@ -91,7 +91,7 @@ function AccountContent({
     try {
       await changePassword.mutateAsync(input)
       setPasswordFormKey((current) => current + 1)
-      toast.success(MESSAGES.PASSWORD_UPDATED)
+      toast.success(MESSAGES.account.toast.passwordUpdated)
     } catch (error) {
       const accountError = getAccountApiError(error)
 
@@ -126,7 +126,7 @@ function AccountContent({
         {account.isError && (
           <div className="flex items-center justify-between gap-4" role="alert">
             <p className="text-status-danger text-[12px]">
-              {MESSAGES.ACCOUNT_LOAD_FAILED}
+              {MESSAGES.account.error.loadFailed}
             </p>
             <Button variant="secondary" onClick={() => void account.refetch()}>
               다시 시도

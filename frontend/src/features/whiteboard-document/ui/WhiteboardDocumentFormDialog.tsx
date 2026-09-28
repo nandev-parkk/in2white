@@ -43,11 +43,11 @@ function WhiteboardDocumentFormDialog({
 
     const trimmedName = name.trim()
     if (!trimmedName) {
-      setValidationError(MESSAGES.WHITEBOARD_NAME_REQUIRED)
+      setValidationError(MESSAGES.whiteboard.form.nameRequired)
       return
     }
     if (trimmedName.length > 50) {
-      setValidationError(MESSAGES.WHITEBOARD_NAME_TOO_LONG)
+      setValidationError(MESSAGES.whiteboard.form.nameTooLong)
       return
     }
 

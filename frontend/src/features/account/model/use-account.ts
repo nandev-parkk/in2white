@@ -115,5 +115,5 @@ export function getAccountApiError(error: unknown): {
     }
   }
 
-  return { code: 'NETWORK_ERROR', message: MESSAGES.NETWORK_ERROR }
+  return { code: 'NETWORK_ERROR', message: MESSAGES.common.error.network }
 }

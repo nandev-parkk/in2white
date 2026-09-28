@@ -7,17 +7,19 @@ export const accountNameSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, MESSAGES.ACCOUNT_NAME_REQUIRED)
-    .max(255, MESSAGES.ACCOUNT_NAME_TOO_LONG),
+    .min(1, MESSAGES.account.form.nameRequired)
+    .max(255, MESSAGES.account.form.nameTooLong),
 })
 
 export const accountPasswordFormSchema = z
   .object({
-    currentPassword: z.string().min(1, MESSAGES.PASSWORD_REQUIRED),
+    currentPassword: z.string().min(1, MESSAGES.validation.passwordRequired),
     newPassword: passwordSchema,
-    confirmPassword: z.string().min(1, MESSAGES.PASSWORD_CONFIRM_REQUIRED),
+    confirmPassword: z
+      .string()
+      .min(1, MESSAGES.validation.passwordConfirmRequired),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
     path: ['confirmPassword'],
-    message: MESSAGES.PASSWORD_CONFIRM_MISMATCH,
+    message: MESSAGES.validation.passwordConfirmMismatch,
   })
