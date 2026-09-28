@@ -16,6 +16,7 @@ export const COMMON_MESSAGES = {
     save: '저장',
     create: '만들기',
     clearSearch: '검색 결과 초기화',
+    close: '닫기',
   },
   label: {
     name: '이름',

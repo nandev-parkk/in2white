@@ -32,6 +32,7 @@ import {
 import { Skeleton, SkeletonListCell } from '@/shared/ui/skeleton'
 import { Sidebar, type SidebarNavKey } from '@/shared/ui/sidebar'
 import { toast } from '@/shared/ui/toast'
+import { MESSAGES } from '@/shared/constants/messages'
 
 const COMPACT_SIDEBAR_MEDIA_QUERY = '(max-width: 639px)'
 
@@ -186,7 +187,7 @@ function WorkspaceLayoutContent({
       <main className="bg-background-default flex min-h-svh items-center justify-center">
         <ErrorState
           className="w-full max-w-90"
-          title="워크스페이스를 불러오지 못했어요"
+          title={MESSAGES.workspace.error.loadFailed}
           action={
             <Button
               variant="secondary"
@@ -195,7 +196,7 @@ function WorkspaceLayoutContent({
                 void refetch()
               }}
             >
-              다시 시도
+              {MESSAGES.common.action.retry}
             </Button>
           }
         />
@@ -212,7 +213,9 @@ function WorkspaceLayoutContent({
   ) {
     return (
       <WorkspaceAccessDeniedPage
-        workspaceName={fallbackWorkspace?.name ?? '기본 워크스페이스'}
+        workspaceName={
+          fallbackWorkspace?.name ?? MESSAGES.workspace.fallbackName
+        }
         onReturn={() => {
           if (fallbackWorkspaceId && fallbackWorkspaceId !== lostWorkspaceId)
             onWorkspaceChange?.(fallbackWorkspaceId)
@@ -232,7 +235,7 @@ function WorkspaceLayoutContent({
     try {
       const workspace = await createWorkspace.mutateAsync(name)
       setCreatedWorkspaceOverlay({ workspace, sourceData: data })
-      toast.success('워크스페이스를 만들었어요')
+      toast.success(MESSAGES.workspace.toast.created)
       handleCreateDialogOpenChange(false)
     } catch {
       return
@@ -306,10 +309,12 @@ function WorkspaceLayoutContent({
             <DelayedLoading startedAt={loadingStartedAt}>
               <div
                 role="status"
-                aria-label="워크스페이스를 불러오는 중"
+                aria-label={MESSAGES.workspace.a11y.loading}
                 className="flex min-w-0 flex-col gap-6"
               >
-                <span className="sr-only">워크스페이스를 불러오는 중</span>
+                <span className="sr-only">
+                  {MESSAGES.workspace.a11y.loading}
+                </span>
                 <Skeleton className="h-7 w-32" />
                 <ListToolbarSkeleton />
                 {resolvedActiveNav === 'members' ? (
@@ -360,7 +365,9 @@ function WorkspaceLayoutContent({
         onSubmit={handleCreateWorkspace}
         loading={createWorkspace.isPending}
         error={
-          createWorkspace.error ? '워크스페이스를 만들지 못했어요' : undefined
+          createWorkspace.error
+            ? MESSAGES.workspace.error.createFailed
+            : undefined
         }
       />
     </div>

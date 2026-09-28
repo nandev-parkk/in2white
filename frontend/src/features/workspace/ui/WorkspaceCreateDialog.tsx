@@ -68,10 +68,10 @@ function WorkspaceCreateDialog({
       <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[440px] overflow-y-auto p-7">
         <div>
           <DialogTitle className="text-[20px] leading-7 font-semibold">
-            새 워크스페이스 만들기
+            {MESSAGES.workspace.action.create}
           </DialogTitle>
           <DialogDescription className="mt-2">
-            함께 작업할 워크스페이스의 이름을 정해 주세요.
+            {MESSAGES.workspace.form.dialogDescription}
           </DialogDescription>
         </div>
         <form onSubmit={handleSubmit}>
@@ -80,7 +80,7 @@ function WorkspaceCreateDialog({
               className="text-label text-foreground-default font-medium"
               htmlFor="workspace-name"
             >
-              이름
+              {MESSAGES.common.label.name}
             </label>
             <Input
               id="workspace-name"
@@ -89,7 +89,7 @@ function WorkspaceCreateDialog({
                 setName(event.target.value)
                 if (requiredError) setRequiredError(false)
               }}
-              placeholder="예: 마케팅팀"
+              placeholder={MESSAGES.workspace.form.namePlaceholder}
               aria-invalid={requiredError}
               aria-describedby={
                 requiredError ? 'workspace-name-error' : undefined
@@ -111,7 +111,7 @@ function WorkspaceCreateDialog({
           )}
           <DialogFooter
             role="group"
-            aria-label="워크스페이스 생성 액션"
+            aria-label={MESSAGES.workspace.a11y.createActions}
             className="border-border mt-6 border-t pt-5"
           >
             <Button
@@ -120,10 +120,10 @@ function WorkspaceCreateDialog({
               disabled={loading}
               onClick={() => handleOpenChange(false)}
             >
-              취소
+              {MESSAGES.common.action.cancel}
             </Button>
             <Button type="submit" loading={loading}>
-              만들기
+              {MESSAGES.common.action.create}
             </Button>
           </DialogFooter>
         </form>

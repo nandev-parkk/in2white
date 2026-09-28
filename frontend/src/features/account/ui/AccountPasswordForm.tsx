@@ -7,6 +7,7 @@ import { Button } from '@/shared/ui/button'
 import { PasswordInput } from '@/shared/ui/password-input'
 
 import { accountPasswordFormSchema } from '../model/account-form-schema'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type AccountPasswordFormValues = z.infer<typeof accountPasswordFormSchema>
 
@@ -19,20 +20,20 @@ type AccountPasswordFormProps = {
 const fields = [
   {
     name: 'currentPassword',
-    label: '현재 비밀번호',
-    placeholder: '현재 비밀번호를 입력해주세요',
+    label: MESSAGES.account.form.currentPasswordLabel,
+    placeholder: MESSAGES.account.form.currentPasswordPlaceholder,
     autoComplete: 'current-password',
   },
   {
     name: 'newPassword',
-    label: '새 비밀번호',
-    placeholder: '새 비밀번호를 입력해주세요',
+    label: MESSAGES.account.form.newPasswordLabel,
+    placeholder: MESSAGES.account.form.newPasswordPlaceholder,
     autoComplete: 'new-password',
   },
   {
     name: 'confirmPassword',
-    label: '새 비밀번호 확인',
-    placeholder: '새 비밀번호를 다시 입력해주세요',
+    label: MESSAGES.account.form.newPasswordConfirmLabel,
+    placeholder: MESSAGES.account.form.newPasswordConfirmPlaceholder,
     autoComplete: 'new-password',
   },
 ] as const
@@ -106,7 +107,7 @@ export function AccountPasswordForm({
       })}
 
       <Button className="self-end" type="submit" loading={loading}>
-        변경
+        {MESSAGES.account.action.changePassword}
       </Button>
     </form>
   )

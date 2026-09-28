@@ -97,7 +97,7 @@ export function LoginForm() {
           htmlFor="login-email"
           className="text-foreground-default text-[14px] leading-[1.429] font-semibold tracking-[0.0145em]"
         >
-          이메일
+          {MESSAGES.auth.form.emailLabel}
         </label>
         <Input
           id="login-email"
@@ -121,7 +121,7 @@ export function LoginForm() {
           htmlFor="login-password"
           className="text-foreground-default text-[14px] leading-[1.429] font-semibold tracking-[0.0145em]"
         >
-          비밀번호
+          {MESSAGES.auth.form.passwordLabel}
         </label>
         <PasswordInput
           id="login-password"
@@ -150,7 +150,7 @@ export function LoginForm() {
         className="w-full"
         loading={login.isPending || isResolvingWorkspace}
       >
-        로그인
+        {MESSAGES.auth.action.login}
       </Button>
     </form>
   )

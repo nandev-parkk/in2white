@@ -35,6 +35,12 @@ describe('MESSAGES 사전', () => {
   })
 
   it('같은 문자열이 서로 다른 두 경로에 존재하지 않는다', () => {
+    /**
+     * 뜻이 달라 같은 문구를 일부러 따로 두는 경로 묶음.
+     * 이 목록에 없는 중복은 문구가 흩어진 신호로 본다.
+     */
+    const intentional = [['member.heading.list', 'member.role.member']]
+
     const byValue = new Map<string, string[]>()
     for (const { path, value } of leaves) {
       if (typeof value !== 'string') continue
@@ -42,6 +48,14 @@ describe('MESSAGES 사전', () => {
     }
     const duplicated = [...byValue.entries()]
       .filter(([, paths]) => paths.length > 1)
+      .filter(
+        ([, paths]) =>
+          !intentional.some(
+            (allowed) =>
+              allowed.length === paths.length &&
+              allowed.every((path) => paths.includes(path)),
+          ),
+      )
       .map(([value, paths]) => `${value} → ${paths.join(', ')}`)
     expect(duplicated).toEqual([])
   })

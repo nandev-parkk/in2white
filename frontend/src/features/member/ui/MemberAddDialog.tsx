@@ -8,6 +8,7 @@ import {
 import { useMemberSearch } from '../model/use-member-search'
 import { UserPicker, type PickableUser } from '@/shared/ui/user-picker'
 import { toast } from '@/shared/ui/toast'
+import { MESSAGES } from '@/shared/constants/messages'
 export function MemberAddDialog({
   accessToken,
   userId,
@@ -49,7 +50,7 @@ export function MemberAddDialog({
     try {
       await add.mutateAsync(user.id)
       setAdded((current) => [...current, user.id])
-      toast.success('멤버를 추가했어요')
+      toast.success(MESSAGES.member.toast.added)
     } catch {
       /* 오류는 모달 안에서 안내한다. */
     } finally {
@@ -76,12 +77,12 @@ export function MemberAddDialog({
       error={
         candidates.isError
           ? memberErrorCode(candidates.error) === 'MEMBER_SEARCH_FORBIDDEN'
-            ? '멤버를 추가할 권한이 없어요'
-            : '사용자를 불러오지 못했어요'
+            ? MESSAGES.member.error.addForbidden
+            : MESSAGES.member.error.userLoadFailed
           : add.error
             ? memberErrorCode(add.error) === 'MEMBER_ALREADY_EXISTS'
-              ? '이미 워크스페이스에 있는 멤버예요'
-              : '멤버를 추가하지 못했어요'
+              ? MESSAGES.member.error.alreadyMember
+              : MESSAGES.member.error.addFailed
             : undefined
       }
       onRetry={() => {

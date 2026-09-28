@@ -20,6 +20,7 @@ import {
 } from '@/shared/ui/pagination'
 import type { ComponentProps } from 'react'
 import { Button } from '@/shared/ui/button'
+import { MESSAGES } from '@/shared/constants/messages'
 
 type PickableUser = {
   id: string
@@ -51,7 +52,7 @@ type UserPickerProps = {
 function UserPicker({
   open,
   onOpenChange,
-  title = '멤버 추가',
+  title = MESSAGES.member.action.add,
   users,
   onSelect,
   searchValue,
@@ -78,15 +79,15 @@ function UserPicker({
             {title}
           </DialogTitle>
           <DialogDescription className="mt-2">
-            사용자를 검색하고 선택하면 워크스페이스에 바로 추가해요.
+            {MESSAGES.member.form.pickerDescription}
           </DialogDescription>
         </div>
         <Search
-          aria-label="추가할 사용자 검색"
+          aria-label={MESSAGES.member.a11y.userSearch}
           className="w-full"
           maxLength={100}
           disabled={disabled}
-          placeholder="이름 또는 이메일로 검색"
+          placeholder={MESSAGES.member.form.searchPlaceholder}
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
         />
@@ -96,7 +97,7 @@ function UserPicker({
         >
           {loading ? (
             <DelayedLoading>
-              <div role="status" aria-label="사용자 불러오는 중">
+              <div role="status" aria-label={MESSAGES.member.a11y.userLoading}>
                 {Array.from({ length: 5 }, (_, index) => (
                   <SkeletonListCell key={index} />
                 ))}
@@ -110,7 +111,7 @@ function UserPicker({
               <p className="text-body-small text-status-danger">{error}</p>
               {onRetry && (
                 <Button variant="secondary" onClick={onRetry}>
-                  다시 시도
+                  {MESSAGES.common.action.retry}
                 </Button>
               )}
             </div>
@@ -119,12 +120,12 @@ function UserPicker({
               icon={<SearchIcon className="size-4" />}
               title={
                 resultSearchValue.trim()
-                  ? '검색 결과가 없어요'
-                  : '추가할 사용자가 없어요'
+                  ? MESSAGES.common.empty.searchTitle
+                  : MESSAGES.member.empty.noUsers
               }
               description={
                 resultSearchValue.trim()
-                  ? '다른 검색어로 다시 시도해보세요'
+                  ? MESSAGES.common.empty.searchDescription
                   : undefined
               }
             />
@@ -151,7 +152,9 @@ function UserPicker({
                   }
                   title={user.name}
                   subtitle={
-                    user.isMember ? `${user.email} · 이미 멤버` : user.email
+                    user.isMember
+                      ? MESSAGES.member.label.alreadyMember(user.email)
+                      : user.email
                   }
                 />
               </button>
@@ -160,7 +163,7 @@ function UserPicker({
         </div>
         {!loading && !error && totalPages > 1 && (
           <Pagination
-            aria-label="사용자 검색 페이지"
+            aria-label={MESSAGES.member.a11y.userPagination}
             className="justify-center"
           >
             <PaginationPrevious
@@ -182,7 +185,7 @@ function UserPicker({
             disabled={disabled}
             onClick={() => onOpenChange(false)}
           >
-            닫기
+            {MESSAGES.common.action.close}
           </Button>
         </DialogFooter>
       </DialogContent>
