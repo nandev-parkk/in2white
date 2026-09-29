@@ -18,6 +18,7 @@ import type { WhiteboardDocumentDetail } from '@/entities/whiteboard-document'
 import { CanvasTopBar } from './CanvasTopBar'
 import { Button } from '@/shared/ui/button'
 import { MoreVertical } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +28,7 @@ import {
 } from '@/shared/ui/dropdown-menu'
 import { useWhiteboardEditor } from '../model/use-whiteboard-editor'
 import { diffScene, hasDelta, mergeScene } from '../model/scene-sync'
-import { downloadSceneFile } from '../model/export-scene'
+import { downloadSceneFile, downloadScenePdf } from '../model/export-scene'
 import type { CanvasContent, WhiteboardElement } from '../model/protocol'
 import { MESSAGES } from '@/shared/constants/messages'
 
@@ -154,6 +155,20 @@ export default function WhiteboardCanvas({
     }
   }
 
+  const [exportingPdf, setExportingPdf] = useState(false)
+
+  async function exportPdf() {
+    setExportingPdf(true)
+    try {
+      const result = await downloadScenePdf(currentScene(), document.name)
+      if (result === 'empty') toast.error(MESSAGES.whiteboard.error.exportEmpty)
+    } catch {
+      toast.error(MESSAGES.whiteboard.error.exportPdfFailed)
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
   return (
     <main className="flex h-dvh min-h-0 flex-col">
       <CanvasTopBar
@@ -184,6 +199,14 @@ export default function WhiteboardCanvas({
                   }
                 >
                   {MESSAGES.whiteboard.action.exportFile}
+                </DropdownMenuItem>
+                {/* onSelect은 동기 함수여야 하므로 비동기 생성만 띄운다. 메뉴는 기본
+                    동작대로 닫히고 생성은 뒤에서 계속 돈다. */}
+                <DropdownMenuItem
+                  disabled={exportingPdf}
+                  onSelect={() => void exportPdf()}
+                >
+                  {MESSAGES.whiteboard.action.exportPdf}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
