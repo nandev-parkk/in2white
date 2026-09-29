@@ -11,6 +11,8 @@ export const WHITEBOARD_MESSAGES = {
     deleteFailed: '화이트보드를 삭제하지 못했어요',
     notFound: '화이트보드를 찾을 수 없어요',
     notFoundDescription: '삭제되었거나 접근할 수 없는 화이트보드예요',
+    exportEmpty: '내보낼 내용이 없어요',
+    exportPdfFailed: 'PDF를 만들지 못했어요',
   },
   empty: {
     title: '아직 화이트보드가 없어요',
@@ -30,6 +32,7 @@ export const WHITEBOARD_MESSAGES = {
     rename: '이름 변경',
     backToProject: '프로젝트로 돌아가기',
     exportFile: '파일로 내보내기',
+    exportPdf: 'PDF로 내려받기',
     reconnect: '다시 연결',
     discardPending: '미전송 변경 버리기',
   },
