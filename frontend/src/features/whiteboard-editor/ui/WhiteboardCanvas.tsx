@@ -27,6 +27,7 @@ import {
 } from '@/shared/ui/dropdown-menu'
 import { useWhiteboardEditor } from '../model/use-whiteboard-editor'
 import { diffScene, hasDelta, mergeScene } from '../model/scene-sync'
+import { downloadSceneFile } from '../model/export-scene'
 import type { CanvasContent, WhiteboardElement } from '../model/protocol'
 import { MESSAGES } from '@/shared/constants/messages'
 
@@ -142,31 +143,15 @@ export default function WhiteboardCanvas({
     ) as Parameters<ExcalidrawImperativeAPI['updateScene']>[0]['collaborators']
     api.updateScene({ collaborators, captureUpdate: CaptureUpdateAction.NEVER })
   }, [api, editor.participants, userId])
-  function exportScene() {
-    const scene = api
-      ? {
-          elements: api.getSceneElementsIncludingDeleted(),
-          files: api.getFiles(),
-        }
-      : editor.scene
-    const url = URL.createObjectURL(
-      new Blob(
-        [
-          JSON.stringify({
-            type: 'excalidraw',
-            version: 2,
-            source: 'in2white',
-            ...scene,
-          }),
-        ],
-        { type: 'application/json' },
-      ),
-    )
-    const link = window.document.createElement('a')
-    link.href = url
-    link.download = document.name.replace(/[\\/:*?"<>|]/g, '_') + '.excalidraw'
-    link.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  /** 편집기가 들고 있는 최신 장면. API가 아직 없으면 동기화 장면을 쓴다. */
+  function currentScene(): CanvasContent {
+    if (!api) return editor.scene
+    return {
+      elements: api
+        .getSceneElementsIncludingDeleted()
+        .map((element) => ({ ...element })) as WhiteboardElement[],
+      files: api.getFiles() as CanvasContent['files'],
+    }
   }
 
   return (
@@ -193,7 +178,11 @@ export default function WhiteboardCanvas({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
-                <DropdownMenuItem onSelect={exportScene}>
+                <DropdownMenuItem
+                  onSelect={() =>
+                    downloadSceneFile(currentScene(), document.name)
+                  }
+                >
                   {MESSAGES.whiteboard.action.exportFile}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
