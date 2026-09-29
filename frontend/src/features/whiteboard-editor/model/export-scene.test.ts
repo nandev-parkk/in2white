@@ -21,9 +21,33 @@ vi.mock('jspdf', () => ({
   },
 }))
 
-/** 지정한 크기를 보고하고 고정 dataURL을 돌려주는 캔버스 대역. */
-function fakeCanvas(width: number, height: number) {
-  return { width, height, toDataURL: () => 'data:image/png;base64,PNG' }
+type Dimensions = { width: number; height: number; scale?: number }
+
+/**
+ * 그림의 원래 크기를 주면 `getDimensions`가 정한 픽셀 크기로 캔버스를 돌려주는 대역.
+ * 종이 크기와 렌더 배율을 함께 정하는 실제 동작을 그대로 흉내 낸다.
+ */
+function exportsCanvas(naturalWidth: number, naturalHeight: number) {
+  excalidraw.exportToCanvas.mockImplementation(
+    async ({
+      getDimensions,
+    }: {
+      getDimensions: (width: number, height: number) => Dimensions
+    }) => {
+      const size = getDimensions(naturalWidth, naturalHeight)
+      return {
+        width: size.width,
+        height: size.height,
+        toDataURL: () => 'data:image/png;base64,PNG',
+      }
+    },
+  )
+}
+
+/** 마지막 호출에 넘긴 `getDimensions`를 직접 불러 배율을 확인한다. */
+function lastDimensions(width: number, height: number): Dimensions {
+  const calls = excalidraw.exportToCanvas.mock.calls
+  return calls[calls.length - 1][0].getDimensions(width, height)
 }
 function element(id: string, isDeleted = false) {
   return { id, version: 1, versionNonce: 1, isDeleted }
@@ -33,7 +57,7 @@ let clicked: { href: string; download: string }[] = []
 beforeEach(() => {
   vi.clearAllMocks()
   clicked = []
-  excalidraw.exportToCanvas.mockResolvedValue(fakeCanvas(800, 600))
+  exportsCanvas(800, 600)
   vi.stubGlobal('URL', {
     createObjectURL: () => 'blob:scene',
     revokeObjectURL: vi.fn(),
@@ -76,22 +100,21 @@ it('인쇄용 흰 배경을 고정해 내보낸다', async () => {
         exportWithDarkMode: false,
       },
       exportPadding: 16,
-      maxWidthOrHeight: 4096,
     }),
   )
 })
 
 it('가로로 넓은 캔버스는 landscape, 세로로 긴 캔버스는 portrait로 만든다', async () => {
   await downloadScenePdf({ elements: [element('a')] }, '문서')
-  expect(pdf.options).toEqual({
+  expect(pdf.options).toMatchObject({
     orientation: 'landscape',
     unit: 'px',
     format: [800, 600],
   })
 
-  excalidraw.exportToCanvas.mockResolvedValue(fakeCanvas(600, 900))
+  exportsCanvas(600, 900)
   await downloadScenePdf({ elements: [element('a')] }, '문서')
-  expect(pdf.options).toEqual({
+  expect(pdf.options).toMatchObject({
     orientation: 'portrait',
     unit: 'px',
     format: [600, 900],
@@ -108,6 +131,40 @@ it('캔버스 크기를 채우도록 이미지를 배치한다', async () => {
     800,
     600,
   )
+})
+
+it('px를 CSS 픽셀로 읽도록 px_scaling 핫픽스를 켠다', async () => {
+  await downloadScenePdf({ elements: [element('a')] }, '문서')
+  expect(pdf.options).toMatchObject({ hotfixes: ['px_scaling'] })
+})
+
+it('종이는 그림 크기로 두고 캔버스만 두 배로 그린다', async () => {
+  await downloadScenePdf({ elements: [element('a')] }, '문서')
+  expect(lastDimensions(800, 600)).toEqual({
+    width: 1600,
+    height: 1200,
+    scale: 2,
+  })
+  expect(pdf.options).toMatchObject({ format: [800, 600] })
+  expect(pdf.addImage).toHaveBeenCalledWith(
+    'data:image/png;base64,PNG',
+    'PNG',
+    0,
+    0,
+    800,
+    600,
+  )
+})
+
+it('긴 변이 상한을 넘으면 배율을 낮춰 캔버스 한계를 지킨다', async () => {
+  exportsCanvas(4000, 1000)
+  await downloadScenePdf({ elements: [element('a')] }, '문서')
+  expect(lastDimensions(4000, 1000)).toEqual({
+    width: 4096,
+    height: 1024,
+    scale: 1.024,
+  })
+  expect(pdf.options).toMatchObject({ format: [4000, 1000] })
 })
 
 it('경로 문자를 밑줄로 바꾼 pdf 파일명으로 저장한다', async () => {

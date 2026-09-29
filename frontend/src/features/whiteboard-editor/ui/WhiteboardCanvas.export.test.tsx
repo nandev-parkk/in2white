@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
 import { useWhiteboardEditor } from '../model/use-whiteboard-editor'
-import { downloadScenePdf } from '../model/export-scene'
+import { downloadSceneFile, downloadScenePdf } from '../model/export-scene'
 import WhiteboardCanvas from './WhiteboardCanvas'
 
 const canvas = vi.hoisted(() => ({
@@ -50,7 +50,12 @@ vi.mock('../model/export-scene', () => ({
   downloadScenePdf: vi.fn(),
 }))
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    loading: vi.fn(() => 'progress'),
+    dismiss: vi.fn(),
+  },
 }))
 
 const props = {
@@ -100,9 +105,9 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks())
 
 /** Radix 메뉴는 pointer 이벤트로 열리므로 fireEvent 대신 userEvent를 쓴다. */
-async function openMenu() {
+async function openMenu(name = 'PDF로 내려받기') {
   await userEvent.click(screen.getByRole('button', { name: '더 보기' }))
-  return screen.findByRole('menuitem', { name: 'PDF로 내려받기' })
+  return screen.findByRole('menuitem', { name })
 }
 
 it('메뉴에서 PDF로 내려받기를 고르면 현재 장면을 PDF로 만든다', async () => {
@@ -177,4 +182,56 @@ it('동기화가 끊기고 읽기 전용이어도 PDF를 내보낼 수 있다', 
   render(<WhiteboardCanvas {...props} />)
   await userEvent.click(await openMenu())
   await waitFor(() => expect(downloadScenePdf).toHaveBeenCalledTimes(1))
+})
+
+it('PDF를 만드는 동안 진행 토스트를 띄우고 끝나면 닫는다', async () => {
+  let finish: (result: 'downloaded') => void = () => {}
+  vi.mocked(downloadScenePdf).mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve
+    }),
+  )
+  render(<WhiteboardCanvas {...props} />)
+  await userEvent.click(await openMenu())
+  await waitFor(() =>
+    expect(toast.loading).toHaveBeenCalledWith('PDF를 만드는 중이에요'),
+  )
+  expect(toast.dismiss).not.toHaveBeenCalled()
+
+  finish('downloaded')
+  await waitFor(() => expect(toast.dismiss).toHaveBeenCalledWith('progress'))
+})
+
+it('PDF 생성이 실패해도 진행 토스트를 닫는다', async () => {
+  vi.mocked(downloadScenePdf).mockRejectedValue(new Error('render failed'))
+  render(<WhiteboardCanvas {...props} />)
+  await userEvent.click(await openMenu())
+  await waitFor(() => expect(toast.dismiss).toHaveBeenCalledWith('progress'))
+})
+
+it('편집기가 들고 있는 실제 장면을 그대로 넘긴다', async () => {
+  const drawn = { id: 'rect', version: 3, versionNonce: 7, isDeleted: false }
+  canvas.getSceneElementsIncludingDeleted.mockReturnValue([drawn])
+  vi.mocked(downloadScenePdf).mockResolvedValue('downloaded')
+  render(<WhiteboardCanvas {...props} />)
+  await userEvent.click(await openMenu())
+  await waitFor(() =>
+    expect(downloadScenePdf).toHaveBeenCalledWith(
+      { elements: [drawn], files: {} },
+      '문서',
+    ),
+  )
+})
+
+it('파일로 내보내기도 같은 장면과 이름으로 내려받는다', async () => {
+  const drawn = { id: 'rect', version: 3, versionNonce: 7, isDeleted: false }
+  canvas.getSceneElementsIncludingDeleted.mockReturnValue([drawn])
+  render(<WhiteboardCanvas {...props} />)
+  await userEvent.click(await openMenu('파일로 내보내기'))
+  await waitFor(() =>
+    expect(downloadSceneFile).toHaveBeenCalledWith(
+      { elements: [drawn], files: {} },
+      '문서',
+    ),
+  )
 })

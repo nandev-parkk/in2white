@@ -3,6 +3,8 @@ export const WHITEBOARD_MESSAGES = {
     created: '화이트보드를 만들었어요',
     renamed: '화이트보드 이름을 변경했어요',
     deleted: '화이트보드를 삭제했어요',
+    /** PDF 생성은 오래 걸릴 수 있어 진행 중임을 알린다. */
+    exportingPdf: 'PDF를 만드는 중이에요',
   },
   error: {
     loadFailed: '화이트보드를 불러오지 못했어요',

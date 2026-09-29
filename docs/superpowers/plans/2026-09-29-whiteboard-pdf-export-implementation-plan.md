@@ -829,5 +829,25 @@ EOF
 - 앱 전체(로그인 → 워크스페이스 → 문서)를 띄운 수동 확인은 하지 않았다. Postgres·Valkey·
   시크릿과 계정 데이터가 필요해 이 범위에서 다루지 않았다. 빈 보드 안내 토스트와 생성 중
   중복 실행 차단은 `WhiteboardCanvas.export.test.tsx`의 단위 테스트로만 검증했다.
-- `maxWidthOrHeight: 4096`을 넘는 아주 큰 보드는 축소돼 들어간다. 해상도 불만이 나오면
-  상한 조정이나 여러 페이지 분할을 별도로 논의한다.
+- 긴 변이 4096 px를 넘는 아주 큰 보드는 래스터가 축소돼 들어간다(종이 크기는 그대로).
+  해상도 불만이 나오면 상한 조정이나 여러 페이지 분할을 별도로 논의한다.
+
+### 최종 리뷰와 수정 패스
+
+전체 브랜치 리뷰 결과는 Critical 0건, Important 2건, Minor 7건이었다. Important 2건과,
+효과 기준으로 Important로 올린 Minor 2건(5·6)을 한 번의 수정 패스로 처리했다.
+
+| 수정 | 변경 | 검증 |
+| --- | --- | --- |
+| 생성 중 진행 신호 없음 | `toast.loading` → `finally`에서 `toast.dismiss`, 문구 `toast.exportingPdf` 추가 | 신규 테스트 2건 RED→GREEN |
+| UI 테스트가 배선 회귀를 못 잡음 | 실제 요소가 실린 장면을 넘기는지, `파일로 내보내기`도 같은 장면·이름을 쓰는지 검사 | `currentScene()`을 일부러 되돌려 2건 모두 실패하는 것을 확인한 뒤 복구 |
+| 인쇄 실물 크기가 1.33배 | `hotfixes: ['px_scaling']` | Node에서 MediaBox 측정: `682.67 × 362.67` → `384 × 204`(512 CSS px = 384 pt) |
+| 항상 1배 래스터 | `maxWidthOrHeight` 대신 `getDimensions`로 종이 크기와 배율을 분리, 배율 2배(긴 변 4096 px 상한) | 신규 테스트 3건 RED→GREEN |
+
+`maxWidthOrHeight`를 쓰면 Excalidraw가 `getDimensions`를 무시하고 종이 크기를 래스터
+크기에서 되뽑기 때문에, 배율만 올리면 종이가 같이 2배가 된다. 그래서 `getDimensions`로
+바꿔 종이는 그림의 원래 크기, 캔버스는 그 2배로 각각 정한다.
+
+수정하지 않은 Minor: vendor `sonner` 직접 import, `const document` 섀도잉, 사실상 무효한
+`orientation` 인자, jsPDF optional deps(`html2canvas` 199 kB 청크, 이 경로에서는 로드되지
+않음), 예약 문자로만 이루어진 이름이 `___.pdf`가 되는 점.

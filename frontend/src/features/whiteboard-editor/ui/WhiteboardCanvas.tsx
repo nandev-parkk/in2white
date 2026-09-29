@@ -159,12 +159,15 @@ export default function WhiteboardCanvas({
 
   async function exportPdf() {
     setExportingPdf(true)
+    // 큰 장면은 렌더에 몇 초가 걸리고 그동안 화면이 멈춘 것처럼 보인다.
+    const progress = toast.loading(MESSAGES.whiteboard.toast.exportingPdf)
     try {
       const result = await downloadScenePdf(currentScene(), document.name)
       if (result === 'empty') toast.error(MESSAGES.whiteboard.error.exportEmpty)
     } catch {
       toast.error(MESSAGES.whiteboard.error.exportPdfFailed)
     } finally {
+      toast.dismiss(progress)
       setExportingPdf(false)
     }
   }
