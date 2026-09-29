@@ -32,7 +32,7 @@ function DropdownMenuContent({
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         className={cn(
-          'bg-background-default z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) rounded-lg p-1 shadow-sm',
+          'bg-background-default data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) rounded-lg p-1 shadow-sm duration-150 ease-out motion-reduce:!animate-none',
           className,
         )}
         {...props}
@@ -53,7 +53,7 @@ function DropdownMenuItem({
       data-slot="dropdown-menu-item"
       data-variant={variant}
       className={cn(
-        'text-body text-foreground-default data-[disabled]:text-foreground-disabled data-[highlighted]:bg-background-subtle flex cursor-pointer items-center rounded-sm px-3 py-2 outline-none select-none data-[disabled]:pointer-events-none',
+        'text-body text-foreground-default data-[disabled]:text-foreground-disabled data-[highlighted]:bg-background-subtle flex cursor-pointer items-center rounded-sm px-3 py-2 transition-colors duration-150 ease-out outline-none select-none data-[disabled]:pointer-events-none motion-reduce:transition-none',
         variant === 'danger' &&
           'text-status-danger data-[highlighted]:bg-status-danger-subtle-bg',
         className,

@@ -24,6 +24,22 @@ describe('WhiteboardCard', () => {
     expect(screen.getByRole('article')).toBeInTheDocument()
   })
 
+  it('hover 강조를 그림자가 아니라 테두리 색으로 표현한다', () => {
+    renderCard()
+
+    const card = screen.getByRole('article')
+
+    expect(card).toHaveClass('hover:border-border')
+    expect(card).toHaveClass(
+      'transition-colors',
+      'duration-150',
+      'ease-out',
+      'motion-reduce:transition-none',
+    )
+    // Tailwind가 테스트 파일도 스캔하므로 클래스명을 문자열로 적지 않는다.
+    expect(card.className).not.toMatch(/shadow/)
+  })
+
   it('제목, 생성일, 수정일, 생성자를 보여준다', () => {
     renderCard()
 

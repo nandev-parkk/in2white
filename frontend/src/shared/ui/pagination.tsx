@@ -25,7 +25,7 @@ function PaginationItem({
       data-slot="pagination-item"
       aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'text-foreground-secondary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-md text-[13px] transition-colors outline-none focus-visible:ring-3',
+        'text-foreground-secondary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-md text-[13px] transition-colors duration-150 ease-out outline-none focus-visible:ring-3 motion-reduce:transition-none',
         isActive &&
           'bg-action-secondary text-foreground-strong hover:bg-action-secondary font-semibold',
         className,
@@ -47,7 +47,7 @@ function PaginationPrevious({
       data-slot="pagination-previous"
       disabled={disabled}
       className={cn(
-        'text-foreground-secondary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-3 disabled:pointer-events-none disabled:opacity-40',
+        'text-foreground-secondary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-md transition-colors duration-150 ease-out outline-none focus-visible:ring-3 disabled:pointer-events-none disabled:opacity-40 motion-reduce:transition-none',
         className,
       )}
       {...props}
@@ -69,7 +69,7 @@ function PaginationNext({
       data-slot="pagination-next"
       disabled={disabled}
       className={cn(
-        'text-foreground-secondary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-3 disabled:pointer-events-none disabled:opacity-40',
+        'text-foreground-secondary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-md transition-colors duration-150 ease-out outline-none focus-visible:ring-3 disabled:pointer-events-none disabled:opacity-40 motion-reduce:transition-none',
         className,
       )}
       {...props}

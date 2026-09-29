@@ -29,7 +29,7 @@ function ProjectMenu({ project, onEdit, onDelete }: ProjectCardProps) {
         <button
           type="button"
           aria-label={MESSAGES.common.a11y.menu(project.name)}
-          className="text-foreground-tertiary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-md outline-none focus-visible:ring-3"
+          className="text-foreground-tertiary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-md transition-colors duration-150 ease-out outline-none focus-visible:ring-3 motion-reduce:transition-none"
         >
           <MoreVertical className="size-4" />
         </button>
@@ -58,7 +58,7 @@ function ProjectCard({
   return (
     <motion.article
       {...cardMotion}
-      className="border-border bg-background-default flex min-h-[204px] min-w-0 flex-col rounded-md border p-4 transition-shadow duration-150 hover:shadow-md motion-reduce:transition-none"
+      className="border-border bg-background-default hover:border-border-strong flex min-h-[204px] min-w-0 flex-col rounded-md border p-4 transition-colors duration-150 ease-out motion-reduce:transition-none"
     >
       <div className="flex items-center justify-between gap-2">
         <Folder className="text-foreground-default size-5" />

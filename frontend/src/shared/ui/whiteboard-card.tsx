@@ -36,7 +36,7 @@ function WhiteboardCard({
       data-slot="whiteboard-card"
       {...cardMotion}
       className={cn(
-        'border-border-subtle bg-background-default flex w-full flex-col overflow-hidden rounded-md border transition-shadow duration-150 hover:shadow-md motion-reduce:transition-none',
+        'border-border-subtle bg-background-default hover:border-border flex w-full flex-col overflow-hidden rounded-md border transition-colors duration-150 ease-out motion-reduce:transition-none',
         className,
       )}
       {...props}

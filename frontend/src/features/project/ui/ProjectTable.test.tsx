@@ -83,4 +83,25 @@ describe('ProjectTable', () => {
 
     expect(onEdit).toHaveBeenCalledWith(projectFixture)
   })
+
+  it('본문 행에만 hover 배경을 붙이고 전환으로 바꾼다', () => {
+    render(
+      <ProjectTable
+        projects={[projectFixture]}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+
+    const [headerRow, bodyRow] = screen.getAllByRole('row')
+
+    expect(bodyRow).toHaveClass('hover:bg-background-subtle')
+    expect(bodyRow).toHaveClass(
+      'transition-colors',
+      'duration-150',
+      'ease-out',
+      'motion-reduce:transition-none',
+    )
+    expect(headerRow).not.toHaveClass('hover:bg-background-subtle')
+  })
 })

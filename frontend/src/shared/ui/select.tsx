@@ -23,7 +23,7 @@ function SelectValue({
 }
 
 const selectTriggerVariants = cva(
-  "text-body flex w-full items-center justify-between gap-2 rounded-md border border-border bg-background-default px-4 text-foreground-default outline-none transition-colors data-[placeholder]:text-foreground-tertiary focus:border-action-primary focus:ring-3 focus:ring-action-focus-ring disabled:cursor-not-allowed disabled:border-border-subtle disabled:bg-background-subtle disabled:text-foreground-disabled [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
+  "text-body flex w-full items-center justify-between gap-2 rounded-md border border-border bg-background-default px-4 text-foreground-default outline-none transition-colors motion-reduce:transition-none data-[placeholder]:text-foreground-tertiary focus:border-action-primary focus:ring-3 focus:ring-action-focus-ring disabled:cursor-not-allowed disabled:border-border-subtle disabled:bg-background-subtle disabled:text-foreground-disabled [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
   {
     variants: {
       size: {

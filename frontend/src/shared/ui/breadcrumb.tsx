@@ -37,7 +37,7 @@ function BreadcrumbLink({
     <Comp
       data-slot="breadcrumb-link"
       className={cn(
-        'text-body-small text-foreground-secondary hover:text-foreground-default',
+        'text-body-small text-foreground-secondary hover:text-foreground-default transition-colors duration-150 ease-out motion-reduce:transition-none',
         className,
       )}
       {...props}

@@ -21,7 +21,7 @@ function ListCell({
     <div
       data-slot="list-cell"
       className={cn(
-        'bg-background-default hover:bg-background-subtle flex cursor-pointer items-center gap-(--component-list-cell-gap) px-(--component-list-cell-padding-horizontal) py-(--component-list-cell-padding-vertical) transition-colors',
+        'bg-background-default hover:bg-background-subtle flex cursor-pointer items-center gap-(--component-list-cell-gap) px-(--component-list-cell-padding-horizontal) py-(--component-list-cell-padding-vertical) transition-colors duration-150 ease-out active:scale-[0.99] motion-reduce:transition-none',
         className,
       )}
       {...props}

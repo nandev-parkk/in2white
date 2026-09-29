@@ -72,6 +72,28 @@ describe('ProjectCard', () => {
     expect(onDelete).toHaveBeenCalledWith(projectFixture)
   })
 
+  it('hover 강조를 그림자가 아니라 테두리 색으로 표현한다', () => {
+    render(
+      <ProjectCard
+        project={projectFixture}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+
+    const card = screen.getByRole('article')
+
+    expect(card).toHaveClass('hover:border-border-strong')
+    expect(card).toHaveClass(
+      'transition-colors',
+      'duration-150',
+      'ease-out',
+      'motion-reduce:transition-none',
+    )
+    // Tailwind가 테스트 파일도 스캔하므로 클래스명을 문자열로 적지 않는다.
+    expect(card.className).not.toMatch(/shadow/)
+  })
+
   it('포인터가 올라가면 카드를 살짝 들어 올린다', async () => {
     const user = userEvent.setup()
     render(

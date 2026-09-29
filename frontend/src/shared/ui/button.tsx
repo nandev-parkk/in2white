@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react'
 import { Slot } from 'radix-ui'
 
 const buttonVariants = cva(
-  "text-label inline-flex shrink-0 items-center justify-center whitespace-nowrap transition-colors outline-none select-none disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-3 focus-visible:ring-action-focus-ring [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "text-label inline-flex shrink-0 items-center justify-center whitespace-nowrap transition-colors duration-150 ease-out motion-reduce:transition-none outline-none select-none active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-3 focus-visible:ring-action-focus-ring [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
