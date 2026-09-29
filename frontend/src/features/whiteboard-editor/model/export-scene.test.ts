@@ -104,23 +104,6 @@ it('인쇄용 흰 배경을 고정해 내보낸다', async () => {
   )
 })
 
-it('가로로 넓은 캔버스는 landscape, 세로로 긴 캔버스는 portrait로 만든다', async () => {
-  await downloadScenePdf({ elements: [element('a')] }, '문서')
-  expect(pdf.options).toMatchObject({
-    orientation: 'landscape',
-    unit: 'px',
-    format: [800, 600],
-  })
-
-  exportsCanvas(600, 900)
-  await downloadScenePdf({ elements: [element('a')] }, '문서')
-  expect(pdf.options).toMatchObject({
-    orientation: 'portrait',
-    unit: 'px',
-    format: [600, 900],
-  })
-})
-
 it('캔버스 크기를 채우도록 이미지를 배치한다', async () => {
   await downloadScenePdf({ elements: [element('a')] }, '문서')
   expect(pdf.addImage).toHaveBeenCalledWith(
@@ -170,6 +153,18 @@ it('긴 변이 상한을 넘으면 배율을 낮춰 캔버스 한계를 지킨�
 it('경로 문자를 밑줄로 바꾼 pdf 파일명으로 저장한다', async () => {
   await downloadScenePdf({ elements: [element('a')] }, '보드/2026: 1분기?')
   expect(pdf.save).toHaveBeenCalledWith('보드_2026_ 1분기_.pdf')
+})
+
+it('쓸 수 있는 글자가 남지 않는 이름은 기본 이름으로 저장한다', async () => {
+  await downloadScenePdf({ elements: [element('a')] }, '///')
+  expect(pdf.save).toHaveBeenCalledWith('화이트보드.pdf')
+})
+
+it('공백뿐인 이름도 기본 이름으로 내려받는다', () => {
+  downloadSceneFile({ elements: [element('a')] }, '   ')
+  expect(clicked).toEqual([
+    { href: 'blob:scene', download: '화이트보드.excalidraw' },
+  ])
 })
 
 it('렌더에 실패하면 예외를 그대로 올린다', async () => {

@@ -848,6 +848,25 @@ EOF
 크기에서 되뽑기 때문에, 배율만 올리면 종이가 같이 2배가 된다. 그래서 `getDimensions`로
 바꿔 종이는 그림의 원래 크기, 캔버스는 그 2배로 각각 정한다.
 
-수정하지 않은 Minor: vendor `sonner` 직접 import, `const document` 섀도잉, 사실상 무효한
-`orientation` 인자, jsPDF optional deps(`html2canvas` 199 kB 청크, 이 경로에서는 로드되지
-않음), 예약 문자로만 이루어진 이름이 `___.pdf`가 되는 점.
+### 남은 Minor 처리 패스
+
+사용자 요청으로 미룬 Minor 5건을 이어서 처리했다.
+
+| Minor | 처리 | 검증 |
+| --- | --- | --- |
+| vendor `sonner` 직접 import | `@/shared/ui/toast`의 래퍼로 교체(컴포넌트·테스트 모두) | `WhiteboardCanvas.export.test.tsx` 9건 통과 |
+| `const document` 섀도잉 | jsPDF 인스턴스 변수명을 `pdf`로 변경 | 타입 검사·테스트 통과 |
+| 예약 문자만 남는 이름 | 밑줄과 공백만 남으면 기본 이름 `화이트보드`를 쓴다 | 신규 테스트 2건 RED→GREEN |
+| "무효한" `orientation` 인자 | 전제가 틀렸다. 인자를 유지하고 이유를 주석으로 남겼다 | 실제 jsPDF로 MediaBox를 읽는 `export-scene.page.test.ts` 2건 추가 |
+| jsPDF optional deps | 조치하지 않기로 했다(아래 근거) | — |
+
+`orientation`은 무효하지 않다. 생략하면 jsPDF가 기본값 portrait에 맞춰 배열 `format`의 두
+변을 뒤집는다(800×600 → MediaBox 450×600). 기존 테스트는 생성자에 넘긴 인자를 되읽기만 해서
+이 차이를 잡지 못했으므로, 실제 jsPDF로 문서를 만들어 MediaBox를 검사하는 테스트 파일을 따로
+두었다. `orientation`을 지우면 이 테스트가 실패하는 것을 확인했다.
+
+jsPDF의 optional deps는 그대로 둔다. `html2canvas`(199 kB)와 `dompurify`(27 kB)는 `.html()`
+경로 안의 동적 import로만 참조되는 별도 청크라 사용자가 내려받지 않는다. 스텁으로 alias하면
+빌드 산출물은 줄지만, `dompurify`는 `mermaid`도 쓰기 때문에 전역 alias는 살균 로직을 망가뜨리고,
+`html2canvas`만 막아도 나중에 `.html()`을 쓰는 사람에게 원인을 알기 어려운 실패를 남긴다.
+얻는 것이 배포 산출물 크기뿐이라 위험을 지지 않는 쪽을 택했다.

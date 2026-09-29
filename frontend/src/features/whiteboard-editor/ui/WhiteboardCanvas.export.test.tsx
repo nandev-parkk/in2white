@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/toast'
 import { useWhiteboardEditor } from '../model/use-whiteboard-editor'
 import { downloadSceneFile, downloadScenePdf } from '../model/export-scene'
 import WhiteboardCanvas from './WhiteboardCanvas'
@@ -49,7 +49,7 @@ vi.mock('../model/export-scene', () => ({
   downloadSceneFile: vi.fn(),
   downloadScenePdf: vi.fn(),
 }))
-vi.mock('sonner', () => ({
+vi.mock('@/shared/ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),

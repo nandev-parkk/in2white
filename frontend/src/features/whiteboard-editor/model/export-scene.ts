@@ -1,6 +1,7 @@
 import { exportToCanvas } from '@excalidraw/excalidraw'
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import type { BinaryFiles } from '@excalidraw/excalidraw/types'
+import { MESSAGES } from '@/shared/constants/messages'
 import type { CanvasContent } from './protocol'
 
 /** 그림이 종이 가장자리에 붙지 않게 하는 최소 여백(px). */
@@ -10,9 +11,16 @@ const PDF_MAX_SIZE = 4096
 /** 인쇄해도 흐려지지 않도록 종이 크기의 두 배로 그린다. */
 const PDF_SCALE = 2
 
-/** 파일 이름에 쓸 수 없는 문자를 밑줄로 바꾼다. */
+/**
+ * 파일 이름에 쓸 수 없는 문자를 밑줄로 바꾼다.
+ * 밑줄과 공백만 남으면 무엇을 받은 파일인지 알 수 없으므로 기본 이름을 쓴다.
+ */
 function toFileName(name: string, extension: string) {
-  return `${name.replace(/[\\/:*?"<>|]/g, '_')}.${extension}`
+  const safe = name.replace(/[\\/:*?"<>|]/g, '_').trim()
+  const readable = safe.replace(/_/g, '').trim()
+    ? safe
+    : MESSAGES.whiteboard.heading.fallbackTitle
+  return `${readable}.${extension}`
 }
 
 function download(blob: Blob, fileName: string) {
@@ -74,14 +82,15 @@ export async function downloadScenePdf(
   // jsPDF는 이 메뉴를 누른 뒤에만 필요하므로 초기 번들에서 떼어낸다.
   const { jsPDF } = await import('jspdf')
   const { width, height } = page
-  const document = new jsPDF({
+  // orientation을 생략하면 jsPDF가 기본값 portrait에 맞춰 두 변을 뒤집는다.
+  const pdf = new jsPDF({
     orientation: width >= height ? 'landscape' : 'portrait',
     unit: 'px',
     // px를 CSS 픽셀(96 DPI)로 읽게 해야 화면에서 본 크기 그대로 인쇄된다.
     hotfixes: ['px_scaling'],
     format: [width, height],
   })
-  document.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, width, height)
-  document.save(toFileName(name, 'pdf'))
+  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, width, height)
+  pdf.save(toFileName(name, 'pdf'))
   return 'downloaded'
 }

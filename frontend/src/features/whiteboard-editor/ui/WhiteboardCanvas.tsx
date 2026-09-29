@@ -18,7 +18,7 @@ import type { WhiteboardDocumentDetail } from '@/entities/whiteboard-document'
 import { CanvasTopBar } from './CanvasTopBar'
 import { Button } from '@/shared/ui/button'
 import { MoreVertical } from 'lucide-react'
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/toast'
 import {
   DropdownMenu,
   DropdownMenuContent,
