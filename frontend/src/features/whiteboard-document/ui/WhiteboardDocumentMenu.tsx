@@ -26,7 +26,7 @@ function WhiteboardDocumentMenu({
         <button
           type="button"
           aria-label={MESSAGES.common.a11y.menu(document.name)}
-          className="text-foreground-tertiary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-md outline-none focus-visible:ring-3"
+          className="text-foreground-tertiary hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-7 items-center justify-center rounded-md transition-colors duration-150 ease-out outline-none focus-visible:ring-3 motion-reduce:transition-none"
         >
           <MoreVertical className="size-4" />
         </button>

@@ -23,7 +23,7 @@ function PasswordInput({ className, ...props }: PasswordInputProps) {
               : MESSAGES.common.a11y.showPassword
           }
           aria-pressed={showPassword}
-          className="text-foreground-tertiary hover:text-foreground-default focus-visible:ring-action-focus-ring inline-flex size-6 items-center justify-center rounded-sm outline-none focus-visible:ring-3"
+          className="text-foreground-tertiary hover:text-foreground-default focus-visible:ring-action-focus-ring inline-flex size-6 items-center justify-center rounded-sm transition-colors duration-150 ease-out outline-none focus-visible:ring-3 motion-reduce:transition-none"
           onClick={() => setShowPassword((visible) => !visible)}
         >
           {showPassword ? (

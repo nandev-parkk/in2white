@@ -23,7 +23,7 @@ function RadioGroupItem({
     <RadioGroupPrimitive.Item
       data-slot="radio-group-item"
       className={cn(
-        'group peer border-border-strong bg-background-default focus-visible:ring-action-focus-ring data-[state=checked]:border-action-primary aria-invalid:!border-status-danger disabled:!border-border-subtle disabled:!bg-background-subtle size-5 shrink-0 rounded-full border transition-colors outline-none focus-visible:ring-3',
+        'group peer border-border-strong bg-background-default focus-visible:ring-action-focus-ring data-[state=checked]:border-action-primary aria-invalid:!border-status-danger disabled:!border-border-subtle disabled:!bg-background-subtle size-5 shrink-0 rounded-full border transition-colors outline-none focus-visible:ring-3 motion-reduce:transition-none',
         className,
       )}
       {...props}

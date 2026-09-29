@@ -40,7 +40,10 @@ function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
   return (
     <tr
       data-slot="table-row"
-      className={cn('transition-colors', className)}
+      className={cn(
+        'transition-colors duration-150 ease-out motion-reduce:transition-none',
+        className,
+      )}
       {...props}
     />
   )

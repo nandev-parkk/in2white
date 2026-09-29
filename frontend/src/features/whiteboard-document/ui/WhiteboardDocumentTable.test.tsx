@@ -95,4 +95,25 @@ describe('WhiteboardDocumentTable', () => {
 
     expect(onDelete).toHaveBeenCalledWith(documents[0])
   })
+
+  it('본문 행에만 hover 배경을 붙이고 전환으로 바꾼다', () => {
+    render(
+      <WhiteboardDocumentTable
+        documents={[documents[0]]}
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+
+    const [headerRow, bodyRow] = screen.getAllByRole('row')
+
+    expect(bodyRow).toHaveClass('hover:bg-background-subtle')
+    expect(bodyRow).toHaveClass(
+      'transition-colors',
+      'duration-150',
+      'ease-out',
+      'motion-reduce:transition-none',
+    )
+    expect(headerRow).not.toHaveClass('hover:bg-background-subtle')
+  })
 })

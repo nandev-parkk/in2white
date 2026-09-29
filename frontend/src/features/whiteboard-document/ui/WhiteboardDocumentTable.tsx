@@ -51,7 +51,7 @@ function WhiteboardDocumentTable({
       </TableHeader>
       <TableBody>
         {documents.map((document) => (
-          <TableRow key={document.id}>
+          <TableRow key={document.id} className="hover:bg-background-subtle">
             <TableCell>
               <span className="text-card-title text-foreground-strong block truncate">
                 {onOpen ? (

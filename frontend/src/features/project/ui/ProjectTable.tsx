@@ -49,7 +49,7 @@ function ProjectTable({
       </TableHeader>
       <TableBody>
         {projects.map((project) => (
-          <TableRow key={project.id}>
+          <TableRow key={project.id} className="hover:bg-background-subtle">
             <TableCell>
               {onOpen ? (
                 <button
