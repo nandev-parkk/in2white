@@ -767,3 +767,67 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 EOF
 )"
 ```
+
+---
+
+## Implementation Results
+
+### 실제 변경
+
+| 파일 | 내용 |
+| --- | --- |
+| `frontend/package.json`, `pnpm-lock.yaml` | `jspdf@^4.2.1` 추가 |
+| `frontend/pnpm-workspace.yaml` | `allowBuilds`에 `core-js: false`, `esbuild: true` 고정 |
+| `frontend/src/shared/constants/messages/whiteboard.ts` | `action.exportPdf`, `error.exportEmpty`, `error.exportPdfFailed` 추가 |
+| `frontend/src/features/whiteboard-editor/model/export-scene.ts` | 신규. `downloadSceneFile`, `downloadScenePdf`, 파일명 정규화, 다운로드 헬퍼 |
+| `frontend/src/features/whiteboard-editor/model/export-scene.test.ts` | 신규. 9건 |
+| `frontend/src/features/whiteboard-editor/ui/WhiteboardCanvas.tsx` | 인라인 `exportScene`을 `export-scene` 모듈 호출로 교체, `currentScene()` 추출, `exportingPdf` 상태와 PDF 메뉴 항목 추가 |
+| `frontend/src/features/whiteboard-editor/ui/WhiteboardCanvas.export.test.tsx` | 신규. 5건 |
+
+커밋: `5406c2c`(설계·계획) → `62d9d49`(의존성·문구) → `42d65d0`(모듈) → `3586917`(리팩터링) → `98c0016`(메뉴 연결).
+
+### 계획과 달라진 점
+
+- `pnpm add jspdf`가 core-js postinstall 때문에 `ERR_PNPM_IGNORED_BUILDS`로 끝나며
+  `pnpm-workspace.yaml`에 플레이스홀더를 남겼다. core-js의 postinstall은 후원 안내
+  배너뿐이라 `core-js: false`로 고정했다.
+- 계획이 적은 `pnpm test -- <경로>`는 경로 필터로 동작하지 않고 전체 테스트를 돌린다.
+  단일 파일 실행에는 `pnpm vitest run <경로>`를 썼다.
+- Task 4 테스트가 두 번째 케이스부터 Radix 메뉴를 열지 못했다. 원인은 jsdom이 포커스된
+  노드가 분리되면 `_lastFocusedElement`를 document로 되돌리고(`jsdom/living/nodes/Node-impl.js:494`),
+  이후 `focus()`의 blur가 window를 대상으로 발사돼(`living/helpers/focusing.js:101`)
+  Radix Menu의 window blur 핸들러(`@radix-ui/react-menu/dist/index.mjs:76`)가 메뉴를
+  닫는 것이다. 제품 버그가 아니라 jsdom 아티팩트라, 테스트에서만 정리 후에도 남는
+  포커스 앵커 요소를 매 테스트 앞에 포커스하도록 했다.
+- 수동 확인(Step 4)은 앱 전체가 아니라 같은 코드 경로를 실제 브라우저에서 직접 호출하는
+  임시 하네스로 했다. 아래 "검증"의 단서 참고.
+
+### 검증
+
+| 명령 | 결과 |
+| --- | --- |
+| `pnpm test` | 83개 파일 464개 테스트 전부 통과 |
+| `pnpm lint` | error 0, warning 4 (모두 기존 `shared/ui` react-refresh 경고) |
+| `pnpm build` | 성공. `jspdf.es.min-*.js` 399.13 kB (gzip 129.64 kB) 별도 청크로 분리 |
+| `npx tsc -b` | exit 0 |
+
+실제 브라우저 확인은 `pnpm dev` 위에 임시 페이지를 올려 `downloadScenePdf`를 같은 인자
+모양(한글·漢字·이모지 텍스트, 도형, dataURL 이미지)으로 호출하고 내려받은 PDF를 이미지로
+변환해 눈으로 검사했다. 확인한 것:
+
+- 파일명이 `보드_2026_ 1분기_.pdf`로 정규화된 채 내려온다.
+- 한글·漢字·이모지·디센더가 깨지지 않는다.
+- 배경이 흰색이고, 상하좌우 여백이 있으며 도형이 잘리지 않는다.
+- 이미지 요소가 그대로 들어간다.
+- `MediaBox`가 `0 0 682.67 362.67`로 그림 bounding box 비율(1.88)과 같다. 즉 늘어남 없이
+  그림 크기 그대로의 1페이지다.
+
+하네스(`frontend/pdf-probe.html`, `frontend/src/pdf-probe.ts`)는 확인 후 삭제했다.
+
+### 남은 후속 작업
+
+- 앱 전체(로그인 → 워크스페이스 → 문서)를 띄운 수동 확인은 하지 않았다. Postgres·Valkey·
+  시크릿과 계정 데이터가 필요해 이 범위에서 다루지 않았다. 빈 보드 안내 토스트와 생성 중
+  중복 실행 차단은 `WhiteboardCanvas.export.test.tsx`의 단위 테스트로만 검증했다.
+- `maxWidthOrHeight: 4096`을 넘는 아주 큰 보드는 축소돼 들어간다. 해상도 불만이 나오면
+  상한 조정이나 여러 페이지 분할을 별도로 논의한다.
