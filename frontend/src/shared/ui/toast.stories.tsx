@@ -55,3 +55,14 @@ export const Warning: Story = {
     </Button>
   ),
 }
+
+export const Loading: Story = {
+  render: () => (
+    <Button
+      variant="secondary"
+      onClick={() => toast.loading('PDF를 만드는 중이에요')}
+    >
+      토스트 띄우기
+    </Button>
+  ),
+}

@@ -18,6 +18,7 @@ import type { WhiteboardDocumentDetail } from '@/entities/whiteboard-document'
 import { CanvasTopBar } from './CanvasTopBar'
 import { Button } from '@/shared/ui/button'
 import { MoreVertical } from 'lucide-react'
+import { toast } from '@/shared/ui/toast'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +28,7 @@ import {
 } from '@/shared/ui/dropdown-menu'
 import { useWhiteboardEditor } from '../model/use-whiteboard-editor'
 import { diffScene, hasDelta, mergeScene } from '../model/scene-sync'
+import { downloadSceneFile, downloadScenePdf } from '../model/export-scene'
 import type { CanvasContent, WhiteboardElement } from '../model/protocol'
 import { MESSAGES } from '@/shared/constants/messages'
 
@@ -142,31 +144,32 @@ export default function WhiteboardCanvas({
     ) as Parameters<ExcalidrawImperativeAPI['updateScene']>[0]['collaborators']
     api.updateScene({ collaborators, captureUpdate: CaptureUpdateAction.NEVER })
   }, [api, editor.participants, userId])
-  function exportScene() {
-    const scene = api
-      ? {
-          elements: api.getSceneElementsIncludingDeleted(),
-          files: api.getFiles(),
-        }
-      : editor.scene
-    const url = URL.createObjectURL(
-      new Blob(
-        [
-          JSON.stringify({
-            type: 'excalidraw',
-            version: 2,
-            source: 'in2white',
-            ...scene,
-          }),
-        ],
-        { type: 'application/json' },
-      ),
-    )
-    const link = window.document.createElement('a')
-    link.href = url
-    link.download = document.name.replace(/[\\/:*?"<>|]/g, '_') + '.excalidraw'
-    link.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  /** 편집기가 들고 있는 최신 장면. API가 아직 없으면 동기화 장면을 쓴다. */
+  function currentScene(): CanvasContent {
+    if (!api) return editor.scene
+    return {
+      elements: api
+        .getSceneElementsIncludingDeleted()
+        .map((element) => ({ ...element })) as WhiteboardElement[],
+      files: api.getFiles() as CanvasContent['files'],
+    }
+  }
+
+  const [exportingPdf, setExportingPdf] = useState(false)
+
+  async function exportPdf() {
+    setExportingPdf(true)
+    // 큰 장면은 렌더에 몇 초가 걸리고 그동안 화면이 멈춘 것처럼 보인다.
+    const progress = toast.loading(MESSAGES.whiteboard.toast.exportingPdf)
+    try {
+      const result = await downloadScenePdf(currentScene(), document.name)
+      if (result === 'empty') toast.error(MESSAGES.whiteboard.error.exportEmpty)
+    } catch {
+      toast.error(MESSAGES.whiteboard.error.exportPdfFailed)
+    } finally {
+      toast.dismiss(progress)
+      setExportingPdf(false)
+    }
   }
 
   return (
@@ -193,8 +196,20 @@ export default function WhiteboardCanvas({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
-                <DropdownMenuItem onSelect={exportScene}>
+                <DropdownMenuItem
+                  onSelect={() =>
+                    downloadSceneFile(currentScene(), document.name)
+                  }
+                >
                   {MESSAGES.whiteboard.action.exportFile}
+                </DropdownMenuItem>
+                {/* onSelect은 동기 함수여야 하므로 비동기 생성만 띄운다. 메뉴는 기본
+                    동작대로 닫히고 생성은 뒤에서 계속 돈다. */}
+                <DropdownMenuItem
+                  disabled={exportingPdf}
+                  onSelect={() => void exportPdf()}
+                >
+                  {MESSAGES.whiteboard.action.exportPdf}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>

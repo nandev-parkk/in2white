@@ -3,6 +3,8 @@ export const WHITEBOARD_MESSAGES = {
     created: '화이트보드를 만들었어요',
     renamed: '화이트보드 이름을 변경했어요',
     deleted: '화이트보드를 삭제했어요',
+    /** PDF 생성은 오래 걸릴 수 있어 진행 중임을 알린다. */
+    exportingPdf: 'PDF를 만드는 중이에요',
   },
   error: {
     loadFailed: '화이트보드를 불러오지 못했어요',
@@ -11,6 +13,8 @@ export const WHITEBOARD_MESSAGES = {
     deleteFailed: '화이트보드를 삭제하지 못했어요',
     notFound: '화이트보드를 찾을 수 없어요',
     notFoundDescription: '삭제되었거나 접근할 수 없는 화이트보드예요',
+    exportEmpty: '내보낼 내용이 없어요',
+    exportPdfFailed: 'PDF를 만들지 못했어요',
   },
   empty: {
     title: '아직 화이트보드가 없어요',
@@ -30,6 +34,7 @@ export const WHITEBOARD_MESSAGES = {
     rename: '이름 변경',
     backToProject: '프로젝트로 돌아가기',
     exportFile: '파일로 내보내기',
+    exportPdf: 'PDF로 내려받기',
     reconnect: '다시 연결',
     discardPending: '미전송 변경 버리기',
   },

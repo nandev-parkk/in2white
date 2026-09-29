@@ -2,6 +2,7 @@ import { CircleAlert, CircleCheck, Info, TriangleAlert } from 'lucide-react'
 import { toast, Toaster as SonnerToaster, type ToasterProps } from 'sonner'
 import 'sonner/dist/styles.css'
 import { cn } from '@/shared/lib/utils'
+import { Spinner } from './spinner'
 
 const DEFAULT_TOAST_DURATION = 4000
 
@@ -22,6 +23,7 @@ function Toaster({
         error: <CircleAlert className="text-status-danger size-5" />,
         info: <Info className="text-toast-info size-5" />,
         warning: <TriangleAlert className="text-toast-warning size-5" />,
+        loading: <Spinner className="text-foreground-secondary" />,
       }}
       toastOptions={{
         unstyled: true,
@@ -31,6 +33,11 @@ function Toaster({
           toast: cn(
             'text-body text-foreground-strong flex w-80 max-w-[calc(100vw-3rem)] min-w-0 items-center gap-2.5 rounded-md px-4 py-3 break-words shadow-sm',
             toastOptions?.classNames?.toast,
+          ),
+          // sonner 로더가 position:absolute라 아이콘 영역이 위치 기준이 되어야 한다.
+          icon: cn(
+            'relative flex size-5 shrink-0 items-center justify-center',
+            toastOptions?.classNames?.icon,
           ),
           content: cn('min-w-0', toastOptions?.classNames?.content),
           success: cn(
@@ -48,6 +55,11 @@ function Toaster({
           warning: cn(
             'border border-toast-warning bg-status-warning-subtle-bg text-toast-warning',
             toastOptions?.classNames?.warning,
+          ),
+          // 진행 중은 상태 색을 쓰지 않으므로 기본 표면 색으로 같은 형태만 맞춘다.
+          loading: cn(
+            'border border-border bg-background-elevated text-foreground-strong',
+            toastOptions?.classNames?.loading,
           ),
         },
       }}
