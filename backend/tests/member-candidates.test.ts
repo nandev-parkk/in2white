@@ -1,4 +1,4 @@
-import { and, asc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "@/app";
@@ -119,7 +119,7 @@ describe("listMemberCandidates", () => {
       ),
     );
     expect(list.orderBy).toHaveBeenCalledWith(asc(users.name), asc(users.id));
-    expect(list.where).toHaveBeenCalledWith(undefined);
+    expect(list.where).toHaveBeenCalledWith(isNull(users.deactivatedAt));
   });
   it.each([
     ["김", "%김%"],
@@ -128,12 +128,27 @@ describe("listMemberCandidates", () => {
   ])("이름과 이메일 부분 검색 및 특수문자 이스케이프: %s", async (search, pattern) => {
     const { list, count } = mockQueries({ total: 5 });
     const result = await listMemberCandidates({ ...input, search, page: 2, limit: 2 });
-    const condition = or(ilike(users.name, pattern), ilike(users.email, pattern));
+    const condition = and(
+      isNull(users.deactivatedAt),
+      or(ilike(users.name, pattern), ilike(users.email, pattern)),
+    );
     expect(list.where).toHaveBeenCalledWith(condition);
     expect(count.where).toHaveBeenCalledWith(condition);
     expect(list.limit).toHaveBeenCalledWith(2);
     expect(list.offset).toHaveBeenCalledWith(2);
     expect(result.pagination).toEqual({ page: 2, limit: 2, total: 5, totalPages: 3 });
+  });
+  /*
+   * 정지된 계정을 후보로 노출하면 어드민이 정지시킨 사용자가 다른 워크스페이스에
+   * 초대돼 그대로 복귀한다. 검색 조건 자체에서 걸러낸다.
+   */
+  it("정지된 계정은 후보 목록과 전체 수에서 모두 제외한다", async () => {
+    const { list, count } = mockQueries();
+
+    await listMemberCandidates(input);
+
+    expect(list.where).toHaveBeenCalledWith(isNull(users.deactivatedAt));
+    expect(count.where).toHaveBeenCalledWith(isNull(users.deactivatedAt));
   });
   it("검색 결과가 없으면 빈 목록과 0페이지를 반환한다", async () => {
     mockQueries({ total: 0, rows: [] });
@@ -180,7 +195,7 @@ describe("GET /workspaces/:workspaceId/member-candidates", () => {
     });
     expect(list.limit).toHaveBeenCalledWith(20);
     expect(list.offset).toHaveBeenCalledWith(0);
-    expect(list.where).toHaveBeenCalledWith(undefined);
+    expect(list.where).toHaveBeenCalledWith(isNull(users.deactivatedAt));
   });
   it("검색어 공백을 제거하고 요청한 페이지를 적용한다", async () => {
     const { list } = mockQueries({ total: 5 });
@@ -188,7 +203,10 @@ describe("GET /workspaces/:workspaceId/member-candidates", () => {
     expect(response.status).toBe(200);
     expect(response.body.pagination).toEqual({ page: 2, limit: 2, total: 5, totalPages: 3 });
     expect(list.where).toHaveBeenCalledWith(
-      or(ilike(users.name, "%@example.com%"), ilike(users.email, "%@example.com%")),
+      and(
+        isNull(users.deactivatedAt),
+        or(ilike(users.name, "%@example.com%"), ilike(users.email, "%@example.com%")),
+      ),
     );
     expect(list.offset).toHaveBeenCalledWith(2);
   });

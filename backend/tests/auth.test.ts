@@ -123,6 +123,28 @@ describe("POST /auth/login", () => {
     expect(response.body.error.code).toBe("INVALID_CREDENTIALS");
   });
 
+  /*
+   * 어드민이 정지시킨 계정은 제품 로그인이 막혀야 한다. 401이 아니라 403으로 구분해서
+   * 프런트엔드가 "비밀번호가 틀렸다"가 아닌 정지 안내를 띄울 수 있게 한다.
+   */
+  it("returns 403 and no refresh cookie for a deactivated account", async () => {
+    const passwordHash = await hashPassword("Correct123!");
+    vi.mocked(db.query.users.findFirst).mockResolvedValue({
+      ...seededUser,
+      passwordHash,
+      deactivatedAt: new Date("2026-09-30T00:00:00.000Z"),
+    });
+
+    const response = await request(buildTestApp())
+      .post("/auth/login")
+      .send({ email: "user@example.com", password: "Correct123!" });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("ACCOUNT_DEACTIVATED");
+    expect(response.body.error.message).toBe(ERROR_MESSAGES.ACCOUNT_DEACTIVATED);
+    expect(extractCookie(response, "refreshToken")).toBeUndefined();
+  });
+
   it("returns 400 for an invalid request body", async () => {
     const response = await request(buildTestApp())
       .post("/auth/login")
@@ -307,6 +329,25 @@ describe("POST /auth/refresh and /auth/logout", () => {
       .post("/auth/refresh")
       .set("Cookie", [`refreshToken=${rotatedCookie}`]);
     expect(rotatedTokenResponse.status).toBe(401);
+  });
+
+  it("returns 403 on refresh once the account is deactivated", async () => {
+    const { app, refreshCookie } = await loginAndGetApp();
+    const passwordHash = await hashPassword("Correct123!");
+    vi.mocked(db.query.users.findFirst).mockResolvedValue({
+      ...seededUser,
+      passwordHash,
+      deactivatedAt: new Date("2026-09-30T00:00:00.000Z"),
+    });
+
+    const response = await request(app)
+      .post("/auth/refresh")
+      .set("Cookie", [`refreshToken=${refreshCookie}`]);
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("ACCOUNT_DEACTIVATED");
+    // 남은 쿠키는 즉시 지운다.
+    expect(extractSetCookieHeader(response, "refreshToken")).toContain("refreshToken=;");
   });
 
   it("rejects refresh when the Origin header does not match CORS_ORIGIN", async () => {

@@ -1,5 +1,6 @@
 export const ERROR_MESSAGES = {
   INVALID_CREDENTIALS: "이메일 또는 비밀번호가 올바르지 않습니다",
+  ACCOUNT_DEACTIVATED: "정지된 계정입니다. 관리자에게 문의해주세요",
   INVALID_REFRESH_TOKEN: "로그인이 만료되었습니다. 다시 로그인해주세요",
   INVALID_ORIGIN: "허용되지 않은 요청 출처입니다",
   MISSING_BEARER_TOKEN: "인증 토큰이 필요합니다",

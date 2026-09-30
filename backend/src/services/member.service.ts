@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, count, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { ERROR_MESSAGES } from "@/constants/messages";
 import { db } from "@/db/client";
 import { users, workspaceMemberships, workspaces } from "@/db/schema";
@@ -80,7 +80,8 @@ export async function addMember({
     const [targetUser] = await tx
       .select({ id: users.id, name: users.name, email: users.email })
       .from(users)
-      .where(eq(users.id, userId));
+      /* 정지된 계정은 없는 사용자로 취급한다. 후보 검색에서 빠져도 userId를 직접 넣은 요청이 남는다. */
+      .where(and(eq(users.id, userId), isNull(users.deactivatedAt)));
 
     if (!targetUser) {
       throw new HttpError(404, "USER_NOT_FOUND", ERROR_MESSAGES.USER_NOT_FOUND);
@@ -282,9 +283,11 @@ export async function listMemberCandidates({
   }
 
   const pattern = search ? buildContainsSearchPattern(search) : undefined;
+  /* 정지된 계정이 후보로 보이면 다른 워크스페이스에 초대돼 그대로 복귀한다. */
+  const activeOnly = isNull(users.deactivatedAt);
   const whereCondition = pattern
-    ? or(ilike(users.name, pattern), ilike(users.email, pattern))
-    : undefined;
+    ? and(activeOnly, or(ilike(users.name, pattern), ilike(users.email, pattern)))
+    : activeOnly;
   const [countRows, candidateRows] = await Promise.all([
     db.select({ total: count() }).from(users).where(whereCondition),
     db
