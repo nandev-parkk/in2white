@@ -1,0 +1,148 @@
+import { and, asc, count, desc, eq, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { ERROR_MESSAGES } from "@/constants/messages";
+import { db } from "@/db/client";
+import { users, workspaceMemberships, workspaces } from "@/db/schema";
+import type { TransactionHandle } from "@/db/transaction";
+import type { UserStatusFilter } from "@/schemas/admin-user.schema";
+import { DEFAULT_WORKSPACE_NAME } from "@/services/user.service";
+import { HttpError } from "@/utils/http-error";
+import type { PaginationMeta } from "@/utils/pagination";
+import { createPaginationMeta, getPaginationOffset } from "@/utils/pagination";
+import { buildContainsSearchPattern } from "@/utils/search";
+
+/*
+ * 어드민의 사용자 조작만 담당한다. 제품 서비스와 달리 요청자의 소속을 확인하지 않는다 —
+ * 어드민은 모든 사용자를 볼 수 있다는 전제이고, 권한은 `authenticateAdmin`이 지킨다.
+ * 감사 로그는 컨트롤러가 기록한다. 변경 함수는 그래서 트랜잭션 핸들을 인자로 받는다.
+ */
+
+/** 비밀번호 해시와 `sessionVersion`을 뺀 응답용 모양. 목록·상세·변경 응답이 모두 이 형태를 따른다. */
+const USER_SUMMARY_COLUMNS = {
+  id: users.id,
+  name: users.name,
+  email: users.email,
+  deactivatedAt: users.deactivatedAt,
+  createdAt: users.createdAt,
+} as const;
+
+export interface AdminUserSummary {
+  id: string;
+  name: string;
+  email: string;
+  deactivatedAt: Date | null;
+  createdAt: Date;
+}
+
+export interface AdminUserListItem extends AdminUserSummary {
+  workspaceCount: number;
+}
+
+export interface ListUsersInput {
+  search?: string;
+  status: UserStatusFilter;
+  page: number;
+  limit: number;
+}
+
+export interface ListUsersResult {
+  users: AdminUserListItem[];
+  pagination: PaginationMeta;
+}
+
+export interface CreateUserInput {
+  email: string;
+  name: string;
+  passwordHash: string;
+}
+
+function emailAlreadyExists() {
+  return new HttpError(409, "EMAIL_ALREADY_EXISTS", ERROR_MESSAGES.EMAIL_ALREADY_EXISTS);
+}
+
+function buildStatusCondition(status: UserStatusFilter) {
+  if (status === "active") return isNull(users.deactivatedAt);
+  if (status === "deactivated") return isNotNull(users.deactivatedAt);
+  return undefined;
+}
+
+export async function listUsers({
+  search,
+  status,
+  page,
+  limit,
+}: ListUsersInput): Promise<ListUsersResult> {
+  const pattern = search ? buildContainsSearchPattern(search) : undefined;
+  const whereCondition = and(
+    pattern ? or(ilike(users.name, pattern), ilike(users.email, pattern)) : undefined,
+    buildStatusCondition(status),
+  );
+
+  const [countRows, userRows] = await Promise.all([
+    db.select({ total: count() }).from(users).where(whereCondition),
+    db
+      .select({ ...USER_SUMMARY_COLUMNS, workspaceCount: count(workspaceMemberships.id) })
+      .from(users)
+      /*
+       * 멤버십을 join하면 사용자당 행이 늘어나므로 묶어서 센다. left join이라 멤버십이
+       * 없는 사용자도 0으로 남는다 — 목록에서 사라지면 정지·삭제 대상을 찾을 수 없다.
+       */
+      .leftJoin(workspaceMemberships, eq(workspaceMemberships.userId, users.id))
+      .where(whereCondition)
+      .groupBy(users.id)
+      .orderBy(desc(users.createdAt), asc(users.id))
+      .limit(limit)
+      .offset(getPaginationOffset({ page, limit })),
+  ]);
+
+  return {
+    users: userRows.map((row) => ({ ...row, workspaceCount: Number(row.workspaceCount) })),
+    pagination: createPaginationMeta({ page, limit, total: Number(countRows[0]?.total ?? 0) }),
+  };
+}
+
+export async function createUser(
+  tx: TransactionHandle,
+  { email, name, passwordHash }: CreateUserInput,
+): Promise<AdminUserSummary> {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  // 저장된 이메일의 케이스에 의존하지 않고 비교한다. 제품 로그인도 같은 방식으로 찾는다.
+  const [existingUser] = await tx
+    .select({ id: users.id })
+    .from(users)
+    .where(sql`lower(${users.email}) = ${normalizedEmail}`);
+
+  if (existingUser) {
+    throw emailAlreadyExists();
+  }
+
+  const [user] = await tx
+    .insert(users)
+    .values({ email: normalizedEmail, name, passwordHash })
+    .onConflictDoNothing()
+    .returning(USER_SUMMARY_COLUMNS);
+
+  // 사전 조회와 insert 사이에 같은 이메일이 들어온 경합. 제약이 막아준 결과도 중복이다.
+  if (!user) {
+    throw emailAlreadyExists();
+  }
+
+  /*
+   * 제품 가입과 같은 불변식이다 — 모든 사용자는 기본 워크스페이스를 하나 가진다.
+   * 같은 트랜잭션에서 만들지 않으면 워크스페이스 없는 계정이 남아 제품 화면이 빈다.
+   */
+  const [defaultWorkspace] = await tx
+    .insert(workspaces)
+    .values({ name: DEFAULT_WORKSPACE_NAME, ownerId: user.id, isDefault: true })
+    .returning({ id: workspaces.id });
+
+  if (!defaultWorkspace) {
+    throw new Error("Default workspace insert returned no row");
+  }
+
+  await tx
+    .insert(workspaceMemberships)
+    .values({ workspaceId: defaultWorkspace.id, userId: user.id, role: "owner" });
+
+  return user;
+}

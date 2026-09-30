@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ERROR_MESSAGES } from "@/constants/messages";
 import { passwordSchema } from "@/schemas/password.schema";
 
-const accountNameSchema = z
+export const accountNameSchema = z
   .string({ error: ERROR_MESSAGES.ACCOUNT_NAME_REQUIRED })
   .trim()
   .min(1, ERROR_MESSAGES.ACCOUNT_NAME_REQUIRED)

@@ -1,11 +1,10 @@
-import type { db } from "@/db/client";
 import { adminAuditLogs } from "@/db/schema";
+import type { TransactionHandle } from "@/db/transaction";
 
 /*
  * 대상 변경과 같은 트랜잭션에 기록하기 위해 핸들을 인자로 받는다. 전역 `db`를 쓰면
  * 변경은 롤백됐는데 로그만 남거나, 변경은 성공했는데 로그가 없는 상태가 생긴다.
  */
-type TransactionHandle = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export type AuditTargetType = "user" | "workspace" | "project" | "whiteboard_document" | "admin";
 
