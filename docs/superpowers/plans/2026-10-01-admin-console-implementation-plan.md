@@ -351,7 +351,7 @@ pnpm --filter admin test
 
 ### 남은 후속 작업
 
-- **`frontend` 전역 iconography 불변식 복구.** `iconography.test.ts`가 패키지로 옮겨가 `frontend`의 잔류 도메인 컴포넌트 4종이 검사 범위에서 빠졌다. `frontend/src` 전체를 대상으로 같은 검사를 다시 세운다. 현재 `frontend/src` 전체에 금지 아이콘·인라인 `<svg>`·타 아이콘 라이브러리 사용은 없다.
-- **`cn` import 불일치 정리.** `packages/ui/src/ui/loading-state.tsx`와 `spinner.tsx`만 프로젝트의 `cn`이 아니라 npm `cn` 패키지에서 가져온다. npm `cn`에는 이 저장소가 `tailwind-merge`에 덧붙인 `text-heading1` 등 `font-size` 클래스 그룹이 없어서 클래스 충돌 병합 결과가 다를 수 있다. 동작이 바뀔 수 있는 변경이므로 단계 0에서 건드리지 않았다. 별도 `fix`로 통일한다.
-- **`components.json` 정리.** 프리미티브가 `packages/ui`로 옮겨졌으므로 `frontend/components.json`의 `components`·`ui`·`utils`·`lib`·`hooks` 별칭은 이제 잔류 4종만 가리킨다. shadcn CLI로 프리미티브를 추가할 때는 `packages/ui/src/ui`에 직접 넣고 import를 상대 경로로 고쳐야 한다. 별칭 해석 제약을 포함해 방식을 정리한다.
-- `frontend`의 `src/shared/lib/hooks/`에는 `.gitkeep`만 남았다. `src/shared/types/`와 함께 자리표시자를 유지할지 정한다.
+- ~~**`frontend` 전역 아이콘 계약 복구.**~~ 완료 (`test: frontend 전역 아이콘 계약 검사 복구`). `frontend/src` 전체를 대상으로 걷어낸 아이콘·인라인 `<svg>`·타 아이콘 라이브러리 금지 3건을 다시 세웠고, 각 검사에 위반을 주입해 실패를 확인했다.
+- ~~**`cn` 불일치 정리.**~~ 완료 (`refactor: cn 구현을 저장소 것으로 통일`). `loading-state.tsx`·`spinner.tsx`만 npm `cn`을 쓰고 있었다. npm `cn`은 `text-body`를 색상으로 오인해 색상 유틸과 함께 쓰면 한쪽을 버린다. 현재 호출부는 둘을 같이 넘기지 않아 실제 출력은 동일했고, 회귀 테스트로 고정한 뒤 의존성을 제거했다.
+- **`components.json` 정리 (미결).** 프리미티브가 `packages/ui`로 옮겨졌는데 `frontend/components.json`의 `components`·`ui`·`utils`·`lib`·`hooks` 별칭은 여전히 `@/shared/*`를 가리킨다. 지금 shadcn CLI로 프리미티브를 추가하면 `frontend/src/shared/ui`에 떨어진다. 별칭을 패키지로 돌리려면 shadcn이 별칭을 tsconfig `paths`로 해석해야 하는데, `#ui/*`를 되돌린 것과 같은 이유로 패키지에 `paths`를 둘 수 없다. 당장은 CLI 산출물을 `packages/ui/src/ui`로 옮기고 import를 상대 경로로 고치는 수동 절차로 두고, 단계 1에서 실제로 프리미티브를 추가할 때 결정한다.
+- **`frontend`의 빈 자리표시자 (미결).** `src/shared/lib/hooks/`에 `.gitkeep`만 남았다. `src/shared/types/`와 함께 유지할지 정한다.
