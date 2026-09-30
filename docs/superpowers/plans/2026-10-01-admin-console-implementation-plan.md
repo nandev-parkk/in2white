@@ -322,15 +322,15 @@ pnpm --filter admin test
 
 ### 계획과 달라진 점
 
-| 항목                       | 계획                                                       | 실제                                | 이유                                                                                                                                                                                                                                                                   |
-| -------------------------- | ---------------------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0.6·0.7 커밋 분리          | 이동 커밋과 import 재작성 커밋을 분리                      | 한 커밋으로 합침                    | 파일을 옮기면 `frontend`의 import 125곳이 즉시 깨진다. 이동만 담은 커밋은 빌드가 실패하는 중간 상태가 되므로 원자적 단위가 아니다.                                                                                                                                     |
-| 테스트 수                  | 기준선 84파일 477건과 일치                                 | 85파일 480건                        | 프리미티브 69개가 `frontend/src/architecture.test.ts`의 검사 범위에서 빠지므로 `packages/ui/src/architecture.test.ts`에 같은 불변식을 세웠다(도메인 문구 비참조 1건 + 모션 계약 2건). 증가분은 정확히 이 3건이다.                                                      |
-| 루트 `pnpm-workspace.yaml` | `packages: ['frontend', 'backend', 'admin', 'packages/*']` | `admin` 제외                        | 디렉터리가 없으면 pnpm이 경고한다. 1.10에서 `admin/`을 만들 때 추가한다.                                                                                                                                                                                               |
-| 패키지 내부 경로           | 미정                                                       | 상대 경로만                         | `#ui/*`(Node subpath imports)를 시도했으나, 소비하는 앱의 `tsc -b`가 패키지 소스를 함께 검사하므로 consumer의 tsconfig에도 `paths` 매핑이 필요해졌다. 패키지 내부 규약이 앱으로 새는 구조여서 되돌렸다. eslint 규칙으로 `@/` 별칭을 금지해 Vite alias 오해석을 막았다. |
-| `components.json`          | 경로 갱신                                                  | `tailwind.css`만 패키지 테마로 변경 | 컴포넌트 별칭을 패키지로 돌리려면 shadcn이 별칭을 tsconfig `paths`로 해석해야 하는데, 위와 같은 이유로 패키지에 `paths`를 둘 수 없다. 후속 작업으로 남긴다.                                                                                                            |
-| husky                      | 언급 없음                                                  | 루트 훅 하나로 통합                 | 두 앱의 `prepare`가 `core.hooksPath`를 서로 덮어써서 `backend/.husky/pre-commit`이 실행되지 않고 있었다.                                                                                                                                                               |
-| Storybook                  | 언급 없음                                                  | glob에 `packages/ui` 추가           | 스토리 25개가 패키지로 옮겨가 `frontend/src` glob에서 빠졌다. 수집되는 스토리 파일 수는 33개로 동일하다.                                                                                                                                                               |
+| 항목                       | 계획                                                       | 실제                                                  | 이유                                                                                                                                                                                                                                                                   |
+| -------------------------- | ---------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.6·0.7 커밋 분리          | 이동 커밋과 import 재작성 커밋을 분리                      | 한 커밋으로 합침                                      | 파일을 옮기면 `frontend`의 import 125곳이 즉시 깨진다. 이동만 담은 커밋은 빌드가 실패하는 중간 상태가 되므로 원자적 단위가 아니다.                                                                                                                                     |
+| 테스트 수                  | 기준선 84파일 477건과 일치                                 | 85파일 480건                                          | 프리미티브 69개가 `frontend/src/architecture.test.ts`의 검사 범위에서 빠지므로 `packages/ui/src/architecture.test.ts`에 같은 불변식을 세웠다(도메인 문구 비참조 1건 + 모션 계약 2건). 증가분은 정확히 이 3건이다.                                                      |
+| 루트 `pnpm-workspace.yaml` | `packages: ['frontend', 'backend', 'admin', 'packages/*']` | `admin` 제외                                          | 디렉터리가 없으면 pnpm이 경고한다. 1.10에서 `admin/`을 만들 때 추가한다.                                                                                                                                                                                               |
+| 패키지 내부 경로           | 미정                                                       | 상대 경로만                                           | `#ui/*`(Node subpath imports)를 시도했으나, 소비하는 앱의 `tsc -b`가 패키지 소스를 함께 검사하므로 consumer의 tsconfig에도 `paths` 매핑이 필요해졌다. 패키지 내부 규약이 앱으로 새는 구조여서 되돌렸다. eslint 규칙으로 `@/` 별칭을 금지해 Vite alias 오해석을 막았다. |
+| `components.json`          | 경로 갱신                                                  | `packages/ui`로 이동하고 별칭을 패키지 subpath로 교체 | 프리미티브가 패키지에 있으니 CLI도 패키지에서 돌아야 한다. shadcn 4.21은 별칭을 `package.json`의 `imports` → 워크스페이스 패키지 `exports` → tsconfig `paths` 순서로 해석한다. `exports`의 `"./*"`는 CLI가 처리하지 못해서 `imports`에 `#ui/*`를 두어 해석만 맡겼다.   |
+| husky                      | 언급 없음                                                  | 루트 훅 하나로 통합                                   | 두 앱의 `prepare`가 `core.hooksPath`를 서로 덮어써서 `backend/.husky/pre-commit`이 실행되지 않고 있었다.                                                                                                                                                               |
+| Storybook                  | 언급 없음                                                  | glob에 `packages/ui` 추가                             | 스토리 25개가 패키지로 옮겨가 `frontend/src` glob에서 빠졌다. 수집되는 스토리 파일 수는 33개로 동일하다.                                                                                                                                                               |
 
 ### 실행한 검증
 
@@ -353,5 +353,27 @@ pnpm --filter admin test
 
 - ~~**`frontend` 전역 아이콘 계약 복구.**~~ 완료 (`test: frontend 전역 아이콘 계약 검사 복구`). `frontend/src` 전체를 대상으로 걷어낸 아이콘·인라인 `<svg>`·타 아이콘 라이브러리 금지 3건을 다시 세웠고, 각 검사에 위반을 주입해 실패를 확인했다.
 - ~~**`cn` 불일치 정리.**~~ 완료 (`refactor: cn 구현을 저장소 것으로 통일`). `loading-state.tsx`·`spinner.tsx`만 npm `cn`을 쓰고 있었다. npm `cn`은 `text-body`를 색상으로 오인해 색상 유틸과 함께 쓰면 한쪽을 버린다. 현재 호출부는 둘을 같이 넘기지 않아 실제 출력은 동일했고, 회귀 테스트로 고정한 뒤 의존성을 제거했다.
-- **`components.json` 정리 (미결).** 프리미티브가 `packages/ui`로 옮겨졌는데 `frontend/components.json`의 `components`·`ui`·`utils`·`lib`·`hooks` 별칭은 여전히 `@/shared/*`를 가리킨다. 지금 shadcn CLI로 프리미티브를 추가하면 `frontend/src/shared/ui`에 떨어진다. 별칭을 패키지로 돌리려면 shadcn이 별칭을 tsconfig `paths`로 해석해야 하는데, `#ui/*`를 되돌린 것과 같은 이유로 패키지에 `paths`를 둘 수 없다. 당장은 CLI 산출물을 `packages/ui/src/ui`로 옮기고 import를 상대 경로로 고치는 수동 절차로 두고, 단계 1에서 실제로 프리미티브를 추가할 때 결정한다.
-- **`frontend`의 빈 자리표시자 (미결).** `src/shared/lib/hooks/`에 `.gitkeep`만 남았다. `src/shared/types/`와 함께 유지할지 정한다.
+- ~~**`components.json` 정리.**~~ 완료. 아래 「프리미티브 추가 절차」 참고.
+- ~~**`frontend`의 빈 자리표시자.**~~ 완료. `shared/lib/hooks/`는 `use-card-motion`이 패키지로 가면서 비었고, 훅의 정규 위치는 이미 `shared/hooks/`다. 디렉터리째 지웠다. `entities/`·`features/`·`shared/types/`의 `.gitkeep`은 실제 파일이 들어와 있어 함께 지웠다.
+
+## 프리미티브 추가 절차
+
+`components.json`은 `packages/ui/`에 있다. 프리미티브가 거기 있으므로 CLI도 거기서 돈다.
+
+```bash
+pnpm --filter @in2white/ui exec shadcn search @shadcn -q <검색어>
+pnpm --filter @in2white/ui exec shadcn docs <이름>
+pnpm --filter @in2white/ui exec shadcn add <이름> --dry-run
+pnpm --filter @in2white/ui exec shadcn add <이름>
+```
+
+`--dry-run`을 먼저 돌린다. 레지스트리 항목이 다른 프리미티브에 의존하면 CLI가 우리가 손본 파일을 덮어쓰려 한다. 예를 들어 `alert-dialog`는 `button.tsx` 덮어쓰기를 함께 제안한다.
+
+내려온 파일은 두 곳을 고친다.
+
+1. `import { cn } from 'cn'` → `import { cn } from '../lib/utils'`. 레지스트리는 npm `cn`을 쓰지만 이 저장소의 `cn`만 타이포 토큰을 알고 있다. eslint가 막는다.
+2. `'use client'` 지시문 제거. Vite SPA에는 의미가 없다.
+
+그다음 `pnpm --filter @in2white/ui lint`·`format`·`test`를 돌린다. 프리미티브가 공개 API이므로 스토리와 테스트를 함께 추가한다.
+
+별칭 해석은 `packages/ui/package.json`의 `imports`에 있는 `#ui/*`가 담당한다. shadcn 4.21이 `imports` → 워크스페이스 패키지 `exports` → tsconfig `paths` 순으로 별칭을 푸는데, 우리 `exports`의 루트 와일드카드(`"./*"`)는 CLI가 별칭 키로 환원하지 못한다. `imports`는 패키지 외부에 노출되지 않으므로 공개 경로가 늘지 않는다. 코드에서 `#ui/*`를 쓰는 것은 eslint가 막는다. 패키지 내부는 상대 경로만 쓴다.
