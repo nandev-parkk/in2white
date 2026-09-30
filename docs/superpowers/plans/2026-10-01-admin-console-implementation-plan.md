@@ -22,10 +22,10 @@ cd frontend && pnpm lint && pnpm test && pnpm build
 
 **기록한 기준선 (2026-10-01, `dev` @ 9c01c35 + 미커밋 uuid 수정)**
 
-| 대상 | lint | test | build |
-|---|---|---|---|
-| frontend | 통과 | 84 files / 477 tests 통과 | 성공 |
-| backend | 통과 | 38 passed + 3 skipped (41 files) / 544 passed + 16 skipped (560 tests) | 미실행(단계 0 무관) |
+| 대상     | lint | test                                                                   | build               |
+| -------- | ---- | ---------------------------------------------------------------------- | ------------------- |
+| frontend | 통과 | 84 files / 477 tests 통과                                              | 성공                |
+| backend  | 통과 | 38 passed + 3 skipped (41 files) / 544 passed + 16 skipped (560 tests) | 미실행(단계 0 무관) |
 
 ### 0.2 루트 pnpm workspace 승격
 
@@ -243,16 +243,16 @@ docker compose build frontend backend
 
 ## 위험
 
-| 위험 | 대응 |
-|---|---|
-| 사용자 하드 삭제의 cascade 범위가 예상보다 넓다 | 단계 2에서 `deletion-impact` 집계 테스트를 먼저 작성해 실제 cascade 범위를 테스트로 고정한다 |
-| `users.deactivatedAt` 도입이 기존 인증을 깬다 | 단계 1.8에서 제품 인증 회귀 테스트를 먼저 추가한다. `frontend` 테스트도 함께 실행한다 |
-| 라우터별 CORS 전환이 기존 제품 요청을 깬다 | 전환 시 제품 오리진 허용·어드민 오리진 차단을 검증하는 테스트를 먼저 작성한다 |
-| 감사 로그 누락이 조용히 발생 | 모든 변경 엔드포인트 테스트에 로그 1건 생성 검증을 필수로 포함한다 |
-| 두 앱의 시각 언어 드리프트 | 단계 0에서 테마 CSS와 프리미티브를 `packages/ui`로 단일화한다. 어드민용 토큰 오버라이드를 만들지 않는다 |
-| 단계 0의 import 재작성이 제품 회귀를 유발 | 0.1에서 기준선(테스트 수)을 기록하고 0.9에서 일치를 확인한다. 기능 변경 없는 순수 이동으로 제한한다 |
-| Docker 빌드 컨텍스트 변경이 배포를 깬다 | 0.8에서 `docker compose build frontend backend` 성공을 확인한 뒤 단계 1로 넘어간다 |
-| 단계 1이 커서 리뷰가 어렵다 | 아래 커밋 계획대로 원자적으로 쪼갠다 |
+| 위험                                            | 대응                                                                                                    |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 사용자 하드 삭제의 cascade 범위가 예상보다 넓다 | 단계 2에서 `deletion-impact` 집계 테스트를 먼저 작성해 실제 cascade 범위를 테스트로 고정한다            |
+| `users.deactivatedAt` 도입이 기존 인증을 깬다   | 단계 1.8에서 제품 인증 회귀 테스트를 먼저 추가한다. `frontend` 테스트도 함께 실행한다                   |
+| 라우터별 CORS 전환이 기존 제품 요청을 깬다      | 전환 시 제품 오리진 허용·어드민 오리진 차단을 검증하는 테스트를 먼저 작성한다                           |
+| 감사 로그 누락이 조용히 발생                    | 모든 변경 엔드포인트 테스트에 로그 1건 생성 검증을 필수로 포함한다                                      |
+| 두 앱의 시각 언어 드리프트                      | 단계 0에서 테마 CSS와 프리미티브를 `packages/ui`로 단일화한다. 어드민용 토큰 오버라이드를 만들지 않는다 |
+| 단계 0의 import 재작성이 제품 회귀를 유발       | 0.1에서 기준선(테스트 수)을 기록하고 0.9에서 일치를 확인한다. 기능 변경 없는 순수 이동으로 제한한다     |
+| Docker 빌드 컨텍스트 변경이 배포를 깬다         | 0.8에서 `docker compose build frontend backend` 성공을 확인한 뒤 단계 1로 넘어간다                      |
+| 단계 1이 커서 리뷰가 어렵다                     | 아래 커밋 계획대로 원자적으로 쪼갠다                                                                    |
 
 ## 커밋 계획
 
@@ -302,20 +302,56 @@ pnpm --filter admin test
 
 ## 구현 결과
 
-<!-- 구현 완료 시 실제 변경, 계획과 달라진 점, 실행한 검증, 남은 후속 작업을 기록한다 -->
+<!-- 각 단계 완료 시 실제 변경, 계획과 달라진 점, 실행한 검증, 남은 후속 작업을 기록한다 -->
+
+## 단계 0 구현 결과 (2026-10-01, `refactor/shared-design-system`)
 
 ### 실제 변경
 
-(미착수)
+| 커밋                                                      | 내용                                                                                               |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `refactor: 루트 pnpm workspace로 승격`                    | 두 앱의 `pnpm-workspace.yaml`·lockfile을 루트로 통합, 루트 `package.json`·`.husky/pre-commit` 신설 |
+| `build: 공유 UI 패키지 스캐폴딩 추가`                     | `packages/ui` (`@in2white/ui`) 생성, `frontend`가 `workspace:*`로 의존                             |
+| `refactor: 테마 CSS를 공유 UI 패키지로 이동`              | `frontend/src/app/styles/index.css` → `packages/ui/src/styles/theme.css`                           |
+| `refactor: 공통 유틸과 공통 문구를 공유 UI 패키지로 이동` | `lib/utils`, `lib/hooks/use-card-motion`, `constants/messages/common.ts` 이동                      |
+| `refactor: 범용 UI 프리미티브를 공유 패키지로 이동`       | `shared/ui` 69개 파일 이동 + `frontend` import 125곳·`vi.mock` 6곳 재작성                          |
+| `build: Docker 빌드 컨텍스트를 워크스페이스 루트로 변경`  | 두 Dockerfile을 워크스페이스 기준으로 재작성, 루트 `.dockerignore`로 통합                          |
+
+`packages/ui` 최종 구성: `src/ui` 69개, `src/lib`(utils·use-card-motion), `src/constants/common-messages.ts`, `src/styles/theme.css`, `src/architecture.test.ts`.
+`frontend/src/shared/ui` 잔류 11개: `app-shell-header`, `live-cursor`, `presence-avatar-stack`, `whiteboard-card`와 각 스토리·테스트, `brand-assets.test.tsx`.
 
 ### 계획과 달라진 점
 
-(미착수)
+| 항목                       | 계획                                                       | 실제                                | 이유                                                                                                                                                                                                                                                                   |
+| -------------------------- | ---------------------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.6·0.7 커밋 분리          | 이동 커밋과 import 재작성 커밋을 분리                      | 한 커밋으로 합침                    | 파일을 옮기면 `frontend`의 import 125곳이 즉시 깨진다. 이동만 담은 커밋은 빌드가 실패하는 중간 상태가 되므로 원자적 단위가 아니다.                                                                                                                                     |
+| 테스트 수                  | 기준선 84파일 477건과 일치                                 | 85파일 480건                        | 프리미티브 69개가 `frontend/src/architecture.test.ts`의 검사 범위에서 빠지므로 `packages/ui/src/architecture.test.ts`에 같은 불변식을 세웠다(도메인 문구 비참조 1건 + 모션 계약 2건). 증가분은 정확히 이 3건이다.                                                      |
+| 루트 `pnpm-workspace.yaml` | `packages: ['frontend', 'backend', 'admin', 'packages/*']` | `admin` 제외                        | 디렉터리가 없으면 pnpm이 경고한다. 1.10에서 `admin/`을 만들 때 추가한다.                                                                                                                                                                                               |
+| 패키지 내부 경로           | 미정                                                       | 상대 경로만                         | `#ui/*`(Node subpath imports)를 시도했으나, 소비하는 앱의 `tsc -b`가 패키지 소스를 함께 검사하므로 consumer의 tsconfig에도 `paths` 매핑이 필요해졌다. 패키지 내부 규약이 앱으로 새는 구조여서 되돌렸다. eslint 규칙으로 `@/` 별칭을 금지해 Vite alias 오해석을 막았다. |
+| `components.json`          | 경로 갱신                                                  | `tailwind.css`만 패키지 테마로 변경 | 컴포넌트 별칭을 패키지로 돌리려면 shadcn이 별칭을 tsconfig `paths`로 해석해야 하는데, 위와 같은 이유로 패키지에 `paths`를 둘 수 없다. 후속 작업으로 남긴다.                                                                                                            |
+| husky                      | 언급 없음                                                  | 루트 훅 하나로 통합                 | 두 앱의 `prepare`가 `core.hooksPath`를 서로 덮어써서 `backend/.husky/pre-commit`이 실행되지 않고 있었다.                                                                                                                                                               |
+| Storybook                  | 언급 없음                                                  | glob에 `packages/ui` 추가           | 스토리 25개가 패키지로 옮겨가 `frontend/src` glob에서 빠졌다. 수집되는 스토리 파일 수는 33개로 동일하다.                                                                                                                                                               |
 
 ### 실행한 검증
 
-(미착수)
+| 명령                                    | 결과                                                                                        |
+| --------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `pnpm -r lint`                          | 3개 패키지 모두 통과                                                                        |
+| `pnpm -r test`                          | `packages/ui` 17파일 39건, `frontend` 68파일 441건, `backend` 38+3파일 544+16건 — 모두 통과 |
+| `pnpm -r build`                         | 통과 (`tsc -b` / `vite build && tsc -b` / `tsc && tsc-alias`)                               |
+| `pnpm -r format:check`                  | 통과                                                                                        |
+| `docker compose build frontend backend` | 성공                                                                                        |
+
+동작 보존 근거는 개수 일치만으로 두지 않았다.
+
+- 테마 이동 후 `vite build` 산출 CSS가 이동 전 소스로 빌드한 결과와 **바이트 단위로 동일**했다(`index-DIIMsjDh.css`). `@font-face` 4개, `woff2` 8개, `animate-in` 유틸 모두 유지된다.
+- 컨테이너 이미지 안의 CSS도 같은 해시이고, `backend` 이미지의 `/app/backend/dist/server.js`와 작업 디렉터리가 이전과 같다.
+- 새로 세운 불변식은 red 확인을 했다. `packages/ui`의 한 파일에 `MESSAGES.project`를 넣으면 `ui/badge.tsx`로 검출되고, `motion-reduce:` 없는 `transition-colors`를 넣어도 검출된다. 원복 후 3건 통과.
+- `backend` 테스트 수는 기준선과 완전히 동일하다. 단계 0은 백엔드를 건드리지 않았다.
 
 ### 남은 후속 작업
 
-(미착수)
+- **`frontend` 전역 iconography 불변식 복구.** `iconography.test.ts`가 패키지로 옮겨가 `frontend`의 잔류 도메인 컴포넌트 4종이 검사 범위에서 빠졌다. `frontend/src` 전체를 대상으로 같은 검사를 다시 세운다. 현재 `frontend/src` 전체에 금지 아이콘·인라인 `<svg>`·타 아이콘 라이브러리 사용은 없다.
+- **`cn` import 불일치 정리.** `packages/ui/src/ui/loading-state.tsx`와 `spinner.tsx`만 프로젝트의 `cn`이 아니라 npm `cn` 패키지에서 가져온다. npm `cn`에는 이 저장소가 `tailwind-merge`에 덧붙인 `text-heading1` 등 `font-size` 클래스 그룹이 없어서 클래스 충돌 병합 결과가 다를 수 있다. 동작이 바뀔 수 있는 변경이므로 단계 0에서 건드리지 않았다. 별도 `fix`로 통일한다.
+- **`components.json` 정리.** 프리미티브가 `packages/ui`로 옮겨졌으므로 `frontend/components.json`의 `components`·`ui`·`utils`·`lib`·`hooks` 별칭은 이제 잔류 4종만 가리킨다. shadcn CLI로 프리미티브를 추가할 때는 `packages/ui/src/ui`에 직접 넣고 import를 상대 경로로 고쳐야 한다. 별칭 해석 제약을 포함해 방식을 정리한다.
+- `frontend`의 `src/shared/lib/hooks/`에는 `.gitkeep`만 남았다. `src/shared/types/`와 함께 자리표시자를 유지할지 정한다.
