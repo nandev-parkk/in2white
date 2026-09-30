@@ -356,6 +356,67 @@ pnpm --filter admin test
 - ~~**`components.json` 정리.**~~ 완료. 아래 「프리미티브 추가 절차」 참고.
 - ~~**`frontend`의 빈 자리표시자.**~~ 완료. `shared/lib/hooks/`는 `use-card-motion`이 패키지로 가면서 비었고, 훅의 정규 위치는 이미 `shared/hooks/`다. 디렉터리째 지웠다. `entities/`·`features/`·`shared/types/`의 `.gitkeep`은 실제 파일이 들어와 있어 함께 지웠다.
 
+## 단계 1 구현 결과 (2026-10-01, `feat/admin-console`)
+
+### 실제 변경
+
+| 커밋                                                       | 내용                                                                                                      |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `feat: 어드민 콘솔 스키마와 마이그레이션 추가`             | `admin_users`·`admin_audit_logs` 테이블과 마이그레이션, 제품 `users.deactivated_at`                       |
+| `feat: 어드민 전용 JWT 시크릿과 CORS 오리진 환경변수 추가` | `JWT_ADMIN_SECRET`·`JWT_ADMIN_REFRESH_SECRET`·`ADMIN_CORS_ORIGIN`, 제품 시크릿과 동일한 값이면 부팅 거부  |
+| `feat: 어드민 전용 JWT 서명과 검증 추가`                   | `lib/admin-jwt.ts` — 어드민 시크릿으로만 검증, `ver` 불일치 거부                                          |
+| `feat: 어드민 refresh 세션 저장소 추가`                    | `lib/admin-session-store.ts` — Valkey 키 공간 분리, 회전과 재사용 폐기                                    |
+| `feat: 어드민 인증 서비스와 미들웨어 추가`                 | `admin-auth.service.ts`·`admin-account.service.ts`·`authenticate-admin.middleware.ts`                     |
+| `feat: 어드민 감사 로그 기록 서비스 추가`                  | `admin-audit-log.service.ts` — `metadata`에 비밀값을 넣지 않는 계약 포함                                  |
+| `feat: 어드민 라우터 마운트와 CORS·rate limit 분리`        | `routes/admin/*`·`controllers/admin-auth.controller.ts`, 경로 기반 CORS delegate, 어드민 로그인 전용 버킷 |
+| `feat: 정지된 계정의 제품 접근 차단`                       | 제품 `login`·`refresh` 403, 멤버 후보·멤버 추가에서 정지 계정 제외                                        |
+| `feat: 어드민 계정 부트스트랩 스크립트 추가`               | `createAdminUser` + `backend/src/scripts/create-admin-user.ts`                                            |
+| `feat: 어드민 콘솔 프런트엔드 앱 셸 추가`                  | `admin/` workspace 신설(FSD 5계층, 55개 파일), pre-commit·`.gitignore`·lockfile 반영                      |
+| `feat: 어드민 콘솔 배포 설정 추가`                         | compose `admin` 서비스(`127.0.0.1:8081:80`), 배포 가이드에 신규 변수와 첫 계정 생성 절차                  |
+
+`admin/` 최종 구성: `shared`(api·config·constants·validation), `entities/admin-session`, `features/auth`, `widgets/app-shell`, `pages/{login,dashboard}`, `routes/{__root,login,index}`. 테마와 프리미티브는 모두 `@in2white/ui`에서 가져오며 `admin/`에는 디자인 파일이 없다.
+
+### 계획과 달라진 점
+
+| 항목                        | 계획                                        | 실제                                                          | 이유                                                                                                                                                     |
+| --------------------------- | ------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.3 `ver` 검증              | 제품처럼 `payload.ver ?? 0`                 | `ver`가 숫자가 아니면 거부                                    | 기본값으로 보정하면 `ver` 없는 토큰이 언제나 최신 세션 버전과 일치할 수 있다. 어드민 토큰은 전 서비스 권한이라 관용을 두지 않았다.                       |
+| 1.4 재사용 폐기 위치        | 세션 스토어                                 | `admin-auth.service.ts`                                       | 스토어는 키 조작만 알고, 재사용을 감지했을 때 어떤 세션을 얼마나 폐기할지는 인증 정책이다. 정책을 서비스에 모았다.                                       |
+| 1.5 범위                    | 인증 서비스와 미들웨어                      | `admin-account.service.ts` 추가                               | 어드민 계정 조회·`lastLoginAt` 갱신을 인증 서비스에 두면 2단계의 계정 관리와 중복된다. 조회 계층을 처음부터 분리했다.                                    |
+| 1.7 컨트롤러·라우트         | 라우터 조립만                               | `admin-auth.controller.ts`·`routes/admin/auth.routes.ts` 신설 | 마운트만으로는 CORS·rate limit 분리를 검증할 엔드포인트가 없다. 로그인·refresh·로그아웃·`me` 4개를 함께 넣어 테스트로 고정했다.                          |
+| 1.7 CORS 적용               | 라우터별 `cors()` 미들웨어                  | 경로를 보고 origin을 고르는 단일 delegate                     | `cors`는 `origin`이 문자열이면 비교 없이 헤더에 넣는다. 두 번 쌓으면 뒤쪽이 앞쪽을 덮어써서 제품 오리진이 사라진다. delegate는 요청마다 오리진을 고른다. |
+| 1.8 범위                    | 로그인·refresh 차단과 멤버 후보 제외        | `addMember` 대상 조회에서도 제외                              | 후보 검색만 막으면 알고 있는 `userId`를 직접 POST해 그대로 초대할 수 있다. 정지 계정을 `USER_NOT_FOUND`로 취급해 새 오류 코드를 늘리지 않았다.           |
+| 1.9 비밀번호 전달           | 위치 인자                                   | `ADMIN_USER_PASSWORD` 환경변수                                | 인자로 받으면 셸 히스토리와 `ps` 출력에 평문이 남는다. 첫 어드민 비밀번호는 서비스 전체 권한이므로 흔적을 남기지 않는다.                                 |
+| 1.10 `components.json`      | `frontend/` 것을 기준으로 `admin/`에도 생성 | 만들지 않음                                                   | 프리미티브는 `packages/ui`에 있고 shadcn CLI도 거기서 돈다. `admin/`에 두면 어드민 전용 프리미티브를 만들 경로가 열린다.                                 |
+| 1.10 `architecture.test.ts` | 언급 없음                                   | `admin/`에는 두지 않음                                        | `frontend/`의 것은 과거 파일 이동 이력을 고정하는 검사다. 계층 경계는 `eslint.config.js`의 `no-restricted-imports`가 `admin/`에서도 그대로 막는다.       |
+| 1.10 정적 자산              | 언급 없음                                   | `admin/public/favicon.svg`(제품과 같은 파일)                  | Vite는 다른 패키지의 `public/`을 참조하지 못한다. 디자인 파일이 아닌 파비콘 하나만 복사했다.                                                             |
+| 1.11 compose 빌드           | `context: ./admin`                          | `context: .` + `dockerfile: admin/Dockerfile`                 | 루트 잠금 파일과 `packages/ui`가 필요하므로 빌드 컨텍스트는 워크스페이스 루트여야 한다. 단계 0에서 제품 이미지도 같은 형태로 바꿨다.                     |
+| 1.11 환경 변수              | `ADMIN_VITE_API_BASE_URL`만                 | `ADMIN_ENVIRONMENT_LABEL` 추가                                | 상단바 환경 배지 문구는 빌드 시점에 고정된다. 미설정 시 `production`으로 빌드해, 운영을 스테이징으로 오인하는 방향의 실수만 남긴다.                      |
+
+### 실행한 검증
+
+| 명령                                 | 결과                                                                               |
+| ------------------------------------ | ---------------------------------------------------------------------------------- |
+| `pnpm -r lint`                       | 4개 패키지 통과                                                                    |
+| `pnpm -r format:check`               | 통과                                                                               |
+| `pnpm -r test`                       | `packages/ui` 41건, `frontend` 444건, `admin` 12건, `backend` 641건(+16 skip) 통과 |
+| `pnpm -r build`                      | 통과 (`admin`은 `vite build && tsc -b`)                                            |
+| `pnpm --filter backend typecheck`    | 통과 (테스트 포함)                                                                 |
+| `docker compose config`              | `admin` 서비스 해석 확인 (`ADMIN_ENVIRONMENT_LABEL` 기본값 `production`)           |
+| `docker build -f admin/Dockerfile .` | 성공. 컨테이너에서 `/` 응답, `/login` SPA fallback, 번들에 환경 배지 값 포함 확인  |
+| `pnpm --filter admin dev`            | 5174 포트에서 응답 확인                                                            |
+
+- 1.8은 기존 테스트가 먼저 빨갛게 됐다. 멤버 후보·멤버 추가의 `where` 단정이 정지 계정 필터를 반영하도록 함께 갱신했다.
+- 1.10의 라우트 가드·로그인·로그아웃 테스트는 화면 구현과 함께 작성했다. 대신 `AdminAppShell`의 로그아웃 후 이동 호출을 지워 2건이 실패하는 것을 확인하고 원복해, 테스트가 회귀를 실제로 잡는지 검증했다.
+- `create-admin-user`는 인자·비밀번호 정책 검증과 중복 이메일 경로까지 확인했다. **DB에 실제로 삽입하는 경로는 검증하지 못했다** — 로컬 `.env`에 어드민 변수가 없어 부팅 검증에서 막히고, 개발 DB에 임의의 자격 증명을 만들지 않았다.
+
+### 남은 후속 작업
+
+- **환경 변수 파일 반영(사용자 작업).** 권한 설정이 `.env*` 쓰기를 막아 반영하지 못했다. `backend/.env.example`과 로컬 `.env`에 `JWT_ADMIN_SECRET`·`JWT_ADMIN_REFRESH_SECRET`·`ADMIN_CORS_ORIGIN`(로컬은 `http://localhost:5174`), 루트 `.env.compose.example`에는 여기에 `ADMIN_VITE_API_BASE_URL`·`ADMIN_ENVIRONMENT_LABEL`까지 추가한다. 세 시크릿은 서로 다른 32자 이상의 값이어야 하며, 로컬 `.env`에 없으면 백엔드가 부팅하지 않는다.
+- **첫 어드민 계정 생성(사용자 작업).** `ADMIN_USER_PASSWORD=<비밀번호> pnpm --filter backend create-admin-user <이메일> <이름>`.
+- **어드민 429 응답 본문.** `express-rate-limit` 기본 `text/html`이다. 제품 버킷도 같으므로 단계 1에서는 건드리지 않았다. JSON 오류 계약으로 통일할지는 별도로 판단한다.
+- **`admin` 컨테이너 포트 바인딩.** 설계대로 `127.0.0.1:8081:80`을 유지했다. 제품 서비스는 작업 트리에서 전체 인터페이스 바인딩으로 바뀌어 있으므로, 어드민도 프록시 앞단에서 노출한다면 함께 정리한다.
+
 ## 프리미티브 추가 절차
 
 `components.json`은 `packages/ui/`에 있다. 프리미티브가 거기 있으므로 CLI도 거기서 돈다.
