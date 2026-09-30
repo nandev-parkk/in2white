@@ -5,7 +5,7 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "../packages/ui/src/styles/theme.css",
+    "css": "src/styles/theme.css",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
@@ -13,11 +13,11 @@
   "iconLibrary": "lucide",
   "rtl": false,
   "aliases": {
-    "components": "@/shared/ui",
-    "utils": "@/shared/lib/utils",
-    "ui": "@/shared/ui",
-    "lib": "@/shared/lib",
-    "hooks": "@/shared/lib/hooks"
+    "components": "#ui",
+    "utils": "@in2white/ui/lib/utils",
+    "ui": "#ui",
+    "lib": "@in2white/ui/lib",
+    "hooks": "@in2white/ui/lib/hooks"
   },
   "menuColor": "default",
   "menuAccent": "subtle",
