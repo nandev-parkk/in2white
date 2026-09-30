@@ -189,7 +189,10 @@ describe('AuthenticatedWorkspaceLayout', () => {
 
   it('화면 callback이 없는 경우에도 설정 메뉴는 선택 workspace로 이동한다', async () => {
     renderLayout(
-      <AuthenticatedWorkspaceLayout workspaceId="workspace-1" activeNav="projects">
+      <AuthenticatedWorkspaceLayout
+        workspaceId="workspace-1"
+        activeNav="projects"
+      >
         {() => null}
       </AuthenticatedWorkspaceLayout>,
     )

@@ -51,10 +51,7 @@ vi.mock('@/pages/home', () => ({
         >
           설정
         </button>
-        <button
-          type="button"
-          onClick={() => onNavChange?.('settings', null)}
-        >
+        <button type="button" onClick={() => onNavChange?.('settings', null)}>
           workspace 없음
         </button>
         <button
@@ -225,5 +222,4 @@ describe('project route', () => {
       '/workspaces/workspace-current/projects',
     )
   })
-
 })

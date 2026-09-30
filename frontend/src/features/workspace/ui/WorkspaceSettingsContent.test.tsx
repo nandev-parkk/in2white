@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -38,10 +44,7 @@ const deleteMutation = {
   error: null as Error | null,
 }
 
-function renderContent(
-  workspace = workspaceFixture,
-  onDeleted = vi.fn(),
-) {
+function renderContent(workspace = workspaceFixture, onDeleted = vi.fn()) {
   return render(
     <WorkspaceSettingsContent
       workspace={workspace}
@@ -67,9 +70,9 @@ describe('WorkspaceSettingsContent', () => {
   it('현재 workspace 이름을 입력값으로 표시하고 변경이 없으면 저장을 막는다', () => {
     renderContent()
 
-    expect(screen.getByRole('textbox', { name: '워크스페이스 이름' })).toHaveValue(
-      workspaceFixture.name,
-    )
+    expect(
+      screen.getByRole('textbox', { name: '워크스페이스 이름' }),
+    ).toHaveValue(workspaceFixture.name)
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled()
     expect(useUpdateWorkspace).toHaveBeenCalledWith('token-1')
   })
@@ -107,9 +110,12 @@ describe('WorkspaceSettingsContent', () => {
   it('이름 저장 중에는 저장 버튼을 비활성화한다', () => {
     updateMutation.isPending = true
     renderContent()
-    fireEvent.change(screen.getByRole('textbox', { name: '워크스페이스 이름' }), {
-      target: { value: '새 이름' },
-    })
+    fireEvent.change(
+      screen.getByRole('textbox', { name: '워크스페이스 이름' }),
+      {
+        target: { value: '새 이름' },
+      },
+    )
 
     expect(screen.getByRole('button', { name: '저장' })).toBeDisabled()
   })
@@ -117,7 +123,9 @@ describe('WorkspaceSettingsContent', () => {
   it('기본 workspace에는 위험 구역과 삭제 버튼을 표시하지 않는다', () => {
     renderContent({ ...workspaceFixture, isDefault: true })
 
-    expect(screen.queryByRole('heading', { name: '위험 구역' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: '위험 구역' }),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: '워크스페이스 삭제' }),
     ).not.toBeInTheDocument()
@@ -163,9 +171,7 @@ describe('WorkspaceSettingsContent', () => {
     )
 
     await waitFor(() => expect(onDeleted).toHaveBeenCalledOnce())
-    expect(deleteMutation.mutateAsync).toHaveBeenCalledWith(
-      workspaceFixture.id,
-    )
+    expect(deleteMutation.mutateAsync).toHaveBeenCalledWith(workspaceFixture.id)
     expect(toast.success).toHaveBeenCalledWith('워크스페이스를 삭제했어요')
   })
 

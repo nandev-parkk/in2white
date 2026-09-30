@@ -181,7 +181,10 @@ describe('workspace hooks', () => {
 
     await act(async () => {
       await expect(
-        result.current.mutateAsync({ workspaceId: 'workspace-1', name: '새 이름' }),
+        result.current.mutateAsync({
+          workspaceId: 'workspace-1',
+          name: '새 이름',
+        }),
       ).rejects.toThrow('fail')
     })
 

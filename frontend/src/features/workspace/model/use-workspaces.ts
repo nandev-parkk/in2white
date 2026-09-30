@@ -33,8 +33,13 @@ export function useUpdateWorkspace(accessToken: string | null) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ workspaceId, name }: { workspaceId: string; name: string }) =>
-      updateWorkspaceRequest(workspaceId, name, accessToken as string),
+    mutationFn: ({
+      workspaceId,
+      name,
+    }: {
+      workspaceId: string
+      name: string
+    }) => updateWorkspaceRequest(workspaceId, name, accessToken as string),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
   })
