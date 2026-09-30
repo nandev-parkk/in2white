@@ -1,7 +1,14 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi, type Mock } from "vitest";
 import { WHITEBOARD_LIMITS } from "@/realtime/whiteboard-limits";
-import { WhiteboardDrainError, WhiteboardRoomManager } from "@/realtime/whiteboard-room-manager";
+import {
+  WhiteboardDrainError,
+  WhiteboardRoomManager,
+  type WhiteboardRoomManagerDependencies,
+} from "@/realtime/whiteboard-room-manager";
 import type { WhiteboardElement, WhiteboardFile, WhiteboardSnapshot } from "@/types/whiteboard";
+
+/** 주입한 mock이 실제 의존성 시그니처와 어긋나면 타입 검사에서 걸러지도록 별칭을 둔다. */
+type Deps = WhiteboardRoomManagerDependencies;
 
 const documentId = "6ba7b810-9dad-41d1-80b4-00c04fd430c8";
 const anotherDocumentId = "8ba7b810-9dad-41d1-80b4-00c04fd430c9";
@@ -31,17 +38,17 @@ function deferred<T>() {
 }
 
 function createManager({
-  loadSnapshot = vi.fn().mockResolvedValue(snapshot()),
-  saveSnapshot = vi.fn().mockResolvedValue({
+  loadSnapshot = vi.fn<Deps["loadSnapshot"]>().mockResolvedValue(snapshot()),
+  saveSnapshot = vi.fn<Deps["saveSnapshot"]>().mockResolvedValue({
     status: "saved",
     lastSavedAt: new Date("2026-09-11T00:00:01.000Z"),
   }),
-  onRoomEvent = vi.fn(),
+  onRoomEvent = vi.fn<NonNullable<Deps["onRoomEvent"]>>(),
   now = () => Date.now(),
 }: {
-  loadSnapshot?: ReturnType<typeof vi.fn>;
-  saveSnapshot?: ReturnType<typeof vi.fn>;
-  onRoomEvent?: ReturnType<typeof vi.fn>;
+  loadSnapshot?: Mock<Deps["loadSnapshot"]>;
+  saveSnapshot?: Mock<Deps["saveSnapshot"]>;
+  onRoomEvent?: Mock<NonNullable<Deps["onRoomEvent"]>>;
   now?: () => number;
 } = {}) {
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -206,11 +213,11 @@ describe("WhiteboardRoomManager", () => {
     vi.useFakeTimers();
     const latest = snapshot([element("remote", 1)], 1);
     const saveSnapshot = vi
-      .fn()
+      .fn<Deps["saveSnapshot"]>()
       .mockResolvedValueOnce({ status: "conflict" })
       .mockResolvedValueOnce({ status: "saved", lastSavedAt: new Date("2026-09-11T00:00:03Z") });
     const { manager, onRoomEvent } = createManager({
-      loadSnapshot: vi.fn().mockResolvedValue(latest),
+      loadSnapshot: vi.fn<Deps["loadSnapshot"]>().mockResolvedValue(latest),
       saveSnapshot,
     });
     await join(manager);
@@ -241,8 +248,8 @@ describe("WhiteboardRoomManager", () => {
       (_, index) => element(`persisted-${index}`, 1),
     );
     const { manager, onRoomEvent } = createManager({
-      loadSnapshot: vi.fn().mockResolvedValue(snapshot(persistedElements, 1)),
-      saveSnapshot: vi.fn().mockResolvedValue({ status: "conflict" }),
+      loadSnapshot: vi.fn<Deps["loadSnapshot"]>().mockResolvedValue(snapshot(persistedElements, 1)),
+      saveSnapshot: vi.fn<Deps["saveSnapshot"]>().mockResolvedValue({ status: "conflict" }),
     });
     await join(manager);
     manager.updateScene("socket-1", update("local"));
@@ -264,7 +271,7 @@ describe("WhiteboardRoomManager", () => {
   it("blocks after three consecutive conflicts", async () => {
     vi.useFakeTimers();
     const { manager, onRoomEvent } = createManager({
-      saveSnapshot: vi.fn().mockResolvedValue({ status: "conflict" }),
+      saveSnapshot: vi.fn<Deps["saveSnapshot"]>().mockResolvedValue({ status: "conflict" }),
     });
     await join(manager);
     manager.updateScene("socket-1", update("local"));
@@ -283,7 +290,7 @@ describe("WhiteboardRoomManager", () => {
   it("blocks after five transient failures and recovers after a later save", async () => {
     vi.useFakeTimers();
     const saveSnapshot = vi
-      .fn()
+      .fn<Deps["saveSnapshot"]>()
       .mockRejectedValueOnce(new Error("1"))
       .mockRejectedValueOnce(new Error("2"))
       .mockRejectedValueOnce(new Error("3"))
@@ -318,7 +325,7 @@ describe("WhiteboardRoomManager", () => {
   it("stays blocked when a transient outage changes into a conflict until a save succeeds", async () => {
     vi.useFakeTimers();
     const saveSnapshot = vi
-      .fn()
+      .fn<Deps["saveSnapshot"]>()
       .mockRejectedValueOnce(new Error("1"))
       .mockRejectedValueOnce(new Error("2"))
       .mockRejectedValueOnce(new Error("3"))
@@ -345,7 +352,7 @@ describe("WhiteboardRoomManager", () => {
   it("stays blocked when conflicts change into a transient outage until a save succeeds", async () => {
     vi.useFakeTimers();
     const saveSnapshot = vi
-      .fn()
+      .fn<Deps["saveSnapshot"]>()
       .mockResolvedValueOnce({ status: "conflict" })
       .mockResolvedValueOnce({ status: "conflict" })
       .mockResolvedValueOnce({ status: "conflict" })
@@ -373,7 +380,7 @@ describe("WhiteboardRoomManager", () => {
   ] as const)("turns %s into a terminal %s room", async (saveStatus, eventStatus, code) => {
     vi.useFakeTimers();
     const { manager, onRoomEvent } = createManager({
-      saveSnapshot: vi.fn().mockResolvedValue({ status: saveStatus }),
+      saveSnapshot: vi.fn<Deps["saveSnapshot"]>().mockResolvedValue({ status: saveStatus }),
     });
     await join(manager);
     manager.updateScene("socket-1", update("local"));
@@ -391,7 +398,7 @@ describe("WhiteboardRoomManager", () => {
     vi.useFakeTimers();
     const first = deferred<{ status: "saved"; lastSavedAt: Date }>();
     const saveSnapshot = vi
-      .fn()
+      .fn<Deps["saveSnapshot"]>()
       .mockReturnValueOnce(first.promise)
       .mockResolvedValueOnce({ status: "saved", lastSavedAt: new Date("2026-09-11T00:00:02Z") });
     const { manager } = createManager({ saveSnapshot });
@@ -415,7 +422,9 @@ describe("WhiteboardRoomManager", () => {
     let now = 10_000;
     const { manager } = createManager({
       now: () => now,
-      saveSnapshot: vi.fn().mockRejectedValue(new Error("database unavailable")),
+      saveSnapshot: vi
+        .fn<Deps["saveSnapshot"]>()
+        .mockRejectedValue(new Error("database unavailable")),
     });
     await join(manager);
     manager.updateScene("socket-1", update("local"));

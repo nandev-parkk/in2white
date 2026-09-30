@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { getTableColumns } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import * as schema from "@/db/schema";
 
@@ -34,7 +35,7 @@ describe("db schema", () => {
   });
 
   it("stores canvas content outside the document metadata table", () => {
-    expect(schema.whiteboardDocuments.canvasContent).toBeUndefined();
+    expect(getTableColumns(schema.whiteboardDocuments)).not.toHaveProperty("canvasContent");
   });
 
   it("backfills every whiteboard document before adding the foreign key and dropping the old column", () => {

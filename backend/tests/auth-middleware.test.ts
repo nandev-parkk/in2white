@@ -19,7 +19,12 @@ describe("authenticate middleware", () => {
   });
 
   it("allows requests with a valid token", async () => {
-    const token = await signAccessToken({ sub: "user-1", email: "user@example.com", sid: "sid-1" });
+    const token = await signAccessToken({
+      sub: "user-1",
+      email: "user@example.com",
+      sid: "sid-1",
+      ver: 0,
+    });
     const response = await request(buildTestApp())
       .get("/protected")
       .set("Authorization", `Bearer ${token}`);
