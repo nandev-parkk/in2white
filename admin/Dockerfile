@@ -16,6 +16,8 @@ RUN pnpm install --frozen-lockfile --filter admin...
 COPY packages/ui ./packages/ui
 COPY admin ./admin
 ARG VITE_API_BASE_URL
+# 상단바 환경 배지 값이다. 빌드 시점에 고정되므로 환경마다 이미지를 따로 빌드한다.
+ARG VITE_ENVIRONMENT_LABEL
 RUN test -n "$VITE_API_BASE_URL" && pnpm --filter admin build
 
 FROM nginx:1.28-alpine

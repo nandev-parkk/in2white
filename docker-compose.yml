@@ -9,6 +9,19 @@ services:
     ports:
       - "127.0.0.1:8080:80"
 
+  # 어드민 콘솔은 기본적으로 127.0.0.1에만 묶어 둔다. 서비스 전체를 조작하는 화면이므로
+  # 외부에 열 때는 리버스 프록시에서 인증·IP 제한을 앞단에 둔다.
+  admin:
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${ADMIN_VITE_API_BASE_URL:?ADMIN_VITE_API_BASE_URL을 설정하세요}
+        VITE_ENVIRONMENT_LABEL: ${ADMIN_ENVIRONMENT_LABEL:-production}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:80"
+
   backend:
     build:
       context: .
