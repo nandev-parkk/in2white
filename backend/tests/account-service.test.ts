@@ -23,6 +23,7 @@ const mockUser = {
   email: "user@example.com",
   passwordHash: "old-hash",
   sessionVersion: 3,
+  deactivatedAt: null,
   createdAt: new Date(),
 };
 

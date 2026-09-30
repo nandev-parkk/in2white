@@ -16,6 +16,7 @@ const mockUser = {
   email: "user@example.com",
   passwordHash: "hashed-value",
   sessionVersion: 0,
+  deactivatedAt: null,
   createdAt: new Date(),
 };
 
