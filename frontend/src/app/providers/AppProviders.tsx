@@ -4,7 +4,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ErrorBoundary } from 'react-error-boundary'
 
 import { queryClient } from '@/shared/api'
-import { Toaster } from '@/shared/ui/toast'
+import { Toaster } from '@in2white/ui/toast'
 import { MESSAGES } from '@/shared/constants/messages'
 
 function ErrorFallback() {

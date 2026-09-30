@@ -92,7 +92,7 @@ vi.mock('@/entities/account', () => ({
   changeAccountPasswordRequest: vi.fn(),
 }))
 
-vi.mock('@/shared/ui/toast', () => ({
+vi.mock('@in2white/ui/toast', () => ({
   toast: {
     success: (...args: unknown[]) => mockToastSuccess(...args),
     error: (...args: unknown[]) => mockToastError(...args),

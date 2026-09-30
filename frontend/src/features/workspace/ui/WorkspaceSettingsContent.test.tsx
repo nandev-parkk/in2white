@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { WorkspaceSummary } from '@/entities/workspace'
 import { useDeleteWorkspace, useUpdateWorkspace } from '@/features/workspace'
-import { toast } from '@/shared/ui/toast'
+import { toast } from '@in2white/ui/toast'
 
 import { WorkspaceSettingsContent } from './WorkspaceSettingsContent'
 
@@ -19,7 +19,7 @@ vi.mock('@/features/workspace', () => ({
   useUpdateWorkspace: vi.fn(),
 }))
 
-vi.mock('@/shared/ui/toast', () => ({
+vi.mock('@in2white/ui/toast', () => ({
   toast: { success: vi.fn() },
 }))
 

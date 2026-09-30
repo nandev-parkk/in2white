@@ -7,7 +7,7 @@ import { useSessionStore } from '@/entities/session'
 import type { WorkspaceSummary } from '@/entities/workspace'
 
 import { AuthenticatedWorkspaceLayout } from './AuthenticatedWorkspaceLayout'
-import { DelayedLoading } from '@/shared/ui/loading-state'
+import { DelayedLoading } from '@in2white/ui/loading-state'
 
 const userFixture = {
   id: 'user-1',

@@ -22,16 +22,16 @@ import { logoutRequest } from '@/features/auth'
 import { useCreateWorkspace, useWorkspaces } from '@/features/workspace'
 import { WorkspaceCreateDialog } from '@/features/workspace/ui/WorkspaceCreateDialog'
 import { WorkspaceAccessDeniedPage } from '@/pages/workspace-access-denied'
-import { Button } from '@/shared/ui/button'
-import { ErrorState } from '@/shared/ui/error-state'
-import { DelayedLoading } from '@/shared/ui/loading-state'
+import { Button } from '@in2white/ui/button'
+import { ErrorState } from '@in2white/ui/error-state'
+import { DelayedLoading } from '@in2white/ui/loading-state'
 import {
   ListToolbarSkeleton,
   ResourceListSkeleton,
-} from '@/shared/ui/resource-list-skeleton'
-import { Skeleton, SkeletonListCell } from '@/shared/ui/skeleton'
+} from '@in2white/ui/resource-list-skeleton'
+import { Skeleton, SkeletonListCell } from '@in2white/ui/skeleton'
 import { Sidebar, type SidebarNavKey } from '@/widgets/sidebar'
-import { toast } from '@/shared/ui/toast'
+import { toast } from '@in2white/ui/toast'
 import { MESSAGES } from '@/shared/constants/messages'
 
 const COMPACT_SIDEBAR_MEDIA_QUERY = '(max-width: 639px)'

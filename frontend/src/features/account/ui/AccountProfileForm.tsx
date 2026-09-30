@@ -4,8 +4,8 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
 import type { AccountUser, UpdateAccountInput } from '@/entities/account'
-import { Button } from '@/shared/ui/button'
-import { Input } from '@/shared/ui/input'
+import { Button } from '@in2white/ui/button'
+import { Input } from '@in2white/ui/input'
 
 import { accountNameSchema } from '../model/account-form-schema'
 import { MESSAGES } from '@/shared/constants/messages'

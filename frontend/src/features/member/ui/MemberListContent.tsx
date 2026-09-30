@@ -8,29 +8,29 @@ import {
 } from '../model/use-members'
 import { useMemberSearch } from '../model/use-member-search'
 import { MemberAddDialog } from './MemberAddDialog'
-import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
-import { Badge } from '@/shared/ui/badge'
-import { Button } from '@/shared/ui/button'
+import { Avatar, AvatarFallback } from '@in2white/ui/avatar'
+import { Badge } from '@in2white/ui/badge'
+import { Button } from '@in2white/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/shared/ui/dialog'
-import { EmptyState } from '@/shared/ui/empty-state'
-import { ErrorState } from '@/shared/ui/error-state'
-import { ListCell } from '@/shared/ui/list-cell'
+} from '@in2white/ui/dialog'
+import { EmptyState } from '@in2white/ui/empty-state'
+import { ErrorState } from '@in2white/ui/error-state'
+import { ListCell } from '@in2white/ui/list-cell'
 import {
   Pagination,
   PaginationItem,
   PaginationPrevious,
   PaginationNext,
-} from '@/shared/ui/pagination'
-import { Search } from '@/shared/ui/search'
-import { SkeletonListCell } from '@/shared/ui/skeleton'
-import { DelayedLoading } from '@/shared/ui/loading-state'
-import { toast } from '@/shared/ui/toast'
+} from '@in2white/ui/pagination'
+import { Search } from '@in2white/ui/search'
+import { SkeletonListCell } from '@in2white/ui/skeleton'
+import { DelayedLoading } from '@in2white/ui/loading-state'
+import { toast } from '@in2white/ui/toast'
 import { MESSAGES } from '@/shared/constants/messages'
 
 function joinedDate(value: string) {

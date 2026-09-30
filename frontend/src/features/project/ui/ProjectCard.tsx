@@ -2,13 +2,13 @@ import { CalendarDays, Clock3, Folder, MoreVertical } from 'lucide-react'
 import { motion } from 'motion/react'
 
 import type { Project } from '@/entities/project'
-import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
+import { Avatar, AvatarFallback } from '@in2white/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
+} from '@in2white/ui/dropdown-menu'
 
 import { useCardMotion } from '@in2white/ui/lib/hooks/use-card-motion'
 import { formatCreatedAt, formatUpdatedAt } from '@/shared/lib/resource-date'

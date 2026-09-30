@@ -5,21 +5,21 @@ import {
   DialogFooter,
   DialogDescription,
   DialogTitle,
-} from '@/shared/ui/dialog'
-import { Search } from '@/shared/ui/search'
+} from '@in2white/ui/dialog'
+import { Search } from '@in2white/ui/search'
 import { Search as SearchIcon } from 'lucide-react'
-import { CompactEmptyState } from '@/shared/ui/compact-empty-state'
-import { SkeletonListCell } from '@/shared/ui/skeleton'
-import { DelayedLoading } from '@/shared/ui/loading-state'
-import { ListCell } from '@/shared/ui/list-cell'
-import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
+import { CompactEmptyState } from '@in2white/ui/compact-empty-state'
+import { SkeletonListCell } from '@in2white/ui/skeleton'
+import { DelayedLoading } from '@in2white/ui/loading-state'
+import { ListCell } from '@in2white/ui/list-cell'
+import { Avatar, AvatarFallback } from '@in2white/ui/avatar'
 import {
   Pagination,
   PaginationPrevious,
   PaginationNext,
-} from '@/shared/ui/pagination'
+} from '@in2white/ui/pagination'
 import type { ComponentProps } from 'react'
-import { Button } from '@/shared/ui/button'
+import { Button } from '@in2white/ui/button'
 import { MESSAGES } from '@/shared/constants/messages'
 
 type PickableUser = {

@@ -5,8 +5,8 @@ import {
   DialogDescription,
   DialogFooter,
   DialogTitle,
-} from '@/shared/ui/dialog'
-import { Button } from '@/shared/ui/button'
+} from '@in2white/ui/dialog'
+import { Button } from '@in2white/ui/button'
 import { MESSAGES } from '@/shared/constants/messages'
 
 type ProjectDeleteDialogProps = {

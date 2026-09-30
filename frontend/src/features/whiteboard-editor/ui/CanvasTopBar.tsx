@@ -1,8 +1,8 @@
 import * as React from 'react'
 import { cn } from '@in2white/ui/lib/utils'
 import { ArrowLeft, CircleAlert, CircleCheck } from 'lucide-react'
-import { Spinner } from '@/shared/ui/spinner'
-import { Badge } from '@/shared/ui/badge'
+import { Spinner } from '@in2white/ui/spinner'
+import { Badge } from '@in2white/ui/badge'
 import {
   PresenceAvatarStack,
   type PresenceUser,

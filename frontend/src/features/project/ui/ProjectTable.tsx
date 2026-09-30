@@ -6,7 +6,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/shared/ui/table'
+} from '@in2white/ui/table'
 
 import { formatCreatedAt, formatUpdatedAt } from '@/shared/lib/resource-date'
 import { ProjectMenu } from './ProjectCard'

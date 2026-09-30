@@ -10,11 +10,11 @@ import {
   selectDefaultWorkspace,
 } from '@/entities/workspace'
 import { MESSAGES } from '@/shared/constants/messages'
-import { Button } from '@/shared/ui/button'
-import { Input } from '@/shared/ui/input'
-import { PasswordInput } from '@/shared/ui/password-input'
+import { Button } from '@in2white/ui/button'
+import { Input } from '@in2white/ui/input'
+import { PasswordInput } from '@in2white/ui/password-input'
 import { loginPasswordSchema } from '@/shared/validation/password-schema'
-import { toast } from '@/shared/ui/toast'
+import { toast } from '@in2white/ui/toast'
 
 import { useLogin } from '../model/use-login'
 

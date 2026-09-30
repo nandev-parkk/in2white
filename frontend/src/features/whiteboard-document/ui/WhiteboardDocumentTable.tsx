@@ -7,7 +7,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/shared/ui/table'
+} from '@in2white/ui/table'
 
 import { WhiteboardDocumentMenu } from './WhiteboardDocumentMenu'
 import { MESSAGES } from '@/shared/constants/messages'

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 
 import { axiosInstance } from '@/shared/api'
 import { useSessionStore } from '@/entities/session'
-import { toast } from '@/shared/ui/toast'
+import { toast } from '@in2white/ui/toast'
 
 import { LoginForm } from './LoginForm'
 
@@ -18,7 +18,7 @@ vi.mock('@/shared/api', () => ({
   axiosInstance: { get: vi.fn(), post: vi.fn() },
 }))
 
-vi.mock('@/shared/ui/toast', () => ({
+vi.mock('@in2white/ui/toast', () => ({
   toast: { error: vi.fn() },
 }))
 
