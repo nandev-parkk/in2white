@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from '@/shared/lib/utils'
+import { cn } from '@in2white/ui/lib/utils'
 
 const badgeVariants = cva(
   "text-caption inline-flex w-fit shrink-0 items-center justify-center rounded-sm px-2 py-1 whitespace-nowrap [&_svg]:pointer-events-none [&_svg]:size-3 [&_svg:not([class*='size-'])]:size-3",

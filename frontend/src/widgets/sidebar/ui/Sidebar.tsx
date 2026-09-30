@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { DelayedLoading } from '@/shared/ui/loading-state'
-import { cn } from '@/shared/lib/utils'
+import { cn } from '@in2white/ui/lib/utils'
 import {
   Check,
   ChevronLeft,

@@ -1,8 +1,8 @@
 import * as React from 'react'
 import { motion } from 'motion/react'
-import { cn } from '@/shared/lib/utils'
+import { cn } from '@in2white/ui/lib/utils'
 import { Calendar, Clock } from 'lucide-react'
-import { useCardMotion } from '@/shared/lib/hooks/use-card-motion'
+import { useCardMotion } from '@in2white/ui/lib/hooks/use-card-motion'
 import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
 import { MESSAGES } from '@/shared/constants/messages'
 

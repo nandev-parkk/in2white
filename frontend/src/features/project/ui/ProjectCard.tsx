@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
 
-import { useCardMotion } from '@/shared/lib/hooks/use-card-motion'
+import { useCardMotion } from '@in2white/ui/lib/hooks/use-card-motion'
 import { formatCreatedAt, formatUpdatedAt } from '@/shared/lib/resource-date'
 import { MESSAGES } from '@/shared/constants/messages'
 

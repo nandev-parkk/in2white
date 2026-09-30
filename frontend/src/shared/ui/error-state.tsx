@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { CircleAlert } from 'lucide-react'
 
-import { cn } from '@/shared/lib/utils'
+import { cn } from '@in2white/ui/lib/utils'
 import { CompactEmptyState } from '@/shared/ui/compact-empty-state'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { MESSAGES } from '@/shared/constants/messages'

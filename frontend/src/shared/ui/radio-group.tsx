@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from '@/shared/lib/utils'
+import { cn } from '@in2white/ui/lib/utils'
 import { RadioGroup as RadioGroupPrimitive } from 'radix-ui'
 
 function RadioGroup({
