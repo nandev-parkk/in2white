@@ -8,10 +8,10 @@
 
 ## 구성
 
-| 서비스 | 역할 | 컨테이너 포트 | 저장 데이터 |
-| --- | --- | --- | --- |
-| `frontend` | `pnpm build` 결과를 Nginx로 제공 | 80 | 없음 |
-| `backend` | `node dist/server.js`로 API와 Socket.IO 제공 | 4000 | 외부 PostgreSQL·Valkey 사용 |
+| 서비스     | 역할                                         | 컨테이너 포트 | 저장 데이터                 |
+| ---------- | -------------------------------------------- | ------------- | --------------------------- |
+| `frontend` | `pnpm build` 결과를 Nginx로 제공             | 80            | 없음                        |
+| `backend`  | `node dist/server.js`로 API와 Socket.IO 제공 | 4000          | 외부 PostgreSQL·Valkey 사용 |
 
 예시 공개 주소는 `https://app.example.com`과 `https://api.example.com`이다. 호스트의 리버스 프록시가 각각 `127.0.0.1:8080`과 `127.0.0.1:4000`으로 전달한다. 두 주소는 실제 도메인으로 교체한다.
 
@@ -28,7 +28,6 @@
 
 실제 설정은 [`docker-compose.yml`](../../docker-compose.yml)을 사용한다. 프런트엔드는 호스트 `127.0.0.1:8080`, 백엔드는 `127.0.0.1:4000`으로만 공개한다. 외부 PostgreSQL·Valkey 주소는 백엔드 환경 변수로 전달한다. 백엔드의 `/health`는 프로세스 응답만 확인하며 외부 서비스 연결을 검사하지 않으므로 연결 상태는 별도로 감시한다.
 
-
 ## 환경 변수와 비밀값
 
 루트 [`.env.compose.example`](../../.env.compose.example)을 `.env.compose`로 복사한 뒤 모든 값을 채우고 `docker compose --env-file .env.compose`로 사용한다. 루트 `.gitignore`는 `.env.*`를 제외한다. 파일 권한은 운영 계정만 읽도록 제한한다.
@@ -40,9 +39,12 @@ DATABASE_URL=<외부 PostgreSQL 연결 URL>
 VALKEY_URL=<외부 Valkey 연결 URL>
 JWT_SECRET=<서로 다른 32자 이상의 임의 값>
 JWT_REFRESH_SECRET=<서로 다른 32자 이상의 임의 값>
+JWT_ADMIN_SECRET=<서로 다른 32자 이상의 임의 값>
+JWT_ADMIN_REFRESH_SECRET=<서로 다른 32자 이상의 임의 값>
+ADMIN_CORS_ORIGIN=https://admin.example.com
 ```
 
-`CORS_ORIGIN`은 프런트엔드의 정확한 origin(스킴·호스트·포트) 하나를 지정한다. `JWT_SECRET`과 `JWT_REFRESH_SECRET`은 서로 다른 값으로 만들며, 예를 들어 각각 `openssl rand -hex 32`로 생성할 수 있다. `DATABASE_URL`과 `VALKEY_URL`은 외부 서비스 제공자가 발급한 주소를 사용한다. DB 비밀번호에 URL 특수 문자가 있으면 URL 안의 비밀번호를 인코딩한다. 컨테이너에서 외부 서비스의 DNS와 네트워크 접근이 가능해야 하며, TLS·접근 허용 목록·인증서 설정은 제공자 지침에 맞춘다.
+`CORS_ORIGIN`과 `ADMIN_CORS_ORIGIN`은 각각 제품 프런트엔드와 어드민 콘솔의 정확한 origin(스킴·호스트·포트) 하나를 지정한다. 네 개의 JWT 시크릿은 모두 서로 다른 값으로 만들며, 예를 들어 각각 `openssl rand -hex 32`로 생성할 수 있다. 값이 겹치면 백엔드가 부팅 단계에서 거부한다 — 어드민 토큰과 제품 토큰이 서로의 영역에서 서명 검증을 통과해버리는 것을 막기 위해서다. `DATABASE_URL`과 `VALKEY_URL`은 외부 서비스 제공자가 발급한 주소를 사용한다. DB 비밀번호에 URL 특수 문자가 있으면 URL 안의 비밀번호를 인코딩한다. 컨테이너에서 외부 서비스의 DNS와 네트워크 접근이 가능해야 하며, TLS·접근 허용 목록·인증서 설정은 제공자 지침에 맞춘다.
 
 ## 최초 배포와 업데이트
 
