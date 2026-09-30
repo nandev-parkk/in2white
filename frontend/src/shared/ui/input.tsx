@@ -58,5 +58,5 @@ function Input({
   )
 }
 
-export { Input, inputVariants }
+export { Input }
 export type { InputProps }

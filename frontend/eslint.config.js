@@ -53,6 +53,16 @@ export default tseslint.config(
     },
   },
   {
+    // sonner의 toast는 Toaster와 짝으로 쓰이므로 같은 파일에서 다시 내보낸다.
+    files: ['src/shared/ui/toast.tsx'],
+    rules: {
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true, allowExportNames: ['toast'] },
+      ],
+    },
+  },
+  {
     files: ['**/*.test.{ts,tsx}', 'src/test/**/*.{ts,tsx}'],
     languageOptions: {
       globals: globals.vitest,
