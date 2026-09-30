@@ -24,6 +24,11 @@ dist/
 # 프론트엔드 자동 생성 라우트
 /frontend/src/routeTree.gen.ts
 
+# 어드민 콘솔 빌드 결과물·자동 생성 라우트
+/admin/**/dist-ssr
+/admin/**/*.local
+/admin/src/routeTree.gen.ts
+
 # 프론트엔드 에디터 설정
 /frontend/.vscode/*
 !/frontend/.vscode/extensions.json
