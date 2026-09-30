@@ -46,6 +46,12 @@ export const updateUserSchema = z
     message: ERROR_MESSAGES.USER_UPDATE_FIELDS_REQUIRED,
   });
 
+/*
+ * 하드 삭제는 되돌릴 수 없으므로 대상 이메일을 다시 입력받는다. 목록에서 행을 잘못
+ * 고른 삭제를 막는 장치라, 일치 여부는 실제 사용자 레코드와 대조해 서비스가 판단한다.
+ */
+export const deleteUserSchema = z.object({ email: userEmailSchema }).strict();
+
 /* 어드민 재설정은 현재 비밀번호를 묻지 않는다 — 어드민은 사용자의 비밀번호를 모른다. */
 export const resetUserPasswordSchema = z.object({ newPassword: passwordSchema }).strict();
 
@@ -53,3 +59,4 @@ export type UserStatusFilter = z.infer<typeof userStatusFilterSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type ResetUserPasswordInput = z.infer<typeof resetUserPasswordSchema>;
+export type DeleteUserInput = z.infer<typeof deleteUserSchema>;

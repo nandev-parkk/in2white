@@ -5,6 +5,7 @@ import {
   adminUserListQuerySchema,
   adminUserParamsSchema,
   createUserSchema,
+  deleteUserSchema,
   resetUserPasswordSchema,
   updateUserSchema,
 } from "@/schemas/admin-user.schema";
@@ -12,6 +13,8 @@ import { recordAuditLog } from "@/services/admin-audit-log.service";
 import {
   createUser,
   deactivateUser,
+  deleteUser,
+  getUserDeletionImpact,
   getUserDetail,
   listUsers,
   reactivateUser,
@@ -221,4 +224,43 @@ export async function revokeUserSessionsHandler(req: Request, res: Response) {
   await deleteRefreshSessionsQuietly(user.id);
 
   res.status(200).json({ user });
+}
+
+export async function getUserDeletionImpactHandler(req: Request, res: Response) {
+  requireAdmin(req);
+  const { userId } = parseOrThrow(adminUserParamsSchema, req.params);
+
+  const impact = await getUserDeletionImpact(userId);
+
+  res.status(200).json(impact);
+}
+
+export async function deleteUserHandler(req: Request, res: Response) {
+  const admin = requireAdmin(req);
+  const { userId } = parseOrThrow(adminUserParamsSchema, req.params);
+  const { email } = parseOrThrow(deleteUserSchema, req.body);
+
+  const deletedUser = await db.transaction(async (tx) => {
+    const user = await deleteUser(tx, { userId, confirmationEmail: email });
+
+    /*
+     * 사용자 행이 사라지므로 감사 로그의 `targetId`는 더 이상 조회되지 않는다.
+     * 누가 무엇을 지웠는지 남는 유일한 흔적이라 이메일과 이름을 함께 기록한다.
+     */
+    await recordAuditLog(tx, {
+      adminId: admin.sub,
+      action: "user.delete",
+      targetType: "user",
+      targetId: user.id,
+      summary: `사용자 ${user.email} 계정을 삭제했습니다`,
+      metadata: { before: { email: user.email, name: user.name } },
+      ...getAuditRequestContext(req),
+    });
+
+    return user;
+  });
+
+  await deleteRefreshSessionsQuietly(deletedUser.id);
+
+  res.status(204).send();
 }

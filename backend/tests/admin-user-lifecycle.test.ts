@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { signAdminAccessToken } from "@/lib/admin-jwt";
 import { signAccessToken } from "@/lib/jwt";
 import { comparePassword } from "@/lib/password";
-import { resetUserPasswordSchema } from "@/schemas/admin-user.schema";
+import { deleteUserSchema, resetUserPasswordSchema } from "@/schemas/admin-user.schema";
 import { recordAuditLog } from "@/services/admin-audit-log.service";
 import * as adminUserService from "@/services/admin-user.service";
 import { deleteAllRefreshSessions } from "@/services/session.service";
@@ -369,5 +369,162 @@ describe("POST /admin/users/:userId/sessions/revoke", () => {
 
     expect(response.status).toBe(404);
     expect(deleteAllRefreshSessions).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteUserSchema", () => {
+  it("확인용 이메일을 정규화해서 받는다", () => {
+    expect(deleteUserSchema.parse({ email: " User@Example.COM " })).toEqual({
+      email: "user@example.com",
+    });
+    expect(() => deleteUserSchema.parse({})).toThrow();
+    expect(() => deleteUserSchema.parse({ email: "nope" })).toThrow();
+  });
+});
+
+describe("GET /admin/users/:userId/deletion-impact", () => {
+  const impact = {
+    user: { ...activeUser, createdAt: createdAt.toISOString() },
+    impact: {
+      ownedWorkspaceCount: 1,
+      otherWorkspaceMembershipCount: 2,
+      projectCount: 3,
+      whiteboardDocumentCount: 4,
+    },
+  };
+
+  it("cascade 영향 집계를 반환하고 감사 로그를 남기지 않는다", async () => {
+    vi.mocked(adminUserService.getUserDeletionImpact).mockResolvedValue({
+      user: activeUser,
+      impact: impact.impact,
+    });
+
+    const response = await request(appUrl())
+      .get(`/admin/users/${userId}/deletion-impact`)
+      .set("Authorization", await adminAuthHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(impact);
+    expect(adminUserService.getUserDeletionImpact).toHaveBeenCalledWith(userId);
+    expect(recordAuditLog).not.toHaveBeenCalled();
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: "인증 없음", header: undefined },
+    { label: "제품 Access Token", header: "product" as const },
+  ])("$label 요청은 401이며 집계하지 않는다", async ({ header }) => {
+    const httpRequest = request(appUrl()).get(`/admin/users/${userId}/deletion-impact`);
+    if (header === "product") {
+      httpRequest.set("Authorization", await productAuthHeader());
+    }
+
+    const response = await httpRequest.send();
+
+    expect(response.status).toBe(401);
+    expect(adminUserService.getUserDeletionImpact).not.toHaveBeenCalled();
+  });
+
+  it("없는 사용자는 404다", async () => {
+    vi.mocked(adminUserService.getUserDeletionImpact).mockRejectedValue(
+      new HttpError(404, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다"),
+    );
+
+    const response = await request(appUrl())
+      .get(`/admin/users/${userId}/deletion-impact`)
+      .set("Authorization", await adminAuthHeader());
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("USER_NOT_FOUND");
+  });
+});
+
+describe("DELETE /admin/users/:userId", () => {
+  it("확인용 이메일과 함께 하드 삭제하고 감사 로그를 남긴다", async () => {
+    vi.mocked(adminUserService.deleteUser).mockResolvedValue(activeUser);
+
+    const response = await request(appUrl())
+      .delete(`/admin/users/${userId}`)
+      .set("Authorization", await adminAuthHeader())
+      .send({ email: "user@example.com" });
+
+    expect(response.status).toBe(204);
+    expect(response.body).toEqual({});
+    expect(adminUserService.deleteUser).toHaveBeenCalledWith(transactionHandle, {
+      userId,
+      confirmationEmail: "user@example.com",
+    });
+    expect(recordAuditLog).toHaveBeenCalledOnce();
+    expect(recordAuditLog).toHaveBeenCalledWith(
+      transactionHandle,
+      expect.objectContaining({
+        adminId: "admin-1",
+        action: "user.delete",
+        targetType: "user",
+        targetId: userId,
+        metadata: {
+          before: { email: activeUser.email, name: activeUser.name },
+        },
+      }),
+    );
+    /* 계정이 사라졌으니 남은 세션 키도 정리한다 — 키가 남아도 갱신은 안 되지만 쓰레기가 쌓인다. */
+    expect(deleteAllRefreshSessions).toHaveBeenCalledWith(userId);
+  });
+
+  it("확인용 이메일이 다르면 400이며 감사 로그를 남기지 않는다", async () => {
+    vi.mocked(adminUserService.deleteUser).mockRejectedValue(
+      new HttpError(400, "USER_DELETE_CONFIRMATION_MISMATCH", "확인용 이메일이 일치하지 않습니다"),
+    );
+
+    const response = await request(appUrl())
+      .delete(`/admin/users/${userId}`)
+      .set("Authorization", await adminAuthHeader())
+      .send({ email: "other@example.com" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("USER_DELETE_CONFIRMATION_MISMATCH");
+    expect(recordAuditLog).not.toHaveBeenCalled();
+    expect(deleteAllRefreshSessions).not.toHaveBeenCalled();
+  });
+
+  it("확인용 이메일이 없으면 400이며 서비스를 호출하지 않는다", async () => {
+    const response = await request(appUrl())
+      .delete(`/admin/users/${userId}`)
+      .set("Authorization", await adminAuthHeader())
+      .send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(adminUserService.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: "인증 없음", header: undefined },
+    { label: "제품 Access Token", header: "product" as const },
+  ])("$label 요청은 401이며 트랜잭션을 열지 않는다", async ({ header }) => {
+    const httpRequest = request(appUrl()).delete(`/admin/users/${userId}`);
+    if (header === "product") {
+      httpRequest.set("Authorization", await productAuthHeader());
+    }
+
+    const response = await httpRequest.send({ email: "user@example.com" });
+
+    expect(response.status).toBe(401);
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(deleteAllRefreshSessions).not.toHaveBeenCalled();
+  });
+
+  it("없는 사용자는 404다", async () => {
+    vi.mocked(adminUserService.deleteUser).mockRejectedValue(
+      new HttpError(404, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다"),
+    );
+
+    const response = await request(appUrl())
+      .delete(`/admin/users/${userId}`)
+      .set("Authorization", await adminAuthHeader())
+      .send({ email: "user@example.com" });
+
+    expect(response.status).toBe(404);
+    expect(recordAuditLog).not.toHaveBeenCalled();
   });
 });

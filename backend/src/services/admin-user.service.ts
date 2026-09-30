@@ -1,4 +1,18 @@
-import { and, asc, count, desc, eq, ilike, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  notInArray,
+  or,
+  sql,
+} from "drizzle-orm";
 import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 import { ERROR_MESSAGES } from "@/constants/messages";
 import { db } from "@/db/client";
@@ -80,6 +94,21 @@ export interface UpdateUserFieldsInput {
 export interface UpdateUserResult {
   previousUser: AdminUserSummary;
   user: AdminUserSummary;
+}
+
+export interface AdminUserDeletionImpact {
+  user: AdminUserSummary;
+  impact: {
+    ownedWorkspaceCount: number;
+    otherWorkspaceMembershipCount: number;
+    projectCount: number;
+    whiteboardDocumentCount: number;
+  };
+}
+
+export interface DeleteUserFieldsInput {
+  userId: string;
+  confirmationEmail: string;
 }
 
 export interface ResetUserPasswordInput {
@@ -355,4 +384,92 @@ export async function revokeUserSessions(
   userId: string,
 ): Promise<UpdateUserResult> {
   return applyUserUpdate(tx, userId, { sessionVersion: BUMP_SESSION_VERSION });
+}
+
+export async function getUserDeletionImpact(userId: string): Promise<AdminUserDeletionImpact> {
+  const [user] = await db.select(USER_SUMMARY_COLUMNS).from(users).where(eq(users.id, userId));
+
+  if (!user) {
+    throw userNotFound();
+  }
+
+  /*
+   * `users` 삭제는 FK cascade로 세 갈래로 번진다 — 소유 워크스페이스 전체(그 안의 남이
+   * 만든 리소스까지), 다른 워크스페이스의 멤버십, 남의 워크스페이스에 본인이 만든
+   * 프로젝트·문서. 소유 워크스페이스 id를 먼저 읽어 이 범위를 단계적으로 센다.
+   */
+  const ownedWorkspaceRows = await db
+    .select({ id: workspaces.id })
+    .from(workspaces)
+    .where(eq(workspaces.ownerId, userId));
+  const ownedWorkspaceIds = ownedWorkspaceRows.map((row) => row.id);
+
+  const [membershipCountRows, projectRows] = await Promise.all([
+    db
+      .select({ total: count() })
+      .from(workspaceMemberships)
+      /* 소유 워크스페이스의 멤버십은 워크스페이스 수에 이미 포함되므로 중복해서 세지 않는다. */
+      .where(
+        and(
+          eq(workspaceMemberships.userId, userId),
+          notInArray(workspaceMemberships.workspaceId, ownedWorkspaceIds),
+        ),
+      ),
+    db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(or(eq(projects.creatorId, userId), inArray(projects.workspaceId, ownedWorkspaceIds))),
+  ]);
+
+  /* 소프트 삭제된 리소스도 함께 사라지므로 `deletedAt`으로 걸러내지 않는다. */
+  const documentCountRows = await db
+    .select({ total: count() })
+    .from(whiteboardDocuments)
+    .where(
+      or(
+        eq(whiteboardDocuments.creatorId, userId),
+        inArray(
+          whiteboardDocuments.projectId,
+          projectRows.map((row) => row.id),
+        ),
+      ),
+    );
+
+  return {
+    user,
+    impact: {
+      ownedWorkspaceCount: ownedWorkspaceIds.length,
+      otherWorkspaceMembershipCount: Number(membershipCountRows[0]?.total ?? 0),
+      projectCount: projectRows.length,
+      whiteboardDocumentCount: Number(documentCountRows[0]?.total ?? 0),
+    },
+  };
+}
+
+export async function deleteUser(
+  tx: TransactionHandle,
+  { userId, confirmationEmail }: DeleteUserFieldsInput,
+): Promise<AdminUserSummary> {
+  const [user] = await tx.select(USER_SUMMARY_COLUMNS).from(users).where(eq(users.id, userId));
+
+  if (!user) {
+    throw userNotFound();
+  }
+
+  /*
+   * 확인 입력은 서버에서도 대조한다. 프런트엔드 모달만 믿으면 API를 직접 호출하는
+   * 경로에서 대상 확인 없이 복구 불가능한 삭제가 실행된다.
+   */
+  if (confirmationEmail.trim().toLowerCase() !== user.email.toLowerCase()) {
+    throw new HttpError(
+      400,
+      "USER_DELETE_CONFIRMATION_MISMATCH",
+      ERROR_MESSAGES.USER_DELETE_CONFIRMATION_MISMATCH,
+    );
+  }
+
+  /* 하위 리소스는 FK cascade가 지운다 — 애플리케이션에서 삭제 순서를 직접 짜면 누락이 생긴다. */
+  await tx.delete(users).where(eq(users.id, userId));
+
+  return user;
 }

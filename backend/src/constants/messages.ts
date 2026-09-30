@@ -36,6 +36,7 @@ export const ERROR_MESSAGES = {
   USER_NOT_FOUND: "사용자를 찾을 수 없습니다",
   USER_STATUS_INVALID: "정지 여부 필터 값이 올바르지 않습니다",
   USER_UPDATE_FIELDS_REQUIRED: "수정할 사용자 정보를 입력해주세요",
+  USER_DELETE_CONFIRMATION_MISMATCH: "삭제할 사용자의 이메일을 정확히 입력해주세요",
   MEMBER_SEARCH_FORBIDDEN: "사용자를 검색할 권한이 없습니다",
   MEMBER_ADD_FORBIDDEN: "멤버를 추가할 권한이 없습니다",
   MEMBER_ADD_DEFAULT_WORKSPACE_FORBIDDEN: "기본 워크스페이스에는 멤버를 추가할 수 없습니다",

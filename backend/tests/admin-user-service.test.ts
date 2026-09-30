@@ -1,4 +1,18 @@
-import { and, asc, count, desc, eq, ilike, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  notInArray,
+  or,
+  sql,
+} from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db/client";
 import {
@@ -11,6 +25,8 @@ import {
 import {
   createUser,
   deactivateUser,
+  deleteUser,
+  getUserDeletionImpact,
   getUserDetail,
   listUsers,
   reactivateUser,
@@ -637,5 +653,172 @@ describe("revokeUserSessions", () => {
       status: 404,
       code: "USER_NOT_FOUND",
     });
+  });
+});
+
+function mockDeletionImpactQueries({
+  userRows = [
+    { id: userId, name: "Kim User", email: "user@example.com", deactivatedAt: null, createdAt },
+  ] as unknown[],
+  ownedWorkspaceRows = [{ id: workspaceId }] as unknown[],
+  membershipCountRows = [{ total: "2" }] as unknown[],
+  projectRows = [{ id: "p-1" }, { id: "p-2" }] as unknown[],
+  documentCountRows = [{ total: "5" }] as unknown[],
+} = {}) {
+  const queries = [
+    userRows,
+    ownedWorkspaceRows,
+    membershipCountRows,
+    projectRows,
+    documentCountRows,
+  ].map((rows) => ({
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockResolvedValue(rows),
+  }));
+
+  const select = vi.mocked(db.select);
+  for (const query of queries) {
+    select.mockReturnValueOnce(query as never);
+  }
+
+  const [userQuery, ownedWorkspaceQuery, membershipQuery, projectQuery, documentQuery] = queries;
+  return { userQuery, ownedWorkspaceQuery, membershipQuery, projectQuery, documentQuery };
+}
+
+describe("getUserDeletionImpact", () => {
+  /*
+   * users를 지우면 소유 워크스페이스와 그 안의 모든 하위 리소스, 그리고 남의 워크스페이스에
+   * 만든 프로젝트·문서까지 FK cascade로 함께 사라진다. 집계가 이 범위와 어긋나면
+   * 어드민이 실제보다 좁은 영향만 보고 삭제를 승인한다.
+   */
+  it("cascade로 사라지는 리소스를 범위별로 센다", async () => {
+    const { membershipQuery, projectQuery, documentQuery } = mockDeletionImpactQueries();
+
+    await expect(getUserDeletionImpact(userId)).resolves.toEqual({
+      user: {
+        id: userId,
+        name: "Kim User",
+        email: "user@example.com",
+        deactivatedAt: null,
+        createdAt,
+      },
+      impact: {
+        ownedWorkspaceCount: 1,
+        otherWorkspaceMembershipCount: 2,
+        projectCount: 2,
+        whiteboardDocumentCount: 5,
+      },
+    });
+
+    /* 소유 워크스페이스의 멤버십은 워크스페이스 삭제로 이미 세어졌으므로 중복 집계하지 않는다. */
+    expect(membershipQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(workspaceMemberships.userId, userId),
+        notInArray(workspaceMemberships.workspaceId, [workspaceId]),
+      ),
+    );
+    expect(projectQuery.where).toHaveBeenCalledWith(
+      or(eq(projects.creatorId, userId), inArray(projects.workspaceId, [workspaceId])),
+    );
+    expect(documentQuery.where).toHaveBeenCalledWith(
+      or(
+        eq(whiteboardDocuments.creatorId, userId),
+        inArray(whiteboardDocuments.projectId, ["p-1", "p-2"]),
+      ),
+    );
+  });
+
+  it("소유 워크스페이스가 없으면 남의 워크스페이스에 만든 리소스만 센다", async () => {
+    const { membershipQuery, projectQuery } = mockDeletionImpactQueries({
+      ownedWorkspaceRows: [],
+      projectRows: [],
+      documentCountRows: [{ total: "0" }],
+    });
+
+    await expect(getUserDeletionImpact(userId)).resolves.toMatchObject({
+      impact: { ownedWorkspaceCount: 0, projectCount: 0, whiteboardDocumentCount: 0 },
+    });
+
+    expect(membershipQuery.where).toHaveBeenCalledWith(
+      and(
+        eq(workspaceMemberships.userId, userId),
+        notInArray(workspaceMemberships.workspaceId, []),
+      ),
+    );
+    expect(projectQuery.where).toHaveBeenCalledWith(
+      or(eq(projects.creatorId, userId), inArray(projects.workspaceId, [])),
+    );
+  });
+
+  it("없는 사용자는 404이며 집계 질의를 하지 않는다", async () => {
+    const { ownedWorkspaceQuery } = mockDeletionImpactQueries({ userRows: [] });
+
+    await expect(getUserDeletionImpact(userId)).rejects.toMatchObject({
+      status: 404,
+      code: "USER_NOT_FOUND",
+    });
+
+    expect(ownedWorkspaceQuery.where).not.toHaveBeenCalled();
+  });
+});
+
+function mockDeleteUserTransaction({
+  existingRows = [
+    { id: userId, name: "Kim User", email: "user@example.com", deactivatedAt: null, createdAt },
+  ] as unknown[],
+} = {}) {
+  const existingQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockResolvedValue(existingRows),
+  };
+  const userDelete = { where: vi.fn().mockResolvedValue(undefined) };
+  const tx = {
+    select: vi.fn().mockReturnValue(existingQuery),
+    delete: vi.fn().mockReturnValue(userDelete),
+  };
+
+  return { tx, existingQuery, userDelete };
+}
+
+describe("deleteUser", () => {
+  it("확인용 이메일이 일치하면 삭제하고 삭제된 사용자를 돌려준다", async () => {
+    const { tx, userDelete } = mockDeleteUserTransaction();
+
+    await expect(
+      deleteUser(tx as never, { userId, confirmationEmail: " User@Example.COM " }),
+    ).resolves.toEqual({
+      id: userId,
+      name: "Kim User",
+      email: "user@example.com",
+      deactivatedAt: null,
+      createdAt,
+    });
+
+    expect(tx.delete).toHaveBeenCalledWith(users);
+    expect(userDelete.where).toHaveBeenCalledWith(eq(users.id, userId));
+  });
+
+  /* 대상을 잘못 고른 삭제를 마지막에 한 번 더 막는 장치다. 여기서 통과시키면 복구가 없다. */
+  it("확인용 이메일이 다르면 400이며 삭제하지 않는다", async () => {
+    const { tx, userDelete } = mockDeleteUserTransaction();
+
+    await expect(
+      deleteUser(tx as never, { userId, confirmationEmail: "other@example.com" }),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: "USER_DELETE_CONFIRMATION_MISMATCH",
+    });
+
+    expect(userDelete.where).not.toHaveBeenCalled();
+  });
+
+  it("없는 사용자는 404이며 삭제하지 않는다", async () => {
+    const { tx, userDelete } = mockDeleteUserTransaction({ existingRows: [] });
+
+    await expect(
+      deleteUser(tx as never, { userId, confirmationEmail: "user@example.com" }),
+    ).rejects.toMatchObject({ status: 404, code: "USER_NOT_FOUND" });
+
+    expect(userDelete.where).not.toHaveBeenCalled();
   });
 });
