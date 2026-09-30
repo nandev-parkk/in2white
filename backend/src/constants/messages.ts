@@ -19,6 +19,7 @@ export const ERROR_MESSAGES = {
   ACCOUNT_NAME_REQUIRED: "이름을 입력해주세요",
   ACCOUNT_NAME_TOO_LONG: "이름은 255자 이내로 입력해주세요",
   ACCOUNT_NOT_FOUND: "계정을 찾을 수 없습니다",
+  EMAIL_ALREADY_EXISTS: "이미 사용 중인 이메일입니다",
   CURRENT_PASSWORD_REQUIRED: "현재 비밀번호를 입력해주세요",
   CURRENT_PASSWORD_MISMATCH: "현재 비밀번호가 올바르지 않습니다",
   PASSWORD_CHANGED_REAUTH_REQUIRED:
