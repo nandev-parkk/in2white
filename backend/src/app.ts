@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import { getEnv } from "@/config/env";
 import { createRouter } from "@/routes/index";
+import { createAdminRouter } from "@/routes/admin/index";
 import { rateLimitMiddleware } from "@/middlewares/rate-limit.middleware";
 import { notFoundMiddleware } from "@/middlewares/not-found.middleware";
 import { errorHandlerMiddleware } from "@/middlewares/error-handler.middleware";
@@ -19,7 +20,22 @@ export function createApp(options: AppOptions = {}) {
   const app = express();
 
   app.use(helmet());
-  app.use(cors({ origin: getEnv().CORS_ORIGIN, credentials: true }));
+  /*
+   * 어드민 콘솔과 제품 프런트엔드는 서로 다른 origin에서 돌아간다. `cors`는 origin이
+   * 문자열이면 비교 없이 그대로 헤더에 넣기 때문에 `app.use(cors(...))`를 두 번 쌓으면
+   * 뒤쪽이 앞쪽을 덮어쓴다. 그래서 요청 경로를 보고 origin을 고르는 delegate를 쓴다.
+   * 또한 이 미들웨어는 rate limit보다 앞에 있어야 한다. 뒤에 두면 429 응답에 CORS
+   * 헤더가 붙지 않아 브라우저가 본문을 읽지 못하고 원인 불명의 네트워크 오류로 보인다.
+   */
+  app.use(
+    cors((req, callback) => {
+      const isAdminRequest = req.path.startsWith("/admin");
+      callback(null, {
+        origin: isAdminRequest ? getEnv().ADMIN_CORS_ORIGIN : getEnv().CORS_ORIGIN,
+        credentials: true,
+      });
+    }),
+  );
   app.use(compression());
   app.use(express.json());
   app.use(cookieParser());
@@ -30,6 +46,8 @@ export function createApp(options: AppOptions = {}) {
     }),
   );
   app.use(rateLimitMiddleware);
+
+  app.use("/admin", createAdminRouter());
 
   app.use(
     createRouter({
