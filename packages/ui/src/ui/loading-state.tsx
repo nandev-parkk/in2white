@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { cn } from 'cn'
+import { cn } from '../lib/utils'
 import { Spinner } from './spinner'
 
 type DelayedLoadingProps = {
