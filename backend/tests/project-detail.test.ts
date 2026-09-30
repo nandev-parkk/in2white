@@ -1,9 +1,12 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "@/app";
+import { useTestServer } from "./test-server";
 import { signAccessToken } from "@/lib/jwt";
 import { getProjectDetail } from "@/services/project.service";
 import { HttpError } from "@/utils/http-error";
+
+const appUrl = useTestServer(() => createApp());
 
 vi.mock("@/services/project.service", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/services/project.service")>();
@@ -41,7 +44,7 @@ beforeEach(() => {
 
 describe("프로젝트 상세 조회 HTTP 계약", () => {
   it("프로젝트와 생성자를 ISO 날짜와 함께 반환한다", async () => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(url)
       .set("Authorization", "Bearer " + (await token()));
 
@@ -65,7 +68,7 @@ describe("프로젝트 상세 조회 HTTP 계약", () => {
       ...project,
       description: null,
     });
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(url)
       .set("Authorization", "Bearer " + (await token()));
     expect(response.status).toBe(200);
@@ -75,7 +78,7 @@ describe("프로젝트 상세 조회 HTTP 계약", () => {
   it.each([undefined, "Basic invalid", "Bearer invalid"])(
     "인증 헤더 %s는 401이며 서비스를 호출하지 않는다",
     async (authorization) => {
-      const pending = request(createApp()).get(url);
+      const pending = request(appUrl()).get(url);
       if (authorization !== undefined) pending.set("Authorization", authorization);
       const response = await pending;
       expect(response.status).toBe(401);
@@ -88,7 +91,7 @@ describe("프로젝트 상세 조회 HTTP 계약", () => {
     "/workspaces/invalid/projects/" + projectId,
     "/workspaces/" + workspaceId + "/projects/invalid",
   ])("잘못된 UUID 경로 %s는 400이다", async (path) => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(path)
       .set("Authorization", "Bearer " + (await token()));
     expect(response.status).toBe(400);
@@ -102,7 +105,7 @@ describe("프로젝트 상세 조회 HTTP 계약", () => {
       vi.mocked(getProjectDetail).mockRejectedValue(
         new HttpError(404, code, "리소스를 찾을 수 없습니다."),
       );
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .get(url)
         .set("Authorization", "Bearer " + (await token()));
       expect(response.status).toBe(404);
@@ -113,7 +116,7 @@ describe("프로젝트 상세 조회 HTTP 계약", () => {
   it("예상하지 못한 DB 오류의 상세를 숨기고 500을 반환한다", async () => {
     const internalMessage = "테스트용 내부 DB 오류";
     vi.mocked(getProjectDetail).mockRejectedValue(new Error(internalMessage));
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(url)
       .set("Authorization", "Bearer " + (await token()));
     expect(response.status).toBe(500);

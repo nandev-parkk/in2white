@@ -67,12 +67,10 @@ describe('WorkspaceSettingsPage', () => {
     vi.mocked(AuthenticatedWorkspaceLayout).mockImplementation(
       (props: AuthenticatedWorkspaceLayoutProps) => (
         <div data-testid="workspace-layout">
-          {props.children(
-            {
-              accessToken: 'token-1',
-              selectedWorkspace,
-            } as never,
-          )}
+          {props.children({
+            accessToken: 'token-1',
+            selectedWorkspace,
+          } as never)}
         </div>
       ),
     )
@@ -82,11 +80,15 @@ describe('WorkspaceSettingsPage', () => {
     const props = createPageProps()
     render(<WorkspaceSettingsPage {...props} />)
 
-    expect(screen.getByRole('heading', { name: '설정', level: 1 })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: '워크스페이스 이름' })).toHaveValue(
-      workspaceFixture.name,
-    )
-    expect(screen.getByRole('heading', { name: '위험 구역' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: '설정', level: 1 }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: '워크스페이스 이름' }),
+    ).toHaveValue(workspaceFixture.name)
+    expect(
+      screen.getByRole('heading', { name: '위험 구역' }),
+    ).toBeInTheDocument()
     expect(useUpdateWorkspace).toHaveBeenCalledWith('token-1')
 
     const layoutProps = vi.mocked(AuthenticatedWorkspaceLayout).mock.calls[0][0]

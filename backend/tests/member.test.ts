@@ -2,6 +2,7 @@ import { and, asc, count, eq, ilike, or, sql } from "drizzle-orm";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "@/app";
+import { useTestServer } from "./test-server";
 import { db } from "@/db/client";
 import { users, workspaceMemberships, workspaces } from "@/db/schema";
 import { signAccessToken } from "@/lib/jwt";
@@ -11,6 +12,8 @@ import {
   memberRemoveParamsSchema,
 } from "@/schemas/member.schema";
 import { addMember, listMembers, removeMember } from "@/services/member.service";
+
+const appUrl = useTestServer(() => createApp());
 
 vi.mock("@/db/client", () => ({
   db: { select: vi.fn(), transaction: vi.fn() },
@@ -26,6 +29,7 @@ async function createAccessToken(sub = "user-1") {
     sub,
     email: sub + "@example.com",
     sid: "session-1",
+    ver: 0,
   });
 }
 
@@ -709,7 +713,7 @@ describe("GET /workspaces/:workspaceId/members", () => {
       ],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/members`)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -742,7 +746,7 @@ describe("GET /workspaces/:workspaceId/members", () => {
       memberRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/members`)
       .set("Authorization", `Bearer ${await createAccessToken("owner-1")}`);
 
@@ -761,7 +765,7 @@ describe("GET /workspaces/:workspaceId/members", () => {
       memberRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/members`)
       .query({ search: "  Kim  ", page: "2", limit: "2" })
       .set("Authorization", `Bearer ${await createAccessToken()}`);
@@ -784,7 +788,7 @@ describe("GET /workspaces/:workspaceId/members", () => {
   });
 
   it("인증이 없으면 401이며 DB를 조회하지 않는다", async () => {
-    const response = await request(createApp()).get(`/workspaces/${workspaceId}/members`);
+    const response = await request(appUrl()).get(`/workspaces/${workspaceId}/members`);
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe("UNAUTHORIZED");
@@ -792,7 +796,7 @@ describe("GET /workspaces/:workspaceId/members", () => {
   });
 
   it("유효하지 않은 Access Token이면 401이며 DB를 조회하지 않는다", async () => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/members`)
       .set("Authorization", "Bearer invalid-token");
 
@@ -809,7 +813,7 @@ describe("GET /workspaces/:workspaceId/members", () => {
   ])(
     "잘못된 path 또는 query는 400이며 DB를 조회하지 않는다",
     async ({ pathWorkspaceId, query }) => {
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .get(`/workspaces/${pathWorkspaceId}/members`)
         .query(query)
         .set("Authorization", `Bearer ${await createAccessToken()}`);
@@ -823,7 +827,7 @@ describe("GET /workspaces/:workspaceId/members", () => {
   it("비멤버에게 404를 반환한다", async () => {
     mockMemberListQueries({ membershipRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/members`)
       .set("Authorization", `Bearer ${await createAccessToken("outsider")}`);
 
@@ -834,7 +838,7 @@ describe("GET /workspaces/:workspaceId/members", () => {
   it("DB 오류를 공통 500 응답으로 변환한다", async () => {
     mockMemberListQueries({ memberError: new Error("members failed") });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/members`)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -850,7 +854,7 @@ describe("POST /workspaces/:workspaceId/members", () => {
       membershipRows: [{ role: "member", joinedAt }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/members`)
       .set("Authorization", `Bearer ${await createAccessToken("owner-1")}`)
       .send({ userId: targetUserId });
@@ -868,7 +872,7 @@ describe("POST /workspaces/:workspaceId/members", () => {
   });
 
   it("인증되지 않은 요청은 401이며 transaction을 호출하지 않는다", async () => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/members`)
       .send({ userId: targetUserId });
 
@@ -885,7 +889,7 @@ describe("POST /workspaces/:workspaceId/members", () => {
   ])(
     "잘못된 path 또는 body는 400이며 transaction을 호출하지 않는다",
     async ({ pathWorkspaceId, body }) => {
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .post(`/workspaces/${pathWorkspaceId}/members`)
         .set("Authorization", `Bearer ${await createAccessToken("owner-1")}`)
         .send(body);
@@ -899,7 +903,7 @@ describe("POST /workspaces/:workspaceId/members", () => {
   it("비멤버 요청자는 404를 반환한다", async () => {
     mockAddMemberTransaction({ requesterRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/members`)
       .set("Authorization", `Bearer ${await createAccessToken("outsider")}`)
       .send({ userId: targetUserId });
@@ -911,7 +915,7 @@ describe("POST /workspaces/:workspaceId/members", () => {
   it("일반 Member 요청자는 403을 반환한다", async () => {
     mockAddMemberTransaction({ requesterRows: [{ role: "member" }] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/members`)
       .set("Authorization", `Bearer ${await createAccessToken("member-1")}`)
       .send({ userId: targetUserId });
@@ -923,7 +927,7 @@ describe("POST /workspaces/:workspaceId/members", () => {
   it("존재하지 않는 대상 사용자는 404를 반환한다", async () => {
     mockAddMemberTransaction({ userRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/members`)
       .set("Authorization", `Bearer ${await createAccessToken("owner-1")}`)
       .send({ userId: targetUserId });
@@ -935,7 +939,7 @@ describe("POST /workspaces/:workspaceId/members", () => {
   it("이미 멤버인 대상 사용자는 409를 반환한다", async () => {
     mockAddMemberTransaction({ existingRows: [{ id: "membership-1" }] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/members`)
       .set("Authorization", `Bearer ${await createAccessToken("owner-1")}`)
       .send({ userId: targetUserId });
@@ -947,7 +951,7 @@ describe("POST /workspaces/:workspaceId/members", () => {
   it("예상하지 못한 DB 오류는 공통 500 응답으로 변환된다", async () => {
     mockAddMemberTransaction({ insertError: new Error("membership insert failed") });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/members`)
       .set("Authorization", `Bearer ${await createAccessToken("owner-1")}`)
       .send({ userId: targetUserId });
@@ -961,7 +965,7 @@ describe("DELETE /workspaces/:workspaceId/members/:userId", () => {
   it("Owner가 다른 멤버를 내보내고 204를 반환한다", async () => {
     const { membershipDelete } = mockRemoveMemberTransaction();
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/" + workspaceId + "/members/" + targetUserId)
       .set("Authorization", "Bearer " + (await createAccessToken("owner-1")));
 
@@ -973,7 +977,7 @@ describe("DELETE /workspaces/:workspaceId/members/:userId", () => {
   it("Member가 자기 자신을 탈퇴하고 204를 반환한다", async () => {
     mockRemoveMemberTransaction({ requesterRows: [{ role: "member" }] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/" + workspaceId + "/members/" + memberUserId)
       .set("Authorization", "Bearer " + (await createAccessToken(memberUserId)));
 
@@ -981,7 +985,7 @@ describe("DELETE /workspaces/:workspaceId/members/:userId", () => {
   });
 
   it("인증되지 않은 요청은 401을 반환한다", async () => {
-    const response = await request(createApp()).delete(
+    const response = await request(appUrl()).delete(
       "/workspaces/" + workspaceId + "/members/" + targetUserId,
     );
 
@@ -995,7 +999,7 @@ describe("DELETE /workspaces/:workspaceId/members/:userId", () => {
       requesterRows: [{ role: "member" }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/" + workspaceId + "/members/" + targetUserId)
       .set("Authorization", "Bearer " + (await createAccessToken("member-1")));
 
@@ -1007,7 +1011,7 @@ describe("DELETE /workspaces/:workspaceId/members/:userId", () => {
   it("Owner 자기 탈퇴는 403을 반환한다", async () => {
     const { membershipDelete } = mockRemoveMemberTransaction();
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/" + workspaceId + "/members/" + ownerUserId)
       .set("Authorization", "Bearer " + (await createAccessToken(ownerUserId)));
 
@@ -1019,7 +1023,7 @@ describe("DELETE /workspaces/:workspaceId/members/:userId", () => {
   it.each(["not-a-uuid/members/" + targetUserId, workspaceId + "/members/not-a-uuid"])(
     "잘못된 path parameter는 400이고 transaction을 호출하지 않는다",
     async (path) => {
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .delete("/workspaces/" + path)
         .set("Authorization", "Bearer " + (await createAccessToken("owner-1")));
 
@@ -1032,7 +1036,7 @@ describe("DELETE /workspaces/:workspaceId/members/:userId", () => {
   it("대상 멤버십이 없으면 404 MEMBER_NOT_FOUND를 반환한다", async () => {
     mockRemoveMemberTransaction({ deletedRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/" + workspaceId + "/members/" + targetUserId)
       .set("Authorization", "Bearer " + (await createAccessToken("owner-1")));
 
@@ -1043,7 +1047,7 @@ describe("DELETE /workspaces/:workspaceId/members/:userId", () => {
   it("DB 오류는 500 INTERNAL_SERVER_ERROR로 변환한다", async () => {
     mockRemoveMemberTransaction({ deleteError: new Error("membership delete failed") });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/" + workspaceId + "/members/" + targetUserId)
       .set("Authorization", "Bearer " + (await createAccessToken("owner-1")));
 

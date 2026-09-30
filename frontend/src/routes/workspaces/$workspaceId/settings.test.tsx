@@ -102,9 +102,11 @@ describe('workspace settings route', () => {
   it('canonical path와 인증 guard를 사용한다', async () => {
     expect(SETTINGS_ROUTE).toBe('/workspaces/$workspaceId/settings')
     expect(Route.options.beforeLoad).toBe(redirectIfUnauthenticated)
-    await expect(Route.options.beforeLoad?.({} as never)).rejects.toMatchObject({
-      options: { to: '/login' },
-    })
+    await expect(Route.options.beforeLoad?.({} as never)).rejects.toMatchObject(
+      {
+        options: { to: '/login' },
+      },
+    )
   })
 
   it('URL workspace ID를 설정 페이지에 전달한다', async () => {
@@ -131,7 +133,9 @@ describe('workspace settings route', () => {
 
   it('settings의 프로젝트 메뉴는 현재 workspace 프로젝트 route로 이동한다', async () => {
     const projectsRouter = mountSettings()
-    await userEvent.click(await screen.findByRole('button', { name: '프로젝트' }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: '프로젝트' }),
+    )
     await waitFor(() =>
       expect(projectsRouter.state.location.pathname).toBe(
         '/workspaces/workspace-current/projects',
@@ -184,7 +188,9 @@ describe('workspace settings route', () => {
 
   it('권한 거부 화면의 돌아가기는 같은 workspace 프로젝트 route를 연다', async () => {
     const router = mountSettings()
-    await userEvent.click(await screen.findByRole('button', { name: '돌아가기' }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: '돌아가기' }),
+    )
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(
@@ -195,7 +201,9 @@ describe('workspace settings route', () => {
 
   it('삭제 성공 후 root route로 이동한다', async () => {
     const router = mountSettings()
-    await userEvent.click(await screen.findByRole('button', { name: '삭제 완료' }))
+    await userEvent.click(
+      await screen.findByRole('button', { name: '삭제 완료' }),
+    )
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
   })

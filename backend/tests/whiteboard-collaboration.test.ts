@@ -1,18 +1,25 @@
 import { createServer, type Server as HttpServer } from "node:http";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { io as createClient, type Socket as ClientSocket } from "socket.io-client";
-import { createWhiteboardCollaborationServer } from "@/realtime/whiteboard-collaboration";
+import {
+  createWhiteboardCollaborationServer,
+  type WhiteboardCollaborationDependencies,
+} from "@/realtime/whiteboard-collaboration";
 import { signAccessToken, verifyAccessToken } from "@/lib/jwt";
 import type { WhiteboardDocumentDetail } from "@/services/whiteboard-document.service";
 import type { SaveWhiteboardDocumentContentResult } from "@/services/whiteboard-document-content.service";
 import type { WhiteboardSnapshot } from "@/types/whiteboard";
 import { HttpError } from "@/utils/http-error";
 
+/** 주입한 mock이 실제 의존성 시그니처와 어긋나면 타입 검사에서 걸러지도록 별칭을 둔다. */
+type Deps = WhiteboardCollaborationDependencies;
+
 const workspaceId = "550e8400-e29b-41d4-a716-446655440000";
 const projectId = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
 const documentId = "6ba7b810-9dad-41d1-80b4-00c04fd430c8";
 const anotherDocumentId = "8ba7b810-9dad-41d1-80b4-00c04fd430c9";
 const clientUpdateId = "2f1c3d5e-6a7b-48c9-8d0e-1f2a3b4c5d6e";
+const WAIT_TIMEOUT_MS = 5_000;
 
 const snapshot: WhiteboardSnapshot = {
   canvasContent: { elements: [] },
@@ -33,7 +40,7 @@ const whiteboardDocument: WhiteboardDocumentDetail = {
 };
 
 async function createAccessToken(sub = "user-1") {
-  return signAccessToken({ sub, email: `${sub}@example.com`, sid: `session-${sub}` });
+  return signAccessToken({ sub, email: `${sub}@example.com`, sid: `session-${sub}`, ver: 0 });
 }
 
 function waitForEvent<T>(socket: ClientSocket, event: string): Promise<T> {
@@ -57,26 +64,24 @@ describe("whiteboard collaboration server", () => {
   let collaboration: ReturnType<typeof createWhiteboardCollaborationServer>;
   let url: string;
   let clients: ClientSocket[];
-  let saveSnapshot: ReturnType<typeof vi.fn>;
-  let authorizeJoin: ReturnType<typeof vi.fn>;
-  let verifyToken: ReturnType<typeof vi.fn>;
+  let saveSnapshot: Mock<Deps["saveSnapshot"]>;
+  let authorizeJoin: Mock<Deps["authorizeJoin"]>;
+  let verifyToken: Mock<Deps["verifyToken"]>;
   let clockNow: number;
 
   beforeEach(async () => {
     httpServer = createServer();
     clients = [];
     clockNow = Date.now();
-    saveSnapshot = vi
-      .fn<(input: unknown) => Promise<SaveWhiteboardDocumentContentResult>>()
-      .mockResolvedValue({
-        status: "saved",
-        lastSavedAt: new Date("2026-09-11T00:00:01.000Z"),
-      });
-    authorizeJoin = vi.fn().mockImplementation(async ({ userId }) => ({
+    saveSnapshot = vi.fn<Deps["saveSnapshot"]>().mockResolvedValue({
+      status: "saved",
+      lastSavedAt: new Date("2026-09-11T00:00:01.000Z"),
+    });
+    authorizeJoin = vi.fn<Deps["authorizeJoin"]>().mockImplementation(async ({ userId }) => ({
       whiteboardDocument,
       participant: { userId, name: userId === "user-1" ? "첫 사용자" : "두 번째 사용자" },
     }));
-    verifyToken = vi.fn().mockImplementation(verifyAccessToken);
+    verifyToken = vi.fn<Deps["verifyToken"]>().mockImplementation(verifyAccessToken);
     collaboration = createWhiteboardCollaborationServer(httpServer, {
       authorizeJoin,
       loadSnapshot: vi.fn().mockResolvedValue(snapshot),
@@ -504,6 +509,7 @@ describe("whiteboard collaboration server", () => {
       cursor: { x: Infinity, y: 0 },
       activeElementIds: [],
     });
+    await vi.waitFor(() => expect(errors).toHaveLength(1), { timeout: WAIT_TIMEOUT_MS });
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     expect(errors).toEqual([{ code: "INVALID_PAYLOAD", message: expect.any(String) }]);
@@ -530,9 +536,11 @@ describe("whiteboard collaboration server", () => {
         activeElementIds: [],
       });
     }
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await vi.waitFor(
+      () => expect(errors).toContainEqual({ code: "RATE_LIMITED", message: expect.any(String) }),
+      { timeout: WAIT_TIMEOUT_MS },
+    );
 
-    expect(errors).toContainEqual({ code: "RATE_LIMITED", message: expect.any(String) });
     expect(broadcastCursorXs).not.toContain(60);
   });
 
@@ -541,6 +549,7 @@ describe("whiteboard collaboration server", () => {
       sub: "user-1",
       email: "user-1@example.com",
       sid: "session-user-1",
+      ver: 0,
       type: "access",
       exp: (Date.now() + 50) / 1_000,
     });
@@ -549,8 +558,9 @@ describe("whiteboard collaboration server", () => {
     client.on("whiteboard:auth:expired", () => events.push("expired"));
     client.on("disconnect", () => events.push("disconnect"));
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(events).toEqual(["expired", "disconnect"]);
+    await vi.waitFor(() => expect(events).toEqual(["expired", "disconnect"]), {
+      timeout: WAIT_TIMEOUT_MS,
+    });
   });
 
   it("disconnects existing sockets and stops accepting connections while draining", async () => {
@@ -564,7 +574,9 @@ describe("whiteboard collaboration server", () => {
       clientUpdateId,
       elements: [{ id: "dirty", version: 1, versionNonce: 1, isDeleted: false }],
     });
-    await new Promise((resolve) => setTimeout(resolve, 550));
+    await vi.waitFor(() => expect(saveSnapshot).toHaveBeenCalled(), {
+      timeout: WAIT_TIMEOUT_MS,
+    });
 
     const clientDisconnected = waitForEvent(client, "disconnect");
     const unjoinedClientDisconnected = waitForEvent(unjoinedClient, "disconnect");
@@ -602,7 +614,9 @@ describe("whiteboard collaboration server", () => {
       clientUpdateId,
       elements: [{ id: "dirty", version: 1, versionNonce: 1, isDeleted: false }],
     });
-    await new Promise((resolve) => setTimeout(resolve, 550));
+    await vi.waitFor(() => expect(saveSnapshot).toHaveBeenCalled(), {
+      timeout: WAIT_TIMEOUT_MS,
+    });
 
     const pendingVerification = deferred<Awaited<ReturnType<typeof verifyAccessToken>>>();
     verifyToken.mockReturnValueOnce(pendingVerification.promise);
@@ -611,7 +625,9 @@ describe("whiteboard collaboration server", () => {
       reconnection: false,
     });
     clients.push(racingClient);
-    await vi.waitFor(() => expect(verifyToken).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(verifyToken).toHaveBeenCalledTimes(2), {
+      timeout: WAIT_TIMEOUT_MS,
+    });
 
     let connected = false;
     racingClient.once("connect", () => {
@@ -622,6 +638,7 @@ describe("whiteboard collaboration server", () => {
       sub: "user-2",
       email: "user-2@example.com",
       sid: "session-user-2",
+      ver: 0,
       type: "access",
       exp: Date.now() / 1_000 + 60,
     });

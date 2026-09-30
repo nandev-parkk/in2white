@@ -9,7 +9,12 @@ import {
 } from './workspace'
 
 vi.mock('@/shared/api', () => ({
-  axiosInstance: { delete: vi.fn(), get: vi.fn(), patch: vi.fn(), post: vi.fn() },
+  axiosInstance: {
+    delete: vi.fn(),
+    get: vi.fn(),
+    patch: vi.fn(),
+    post: vi.fn(),
+  },
 }))
 
 const workspaceFixture: WorkspaceSummary = {
@@ -92,11 +97,14 @@ describe('workspace API requests', () => {
   it('워크스페이스를 삭제하고 응답 본문 없이 완료한다', async () => {
     vi.mocked(axiosInstance.delete).mockResolvedValueOnce({ data: undefined })
 
-    await expect(deleteWorkspaceRequest('workspace-1', 'token-1')).resolves.toBe(
-      undefined,
+    await expect(
+      deleteWorkspaceRequest('workspace-1', 'token-1'),
+    ).resolves.toBe(undefined)
+    expect(axiosInstance.delete).toHaveBeenCalledWith(
+      '/workspaces/workspace-1',
+      {
+        headers: { Authorization: 'Bearer token-1' },
+      },
     )
-    expect(axiosInstance.delete).toHaveBeenCalledWith('/workspaces/workspace-1', {
-      headers: { Authorization: 'Bearer token-1' },
-    })
   })
 })

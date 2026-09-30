@@ -35,8 +35,9 @@ describe('Toaster', () => {
       toast.loading('PDF를 만드는 중이에요')
     })
 
-    const toastElement = (await screen.findByText('PDF를 만드는 중이에요'))
-      .closest('[data-sonner-toast]')
+    const toastElement = (
+      await screen.findByText('PDF를 만드는 중이에요')
+    ).closest('[data-sonner-toast]')
 
     expect(toastElement).toHaveClass(
       'border',
@@ -53,8 +54,9 @@ describe('Toaster', () => {
       toast.loading('PDF를 만드는 중이에요')
     })
 
-    const toastElement = (await screen.findByText('PDF를 만드는 중이에요'))
-      .closest('[data-sonner-toast]')
+    const toastElement = (
+      await screen.findByText('PDF를 만드는 중이에요')
+    ).closest('[data-sonner-toast]')
 
     expect(
       toastElement?.querySelector('[data-slot="spinner"]'),
@@ -68,8 +70,9 @@ describe('Toaster', () => {
       toast.loading('PDF를 만드는 중이에요')
     })
 
-    const toastElement = (await screen.findByText('PDF를 만드는 중이에요'))
-      .closest('[data-sonner-toast]')
+    const toastElement = (
+      await screen.findByText('PDF를 만드는 중이에요')
+    ).closest('[data-sonner-toast]')
 
     // sonner의 로더는 position:absolute라 기준 박스가 없으면 토스트 한가운데로 겹친다.
     expect(toastElement?.querySelector('[data-icon]')).toHaveClass(
