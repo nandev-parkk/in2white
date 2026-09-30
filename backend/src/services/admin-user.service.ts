@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, ilike, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
+import type { PgUpdateSetSource } from "drizzle-orm/pg-core";
 import { ERROR_MESSAGES } from "@/constants/messages";
 import { db } from "@/db/client";
 import {
@@ -81,6 +82,11 @@ export interface UpdateUserResult {
   user: AdminUserSummary;
 }
 
+export interface ResetUserPasswordInput {
+  userId: string;
+  passwordHash: string;
+}
+
 export interface CreateUserInput {
   email: string;
   name: string;
@@ -94,6 +100,44 @@ function emailAlreadyExists() {
 function userNotFound() {
   return new HttpError(404, "USER_NOT_FOUND", ERROR_MESSAGES.USER_NOT_FOUND);
 }
+
+/*
+ * 변경 전 값을 함께 돌려준다. 감사 로그 `metadata`에 before/after를 남기는 계약이 있어서
+ * 컨트롤러가 변경 전 상태를 따로 조회하지 않아도 되도록 서비스가 한 번에 읽는다.
+ */
+async function applyUserUpdate(
+  tx: TransactionHandle,
+  userId: string,
+  values: PgUpdateSetSource<typeof users>,
+): Promise<UpdateUserResult> {
+  const [previousUser] = await tx
+    .select(USER_SUMMARY_COLUMNS)
+    .from(users)
+    .where(eq(users.id, userId));
+
+  if (!previousUser) {
+    throw userNotFound();
+  }
+
+  const [user] = await tx
+    .update(users)
+    .set(values)
+    .where(eq(users.id, userId))
+    .returning(USER_SUMMARY_COLUMNS);
+
+  // 선행 조회와 update 사이에 계정이 지워진 경우다. 없는 사용자로 응답하는 게 맞다.
+  if (!user) {
+    throw userNotFound();
+  }
+
+  return { previousUser, user };
+}
+
+/*
+ * 세션 무효화의 기준점이다. refresh 갱신은 토큰의 `ver`와 저장된 `sessionVersion`을
+ * 비교하므로, 이 값이 오르면 이미 발급된 refresh 토큰은 모두 거부된다.
+ */
+const BUMP_SESSION_VERSION = sql`${users.sessionVersion} + 1`;
 
 function buildStatusCondition(status: UserStatusFilter) {
   if (status === "active") return isNull(users.deactivatedAt);
@@ -274,4 +318,41 @@ export async function updateUser(
   }
 
   return { previousUser, user };
+}
+
+export async function resetUserPassword(
+  tx: TransactionHandle,
+  { userId, passwordHash }: ResetUserPasswordInput,
+): Promise<UpdateUserResult> {
+  /* 비밀번호가 바뀌면 기존 세션은 모두 끊는다 — 탈취된 세션을 남겨두면 재설정이 무의미하다. */
+  return applyUserUpdate(tx, userId, { passwordHash, sessionVersion: BUMP_SESSION_VERSION });
+}
+
+export async function deactivateUser(
+  tx: TransactionHandle,
+  userId: string,
+): Promise<UpdateUserResult> {
+  /*
+   * 이미 정지된 계정에 다시 요청이 와도 처음 정지 시각을 유지한다. 시각을 덮어쓰면
+   * 언제부터 막혔는지 알 수 없어진다. 정지는 곧 세션 차단이므로 세션 버전도 올린다.
+   */
+  return applyUserUpdate(tx, userId, {
+    deactivatedAt: sql`coalesce(${users.deactivatedAt}, now())`,
+    sessionVersion: BUMP_SESSION_VERSION,
+  });
+}
+
+export async function reactivateUser(
+  tx: TransactionHandle,
+  userId: string,
+): Promise<UpdateUserResult> {
+  /* 정지 시점에 세션을 이미 끊었으므로 해제할 때는 건드리지 않는다. */
+  return applyUserUpdate(tx, userId, { deactivatedAt: null });
+}
+
+export async function revokeUserSessions(
+  tx: TransactionHandle,
+  userId: string,
+): Promise<UpdateUserResult> {
+  return applyUserUpdate(tx, userId, { sessionVersion: BUMP_SESSION_VERSION });
 }

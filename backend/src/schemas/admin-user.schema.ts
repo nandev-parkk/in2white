@@ -46,6 +46,10 @@ export const updateUserSchema = z
     message: ERROR_MESSAGES.USER_UPDATE_FIELDS_REQUIRED,
   });
 
+/* 어드민 재설정은 현재 비밀번호를 묻지 않는다 — 어드민은 사용자의 비밀번호를 모른다. */
+export const resetUserPasswordSchema = z.object({ newPassword: passwordSchema }).strict();
+
 export type UserStatusFilter = z.infer<typeof userStatusFilterSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
+export type ResetUserPasswordInput = z.infer<typeof resetUserPasswordSchema>;

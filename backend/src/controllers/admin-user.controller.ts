@@ -5,11 +5,23 @@ import {
   adminUserListQuerySchema,
   adminUserParamsSchema,
   createUserSchema,
+  resetUserPasswordSchema,
   updateUserSchema,
 } from "@/schemas/admin-user.schema";
 import { recordAuditLog } from "@/services/admin-audit-log.service";
-import { createUser, getUserDetail, listUsers, updateUser } from "@/services/admin-user.service";
+import {
+  createUser,
+  deactivateUser,
+  getUserDetail,
+  listUsers,
+  reactivateUser,
+  resetUserPassword,
+  revokeUserSessions,
+  updateUser,
+} from "@/services/admin-user.service";
+import { deleteAllRefreshSessions } from "@/services/session.service";
 import { getAuditRequestContext } from "@/utils/audit-request";
+import { logger } from "@/utils/logger";
 import { parseOrThrow } from "@/utils/parse-or-throw";
 import { requireAdmin } from "@/utils/require-admin";
 
@@ -86,6 +98,127 @@ export async function updateUserHandler(req: Request, res: Response) {
 
     return updatedUser;
   });
+
+  res.status(200).json({ user });
+}
+
+/*
+ * 세션 무효화의 실효는 `sessionVersion` 증가가 담당한다 — 남은 Valkey 키만으로는
+ * refresh 갱신이 통과하지 않는다. 그래서 키 정리는 커밋 뒤에 하고, 실패해도 이미
+ * 커밋된 변경을 500으로 뒤집지 않는다. 어드민이 성공한 변경을 실패로 읽는 게 더 나쁘다.
+ */
+async function deleteRefreshSessionsQuietly(userId: string) {
+  try {
+    await deleteAllRefreshSessions(userId);
+  } catch (error) {
+    logger.warn({ err: error, userId }, "Failed to delete refresh sessions after an admin change");
+  }
+}
+
+export async function resetUserPasswordHandler(req: Request, res: Response) {
+  const admin = requireAdmin(req);
+  const { userId } = parseOrThrow(adminUserParamsSchema, req.params);
+  const { newPassword } = parseOrThrow(resetUserPasswordSchema, req.body);
+
+  const passwordHash = await hashPassword(newPassword);
+
+  const user = await db.transaction(async (tx) => {
+    const { user: updatedUser } = await resetUserPassword(tx, { userId, passwordHash });
+
+    await recordAuditLog(tx, {
+      adminId: admin.sub,
+      action: "user.password-reset",
+      targetType: "user",
+      targetId: updatedUser.id,
+      summary: `사용자 ${updatedUser.email} 비밀번호를 재설정했습니다`,
+      /* 평문도 해시도 남기지 않는다. 감사 로그는 열람 권한이 더 넓다. */
+      metadata: { passwordReset: true },
+      ...getAuditRequestContext(req),
+    });
+
+    return updatedUser;
+  });
+
+  await deleteRefreshSessionsQuietly(user.id);
+
+  res.status(200).json({ user });
+}
+
+export async function deactivateUserHandler(req: Request, res: Response) {
+  const admin = requireAdmin(req);
+  const { userId } = parseOrThrow(adminUserParamsSchema, req.params);
+
+  const user = await db.transaction(async (tx) => {
+    const { previousUser, user: updatedUser } = await deactivateUser(tx, userId);
+
+    await recordAuditLog(tx, {
+      adminId: admin.sub,
+      action: "user.deactivate",
+      targetType: "user",
+      targetId: updatedUser.id,
+      summary: `사용자 ${updatedUser.email} 계정을 정지했습니다`,
+      metadata: {
+        before: { deactivatedAt: previousUser.deactivatedAt?.toISOString() ?? null },
+        after: { deactivatedAt: updatedUser.deactivatedAt?.toISOString() ?? null },
+      },
+      ...getAuditRequestContext(req),
+    });
+
+    return updatedUser;
+  });
+
+  await deleteRefreshSessionsQuietly(user.id);
+
+  res.status(200).json({ user });
+}
+
+export async function reactivateUserHandler(req: Request, res: Response) {
+  const admin = requireAdmin(req);
+  const { userId } = parseOrThrow(adminUserParamsSchema, req.params);
+
+  const user = await db.transaction(async (tx) => {
+    const { previousUser, user: updatedUser } = await reactivateUser(tx, userId);
+
+    await recordAuditLog(tx, {
+      adminId: admin.sub,
+      action: "user.reactivate",
+      targetType: "user",
+      targetId: updatedUser.id,
+      summary: `사용자 ${updatedUser.email} 계정 정지를 해제했습니다`,
+      metadata: {
+        before: { deactivatedAt: previousUser.deactivatedAt?.toISOString() ?? null },
+        after: { deactivatedAt: updatedUser.deactivatedAt?.toISOString() ?? null },
+      },
+      ...getAuditRequestContext(req),
+    });
+
+    return updatedUser;
+  });
+
+  res.status(200).json({ user });
+}
+
+export async function revokeUserSessionsHandler(req: Request, res: Response) {
+  const admin = requireAdmin(req);
+  const { userId } = parseOrThrow(adminUserParamsSchema, req.params);
+
+  const user = await db.transaction(async (tx) => {
+    const { user: updatedUser } = await revokeUserSessions(tx, userId);
+
+    await recordAuditLog(tx, {
+      adminId: admin.sub,
+      action: "user.sessions-revoke",
+      targetType: "user",
+      targetId: updatedUser.id,
+      summary: `사용자 ${updatedUser.email} 세션을 모두 종료했습니다`,
+      metadata: { sessionsRevoked: true },
+      ...getAuditRequestContext(req),
+    });
+
+    return updatedUser;
+  });
+
+  await deleteRefreshSessionsQuietly(user.id);
 
   res.status(200).json({ user });
 }

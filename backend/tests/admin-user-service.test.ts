@@ -8,7 +8,16 @@ import {
   workspaceMemberships,
   workspaces,
 } from "@/db/schema";
-import { createUser, getUserDetail, listUsers, updateUser } from "@/services/admin-user.service";
+import {
+  createUser,
+  deactivateUser,
+  getUserDetail,
+  listUsers,
+  reactivateUser,
+  resetUserPassword,
+  revokeUserSessions,
+  updateUser,
+} from "@/services/admin-user.service";
 
 vi.mock("@/db/client", () => ({
   db: { select: vi.fn(), transaction: vi.fn() },
@@ -479,6 +488,152 @@ describe("updateUser", () => {
     const { tx } = mockUpdateUserTransaction({ updatedRows: [] });
 
     await expect(updateUser(tx as never, { userId, name: "바뀐 이름" })).rejects.toMatchObject({
+      status: 404,
+      code: "USER_NOT_FOUND",
+    });
+  });
+});
+
+function mockStateChangeTransaction({
+  existingRows = [
+    { id: userId, name: "Kim User", email: "user@example.com", deactivatedAt: null, createdAt },
+  ] as unknown[],
+  updatedRows = [
+    { id: userId, name: "Kim User", email: "user@example.com", deactivatedAt: null, createdAt },
+  ] as unknown[],
+} = {}) {
+  const existingQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockResolvedValue(existingRows),
+  };
+  const userUpdate = {
+    set: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    returning: vi.fn().mockResolvedValue(updatedRows),
+  };
+  const tx = {
+    select: vi.fn().mockReturnValue(existingQuery),
+    update: vi.fn().mockReturnValue(userUpdate),
+  };
+
+  return { tx, existingQuery, userUpdate };
+}
+
+const bumpSessionVersion = sql`${users.sessionVersion} + 1`;
+
+describe("resetUserPassword", () => {
+  it("해시를 저장하고 세션 버전을 올린다", async () => {
+    const { tx, userUpdate } = mockStateChangeTransaction();
+
+    await expect(
+      resetUserPassword(tx as never, { userId, passwordHash: "new-hash" }),
+    ).resolves.toMatchObject({ user: { id: userId } });
+
+    expect(userUpdate.set).toHaveBeenCalledWith({
+      passwordHash: "new-hash",
+      sessionVersion: bumpSessionVersion,
+    });
+    expect(userUpdate.where).toHaveBeenCalledWith(eq(users.id, userId));
+  });
+
+  it("없는 사용자는 404이며 update를 시작하지 않는다", async () => {
+    const { tx, userUpdate } = mockStateChangeTransaction({ existingRows: [] });
+
+    await expect(
+      resetUserPassword(tx as never, { userId, passwordHash: "new-hash" }),
+    ).rejects.toMatchObject({ status: 404, code: "USER_NOT_FOUND" });
+
+    expect(userUpdate.set).not.toHaveBeenCalled();
+  });
+});
+
+describe("deactivateUser", () => {
+  /*
+   * 이미 정지된 계정을 다시 정지해도 처음 정지 시각을 유지한다. 시각이 밀리면
+   * 감사 로그의 정지 시점과 사용자 레코드가 어긋난다.
+   */
+  it("정지 시각을 유지하면서 설정하고 세션 버전을 올린다", async () => {
+    const deactivatedAt = new Date("2026-09-30T00:00:00.000Z");
+    const { tx, userUpdate } = mockStateChangeTransaction({
+      updatedRows: [
+        { id: userId, name: "Kim User", email: "user@example.com", deactivatedAt, createdAt },
+      ],
+    });
+
+    await expect(deactivateUser(tx as never, userId)).resolves.toEqual({
+      previousUser: {
+        id: userId,
+        name: "Kim User",
+        email: "user@example.com",
+        deactivatedAt: null,
+        createdAt,
+      },
+      user: { id: userId, name: "Kim User", email: "user@example.com", deactivatedAt, createdAt },
+    });
+
+    expect(userUpdate.set).toHaveBeenCalledWith({
+      deactivatedAt: sql`coalesce(${users.deactivatedAt}, now())`,
+      sessionVersion: bumpSessionVersion,
+    });
+  });
+
+  it("없는 사용자는 404다", async () => {
+    const { tx } = mockStateChangeTransaction({ existingRows: [] });
+
+    await expect(deactivateUser(tx as never, userId)).rejects.toMatchObject({
+      status: 404,
+      code: "USER_NOT_FOUND",
+    });
+  });
+});
+
+describe("reactivateUser", () => {
+  /* 정지 해제는 세션을 끊지 않는다 — 정지 시점에 이미 모든 세션이 무효화됐다. */
+  it("정지 시각만 비우고 세션 버전은 건드리지 않는다", async () => {
+    const { tx, userUpdate } = mockStateChangeTransaction({
+      existingRows: [
+        {
+          id: userId,
+          name: "Kim User",
+          email: "user@example.com",
+          deactivatedAt: new Date("2026-09-30T00:00:00.000Z"),
+          createdAt,
+        },
+      ],
+    });
+
+    await expect(reactivateUser(tx as never, userId)).resolves.toMatchObject({
+      user: { deactivatedAt: null },
+    });
+
+    expect(userUpdate.set).toHaveBeenCalledWith({ deactivatedAt: null });
+  });
+
+  it("없는 사용자는 404다", async () => {
+    const { tx } = mockStateChangeTransaction({ existingRows: [] });
+
+    await expect(reactivateUser(tx as never, userId)).rejects.toMatchObject({
+      status: 404,
+      code: "USER_NOT_FOUND",
+    });
+  });
+});
+
+describe("revokeUserSessions", () => {
+  it("세션 버전만 올린다", async () => {
+    const { tx, userUpdate } = mockStateChangeTransaction();
+
+    await expect(revokeUserSessions(tx as never, userId)).resolves.toMatchObject({
+      user: { id: userId },
+    });
+
+    expect(userUpdate.set).toHaveBeenCalledWith({ sessionVersion: bumpSessionVersion });
+  });
+
+  it("없는 사용자는 404다", async () => {
+    const { tx } = mockStateChangeTransaction({ existingRows: [] });
+
+    await expect(revokeUserSessions(tx as never, userId)).rejects.toMatchObject({
       status: 404,
       code: "USER_NOT_FOUND",
     });
