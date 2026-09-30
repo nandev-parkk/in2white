@@ -1,7 +1,13 @@
-import { and, asc, count, desc, eq, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import { ERROR_MESSAGES } from "@/constants/messages";
 import { db } from "@/db/client";
-import { users, workspaceMemberships, workspaces } from "@/db/schema";
+import {
+  projects,
+  users,
+  whiteboardDocuments,
+  workspaceMemberships,
+  workspaces,
+} from "@/db/schema";
 import type { TransactionHandle } from "@/db/transaction";
 import type { UserStatusFilter } from "@/schemas/admin-user.schema";
 import { DEFAULT_WORKSPACE_NAME } from "@/services/user.service";
@@ -49,6 +55,32 @@ export interface ListUsersResult {
   pagination: PaginationMeta;
 }
 
+export interface AdminUserWorkspace {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  role: (typeof workspaceMemberships.$inferSelect)["role"];
+  joinedAt: Date;
+}
+
+export interface AdminUserDetail {
+  user: AdminUserSummary;
+  workspaces: AdminUserWorkspace[];
+  createdProjectCount: number;
+  createdWhiteboardDocumentCount: number;
+}
+
+export interface UpdateUserFieldsInput {
+  userId: string;
+  name?: string;
+  email?: string;
+}
+
+export interface UpdateUserResult {
+  previousUser: AdminUserSummary;
+  user: AdminUserSummary;
+}
+
 export interface CreateUserInput {
   email: string;
   name: string;
@@ -57,6 +89,10 @@ export interface CreateUserInput {
 
 function emailAlreadyExists() {
   return new HttpError(409, "EMAIL_ALREADY_EXISTS", ERROR_MESSAGES.EMAIL_ALREADY_EXISTS);
+}
+
+function userNotFound() {
+  return new HttpError(404, "USER_NOT_FOUND", ERROR_MESSAGES.USER_NOT_FOUND);
 }
 
 function buildStatusCondition(status: UserStatusFilter) {
@@ -145,4 +181,97 @@ export async function createUser(
     .values({ workspaceId: defaultWorkspace.id, userId: user.id, role: "owner" });
 
   return user;
+}
+
+export async function getUserDetail(userId: string): Promise<AdminUserDetail> {
+  const [user] = await db.select(USER_SUMMARY_COLUMNS).from(users).where(eq(users.id, userId));
+
+  if (!user) {
+    throw userNotFound();
+  }
+
+  const [workspaceRows, projectCountRows, documentCountRows] = await Promise.all([
+    db
+      .select({
+        id: workspaces.id,
+        name: workspaces.name,
+        isDefault: workspaces.isDefault,
+        role: workspaceMemberships.role,
+        joinedAt: workspaceMemberships.createdAt,
+      })
+      .from(workspaceMemberships)
+      .innerJoin(workspaces, eq(workspaceMemberships.workspaceId, workspaces.id))
+      .where(eq(workspaceMemberships.userId, userId))
+      // 기본 워크스페이스를 맨 위에 둔다 — 하드 삭제 판단의 기준이 되는 워크스페이스다.
+      .orderBy(desc(workspaces.isDefault), asc(workspaces.name), asc(workspaces.id)),
+    /*
+     * 소프트 삭제된 리소스는 제품에서 이미 보이지 않으므로 제외한다. 하드 삭제로 함께
+     * 사라지는 전체 범위는 `getUserDeletionImpact`가 따로 센다.
+     */
+    db
+      .select({ total: count() })
+      .from(projects)
+      .where(and(eq(projects.creatorId, userId), isNull(projects.deletedAt))),
+    db
+      .select({ total: count() })
+      .from(whiteboardDocuments)
+      .where(and(eq(whiteboardDocuments.creatorId, userId), isNull(whiteboardDocuments.deletedAt))),
+  ]);
+
+  return {
+    user,
+    workspaces: workspaceRows,
+    createdProjectCount: Number(projectCountRows[0]?.total ?? 0),
+    createdWhiteboardDocumentCount: Number(documentCountRows[0]?.total ?? 0),
+  };
+}
+
+export async function updateUser(
+  tx: TransactionHandle,
+  { userId, name, email }: UpdateUserFieldsInput,
+): Promise<UpdateUserResult> {
+  const [previousUser] = await tx
+    .select(USER_SUMMARY_COLUMNS)
+    .from(users)
+    .where(eq(users.id, userId));
+
+  if (!previousUser) {
+    throw userNotFound();
+  }
+
+  const normalizedEmail = email?.trim().toLowerCase();
+
+  if (normalizedEmail !== undefined) {
+    /*
+     * 자기 자신은 제외한다. 같은 이메일을 그대로 다시 보내는 요청까지 중복으로 막으면
+     * 이름과 이메일을 함께 보내는 화면이 저장할 수 없게 된다.
+     */
+    const [duplicateUser] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(and(sql`lower(${users.email}) = ${normalizedEmail}`, ne(users.id, userId)));
+
+    if (duplicateUser) {
+      throw emailAlreadyExists();
+    }
+  }
+
+  /*
+   * 이메일이 바뀌어도 세션은 유지한다. 제품 인증은 `sub`로 사용자를 찾고 이메일은
+   * 표시용이라, 여기서 세션을 끊으면 이름 수정과 같은 변경이 사용자를 로그아웃시킨다.
+   */
+  const [user] = await tx
+    .update(users)
+    .set({
+      ...(name !== undefined ? { name } : {}),
+      ...(normalizedEmail !== undefined ? { email: normalizedEmail } : {}),
+    })
+    .where(eq(users.id, userId))
+    .returning(USER_SUMMARY_COLUMNS);
+
+  if (!user) {
+    throw userNotFound();
+  }
+
+  return { previousUser, user };
 }

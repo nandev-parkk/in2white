@@ -6,7 +6,11 @@ import { db } from "@/db/client";
 import { signAdminAccessToken } from "@/lib/admin-jwt";
 import { signAccessToken } from "@/lib/jwt";
 import { comparePassword } from "@/lib/password";
-import { adminUserListQuerySchema, createUserSchema } from "@/schemas/admin-user.schema";
+import {
+  adminUserListQuerySchema,
+  createUserSchema,
+  updateUserSchema,
+} from "@/schemas/admin-user.schema";
 import { recordAuditLog } from "@/services/admin-audit-log.service";
 import * as adminUserService from "@/services/admin-user.service";
 import { HttpError } from "@/utils/http-error";
@@ -349,6 +353,235 @@ describe("POST /admin/users", () => {
 
     expect(response.status).toBe(409);
     expect(response.body.error.code).toBe("EMAIL_ALREADY_EXISTS");
+    expect(recordAuditLog).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateUserSchema", () => {
+  it("이름만 또는 이메일만 수정할 수 있다", () => {
+    expect(updateUserSchema.parse({ name: "  바뀐 이름  " })).toEqual({ name: "바뀐 이름" });
+    expect(updateUserSchema.parse({ email: " Changed@Example.COM " })).toEqual({
+      email: "changed@example.com",
+    });
+  });
+
+  it("수정할 필드가 없으면 거부한다", () => {
+    expect(() => updateUserSchema.parse({})).toThrow();
+  });
+
+  it("정의하지 않은 필드를 거부한다", () => {
+    expect(() => updateUserSchema.parse({ name: "바뀐 이름", deactivatedAt: null })).toThrow();
+  });
+});
+
+describe("GET /admin/users/:userId", () => {
+  const detail = {
+    user: {
+      id: userId,
+      name: "Kim User",
+      email: "user@example.com",
+      deactivatedAt: null,
+      createdAt,
+    },
+    workspaces: [
+      {
+        id: "550e8400-e29b-41d4-a716-446655440010",
+        name: "My Workspace",
+        isDefault: true,
+        role: "owner" as const,
+        joinedAt: createdAt,
+      },
+    ],
+    createdProjectCount: 3,
+    createdWhiteboardDocumentCount: 7,
+  };
+
+  it("소속 워크스페이스와 생성 리소스 수를 반환하고 감사 로그를 남기지 않는다", async () => {
+    vi.mocked(adminUserService.getUserDetail).mockResolvedValue(detail);
+
+    const response = await request(appUrl())
+      .get(`/admin/users/${userId}`)
+      .set("Authorization", await adminAuthHeader());
+
+    expect(response.status).toBe(200);
+    expect(adminUserService.getUserDetail).toHaveBeenCalledWith(userId);
+    expect(response.body).toEqual({
+      user: {
+        id: userId,
+        name: "Kim User",
+        email: "user@example.com",
+        deactivatedAt: null,
+        createdAt: createdAt.toISOString(),
+      },
+      workspaces: [
+        {
+          id: "550e8400-e29b-41d4-a716-446655440010",
+          name: "My Workspace",
+          isDefault: true,
+          role: "owner",
+          joinedAt: createdAt.toISOString(),
+        },
+      ],
+      createdProjectCount: 3,
+      createdWhiteboardDocumentCount: 7,
+    });
+    expect(recordAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("인증이 없으면 401이며 서비스를 호출하지 않는다", async () => {
+    const response = await request(appUrl()).get(`/admin/users/${userId}`);
+
+    expect(response.status).toBe(401);
+    expect(adminUserService.getUserDetail).not.toHaveBeenCalled();
+  });
+
+  it("제품 Access Token은 401이며 서비스를 호출하지 않는다", async () => {
+    const response = await request(appUrl())
+      .get(`/admin/users/${userId}`)
+      .set("Authorization", await productAuthHeader());
+
+    expect(response.status).toBe(401);
+    expect(adminUserService.getUserDetail).not.toHaveBeenCalled();
+  });
+
+  it("UUID가 아닌 userId는 400이며 서비스를 호출하지 않는다", async () => {
+    const response = await request(appUrl())
+      .get("/admin/users/not-a-uuid")
+      .set("Authorization", await adminAuthHeader());
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(adminUserService.getUserDetail).not.toHaveBeenCalled();
+  });
+
+  it("없는 사용자는 404를 반환한다", async () => {
+    vi.mocked(adminUserService.getUserDetail).mockRejectedValue(
+      new HttpError(404, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다"),
+    );
+
+    const response = await request(appUrl())
+      .get(`/admin/users/${userId}`)
+      .set("Authorization", await adminAuthHeader());
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("USER_NOT_FOUND");
+  });
+});
+
+describe("PATCH /admin/users/:userId", () => {
+  const previousUser = {
+    id: userId,
+    name: "Kim User",
+    email: "user@example.com",
+    deactivatedAt: null,
+    createdAt,
+  };
+  const updatedUser = { ...previousUser, name: "바뀐 이름", email: "changed@example.com" };
+
+  it("이름·이메일을 수정하고 변경 전후를 같은 트랜잭션의 감사 로그에 남긴다", async () => {
+    vi.mocked(adminUserService.updateUser).mockResolvedValue({
+      previousUser,
+      user: updatedUser,
+    });
+
+    const response = await request(appUrl())
+      .patch(`/admin/users/${userId}`)
+      .set("Authorization", await adminAuthHeader())
+      .send({ name: "  바뀐 이름  ", email: "Changed@Example.com" });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      user: {
+        id: userId,
+        name: "바뀐 이름",
+        email: "changed@example.com",
+        deactivatedAt: null,
+        createdAt: createdAt.toISOString(),
+      },
+    });
+    expect(adminUserService.updateUser).toHaveBeenCalledWith(transactionHandle, {
+      userId,
+      name: "바뀐 이름",
+      email: "changed@example.com",
+    });
+    expect(recordAuditLog).toHaveBeenCalledOnce();
+    expect(recordAuditLog).toHaveBeenCalledWith(
+      transactionHandle,
+      expect.objectContaining({
+        adminId: "admin-1",
+        action: "user.update",
+        targetType: "user",
+        targetId: userId,
+        metadata: {
+          before: { name: "Kim User", email: "user@example.com" },
+          after: { name: "바뀐 이름", email: "changed@example.com" },
+        },
+      }),
+    );
+  });
+
+  it("인증이 없으면 401이며 트랜잭션을 열지 않는다", async () => {
+    const response = await request(appUrl())
+      .patch(`/admin/users/${userId}`)
+      .send({ name: "바뀐 이름" });
+
+    expect(response.status).toBe(401);
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("제품 Access Token은 401이며 트랜잭션을 열지 않는다", async () => {
+    const response = await request(appUrl())
+      .patch(`/admin/users/${userId}`)
+      .set("Authorization", await productAuthHeader())
+      .send({ name: "바뀐 이름" });
+
+    expect(response.status).toBe(401);
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { label: "빈 본문", path: userId, payload: {} },
+    { label: "UUID가 아닌 userId", path: "not-a-uuid", payload: { name: "바뀐 이름" } },
+    { label: "이메일 형식", path: userId, payload: { email: "not-an-email" } },
+    { label: "정의하지 않은 필드", path: userId, payload: { sessionVersion: 3 } },
+  ])("$label 요청은 400이며 트랜잭션을 열지 않는다", async ({ path, payload }) => {
+    const response = await request(appUrl())
+      .patch(`/admin/users/${path}`)
+      .set("Authorization", await adminAuthHeader())
+      .send(payload);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("VALIDATION_ERROR");
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("이메일이 다른 사용자와 겹치면 409이며 감사 로그를 남기지 않는다", async () => {
+    vi.mocked(adminUserService.updateUser).mockRejectedValue(
+      new HttpError(409, "EMAIL_ALREADY_EXISTS", "이미 사용 중인 이메일입니다"),
+    );
+
+    const response = await request(appUrl())
+      .patch(`/admin/users/${userId}`)
+      .set("Authorization", await adminAuthHeader())
+      .send({ email: "taken@example.com" });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe("EMAIL_ALREADY_EXISTS");
+    expect(recordAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("없는 사용자는 404이며 감사 로그를 남기지 않는다", async () => {
+    vi.mocked(adminUserService.updateUser).mockRejectedValue(
+      new HttpError(404, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다"),
+    );
+
+    const response = await request(appUrl())
+      .patch(`/admin/users/${userId}`)
+      .set("Authorization", await adminAuthHeader())
+      .send({ name: "바뀐 이름" });
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("USER_NOT_FOUND");
     expect(recordAuditLog).not.toHaveBeenCalled();
   });
 });

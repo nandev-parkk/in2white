@@ -1,8 +1,14 @@
-import { and, asc, count, desc, eq, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db/client";
-import { users, workspaceMemberships, workspaces } from "@/db/schema";
-import { createUser, listUsers } from "@/services/admin-user.service";
+import {
+  projects,
+  users,
+  whiteboardDocuments,
+  workspaceMemberships,
+  workspaces,
+} from "@/db/schema";
+import { createUser, getUserDetail, listUsers, updateUser } from "@/services/admin-user.service";
 
 vi.mock("@/db/client", () => ({
   db: { select: vi.fn(), transaction: vi.fn() },
@@ -259,5 +265,222 @@ describe("createUser", () => {
       "Default workspace insert returned no row",
     );
     expect(membershipInsert.values).not.toHaveBeenCalled();
+  });
+});
+
+function mockUserDetailQueries({
+  userRows = [
+    { id: userId, name: "Kim User", email: "user@example.com", deactivatedAt: null, createdAt },
+  ] as unknown[],
+  workspaceRows = [] as unknown[],
+  projectCountRows = [{ total: 3 }] as unknown[],
+  documentCountRows = [{ total: 7 }] as unknown[],
+} = {}) {
+  const userQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockResolvedValue(userRows),
+  };
+  const workspaceQuery = {
+    from: vi.fn().mockReturnThis(),
+    innerJoin: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockResolvedValue(workspaceRows),
+  };
+  const projectCountQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockResolvedValue(projectCountRows),
+  };
+  const documentCountQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockResolvedValue(documentCountRows),
+  };
+
+  vi.mocked(db.select)
+    .mockReturnValueOnce(userQuery as never)
+    .mockReturnValueOnce(workspaceQuery as never)
+    .mockReturnValueOnce(projectCountQuery as never)
+    .mockReturnValueOnce(documentCountQuery as never);
+
+  return { userQuery, workspaceQuery, projectCountQuery, documentCountQuery };
+}
+
+function mockUpdateUserTransaction({
+  existingRows = [
+    { id: userId, name: "Kim User", email: "user@example.com", deactivatedAt: null, createdAt },
+  ] as unknown[],
+  duplicateRows = [] as unknown[],
+  updatedRows = [
+    { id: userId, name: "바뀐 이름", email: "changed@example.com", deactivatedAt: null, createdAt },
+  ] as unknown[],
+} = {}) {
+  const existingQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockResolvedValue(existingRows),
+  };
+  const duplicateQuery = {
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockResolvedValue(duplicateRows),
+  };
+  const userUpdate = {
+    set: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    returning: vi.fn().mockResolvedValue(updatedRows),
+  };
+  const tx = {
+    select: vi.fn().mockReturnValueOnce(existingQuery).mockReturnValueOnce(duplicateQuery),
+    update: vi.fn().mockReturnValue(userUpdate),
+  };
+
+  return { tx, existingQuery, duplicateQuery, userUpdate };
+}
+
+describe("getUserDetail", () => {
+  it("소속 워크스페이스와 생성 리소스 수를 함께 반환한다", async () => {
+    const joinedAt = new Date("2026-09-21T00:00:00.000Z");
+    mockUserDetailQueries({
+      workspaceRows: [
+        { id: workspaceId, name: "My Workspace", isDefault: true, role: "owner", joinedAt },
+      ],
+      projectCountRows: [{ total: "3" }],
+      documentCountRows: [{ total: "7" }],
+    });
+
+    await expect(getUserDetail(userId)).resolves.toEqual({
+      user: {
+        id: userId,
+        name: "Kim User",
+        email: "user@example.com",
+        deactivatedAt: null,
+        createdAt,
+      },
+      workspaces: [
+        { id: workspaceId, name: "My Workspace", isDefault: true, role: "owner", joinedAt },
+      ],
+      createdProjectCount: 3,
+      createdWhiteboardDocumentCount: 7,
+    });
+  });
+
+  /* 소프트 삭제된 리소스는 제품에서 이미 보이지 않는다. 하드 삭제 영향 범위는 별도 엔드포인트가 센다. */
+  it("생성 리소스는 삭제되지 않은 것만 센다", async () => {
+    const { projectCountQuery, documentCountQuery, workspaceQuery } = mockUserDetailQueries();
+
+    await getUserDetail(userId);
+
+    expect(projectCountQuery.from).toHaveBeenCalledWith(projects);
+    expect(projectCountQuery.where).toHaveBeenCalledWith(
+      and(eq(projects.creatorId, userId), isNull(projects.deletedAt)),
+    );
+    expect(documentCountQuery.from).toHaveBeenCalledWith(whiteboardDocuments);
+    expect(documentCountQuery.where).toHaveBeenCalledWith(
+      and(eq(whiteboardDocuments.creatorId, userId), isNull(whiteboardDocuments.deletedAt)),
+    );
+    expect(workspaceQuery.innerJoin).toHaveBeenCalledWith(
+      workspaces,
+      eq(workspaceMemberships.workspaceId, workspaces.id),
+    );
+    expect(workspaceQuery.where).toHaveBeenCalledWith(eq(workspaceMemberships.userId, userId));
+    expect(workspaceQuery.orderBy).toHaveBeenCalledWith(
+      desc(workspaces.isDefault),
+      asc(workspaces.name),
+      asc(workspaces.id),
+    );
+  });
+
+  it("없는 사용자는 404이며 뒤따르는 집계를 시작하지 않는다", async () => {
+    const { workspaceQuery, projectCountQuery } = mockUserDetailQueries({ userRows: [] });
+
+    await expect(getUserDetail(userId)).rejects.toMatchObject({
+      status: 404,
+      code: "USER_NOT_FOUND",
+      message: "사용자를 찾을 수 없습니다",
+    });
+
+    expect(workspaceQuery.where).not.toHaveBeenCalled();
+    expect(projectCountQuery.where).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateUser", () => {
+  it("이름만 바꿀 때는 이메일 중복 검사를 하지 않는다", async () => {
+    const { tx, duplicateQuery, userUpdate } = mockUpdateUserTransaction({
+      updatedRows: [
+        {
+          id: userId,
+          name: "바뀐 이름",
+          email: "user@example.com",
+          deactivatedAt: null,
+          createdAt,
+        },
+      ],
+    });
+
+    await expect(updateUser(tx as never, { userId, name: "바뀐 이름" })).resolves.toEqual({
+      previousUser: {
+        id: userId,
+        name: "Kim User",
+        email: "user@example.com",
+        deactivatedAt: null,
+        createdAt,
+      },
+      user: {
+        id: userId,
+        name: "바뀐 이름",
+        email: "user@example.com",
+        deactivatedAt: null,
+        createdAt,
+      },
+    });
+
+    expect(duplicateQuery.where).not.toHaveBeenCalled();
+    expect(userUpdate.set).toHaveBeenCalledWith({ name: "바뀐 이름" });
+    expect(userUpdate.where).toHaveBeenCalledWith(eq(users.id, userId));
+  });
+
+  it("이메일을 정규화해 저장한다", async () => {
+    const { tx, userUpdate } = mockUpdateUserTransaction();
+
+    await updateUser(tx as never, { userId, email: " Changed@Example.COM " });
+
+    expect(userUpdate.set).toHaveBeenCalledWith({ email: "changed@example.com" });
+  });
+
+  /* 자기 자신의 이메일을 그대로 다시 저장하는 요청을 중복으로 막으면 이름만 바꾸는 흐름이 깨진다. */
+  it("자신을 제외한 사용자와 이메일이 겹칠 때만 409로 막는다", async () => {
+    const { tx, duplicateQuery, userUpdate } = mockUpdateUserTransaction({
+      duplicateRows: [{ id: "550e8400-e29b-41d4-a716-446655440099" }],
+    });
+
+    await expect(
+      updateUser(tx as never, { userId, email: "changed@example.com" }),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "EMAIL_ALREADY_EXISTS",
+    });
+
+    expect(duplicateQuery.where).toHaveBeenCalledWith(
+      and(sql`lower(${users.email}) = ${"changed@example.com"}`, ne(users.id, userId)),
+    );
+    expect(userUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it("없는 사용자는 404이며 update를 시작하지 않는다", async () => {
+    const { tx, userUpdate } = mockUpdateUserTransaction({ existingRows: [] });
+
+    await expect(updateUser(tx as never, { userId, name: "바뀐 이름" })).rejects.toMatchObject({
+      status: 404,
+      code: "USER_NOT_FOUND",
+    });
+
+    expect(userUpdate.set).not.toHaveBeenCalled();
+  });
+
+  it("update가 행을 돌려주지 않으면 404로 변환한다", async () => {
+    const { tx } = mockUpdateUserTransaction({ updatedRows: [] });
+
+    await expect(updateUser(tx as never, { userId, name: "바뀐 이름" })).rejects.toMatchObject({
+      status: 404,
+      code: "USER_NOT_FOUND",
+    });
   });
 });

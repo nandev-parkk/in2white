@@ -1,5 +1,10 @@
 import { Router } from "express";
-import { createUserHandler, listUsersHandler } from "@/controllers/admin-user.controller";
+import {
+  createUserHandler,
+  getUserDetailHandler,
+  listUsersHandler,
+  updateUserHandler,
+} from "@/controllers/admin-user.controller";
 import { authenticateAdmin } from "@/middlewares/admin-auth.middleware";
 import { asyncHandler } from "@/utils/async-handler";
 
@@ -10,3 +15,5 @@ adminUserRouter.use(authenticateAdmin);
 
 adminUserRouter.get("/", asyncHandler(listUsersHandler));
 adminUserRouter.post("/", asyncHandler(createUserHandler));
+adminUserRouter.get("/:userId", asyncHandler(getUserDetailHandler));
+adminUserRouter.patch("/:userId", asyncHandler(updateUserHandler));

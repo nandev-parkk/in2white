@@ -36,5 +36,16 @@ export const createUserSchema = z
   })
   .strict();
 
+export const updateUserSchema = z
+  .object({
+    name: accountNameSchema.optional(),
+    email: userEmailSchema.optional(),
+  })
+  .strict()
+  .refine(({ name, email }) => name !== undefined || email !== undefined, {
+    message: ERROR_MESSAGES.USER_UPDATE_FIELDS_REQUIRED,
+  });
+
 export type UserStatusFilter = z.infer<typeof userStatusFilterSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
