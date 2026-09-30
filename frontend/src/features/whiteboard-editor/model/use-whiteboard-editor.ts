@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { v4 as uuidv4 } from 'uuid'
 import { io, type Socket } from 'socket.io-client'
 import { refreshAccessToken } from '@/features/auth/model/auth-session'
 import { env } from '@/shared/config/env'
@@ -149,7 +150,7 @@ export function useWhiteboardEditor({
         flight = {
           ...nextBatch(diffScene(confirmed, desired)),
           documentId,
-          clientUpdateId: crypto.randomUUID(),
+          clientUpdateId: uuidv4(),
         }
       } catch (cause) {
         fail(
