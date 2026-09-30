@@ -1,0 +1,4 @@
+# 워크스페이스 각 패키지에서 lint-staged를 실행한다.
+# lint-staged는 cwd 하위의 staged 파일만 대상으로 하므로, 변경이 없는 패키지는 즉시 통과한다.
+pnpm --filter frontend exec lint-staged
+pnpm --filter backend exec lint-staged

@@ -14,8 +14,7 @@
     "format:check": "prettier --check .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "prepare": "cd .. && git config core.hooksPath frontend/.husky || true"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.1",
