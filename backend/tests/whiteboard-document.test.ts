@@ -2,6 +2,7 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { and, asc, count, desc, eq, ilike, isNull } from "drizzle-orm";
 import { createApp } from "@/app";
+import { useTestServer } from "./test-server";
 import { db } from "@/db/client";
 import {
   projects,
@@ -11,6 +12,17 @@ import {
   workspaceMemberships,
 } from "@/db/schema";
 import { signAccessToken } from "@/lib/jwt";
+
+let onDocumentDeleted: ((documentId: string) => void) | undefined;
+const appUrl = useTestServer(() =>
+  createApp({ onWhiteboardDocumentDeleted: (documentId) => onDocumentDeleted?.(documentId) }),
+);
+
+/** 삭제 훅을 검증하는 테스트만 공용 서버가 호출할 훅을 바꾼다. */
+function appUrlWithDeletionHook(hook: (documentId: string) => void) {
+  onDocumentDeleted = hook;
+  return appUrl();
+}
 
 vi.mock("@/db/client", () => ({
   db: {
@@ -46,6 +58,7 @@ const updatedWhiteboardDocument = {
 beforeEach(() => {
   vi.mocked(db.transaction).mockReset();
   vi.mocked(db.select).mockReset();
+  onDocumentDeleted = undefined;
 });
 
 async function createAccessToken(sub = "user-1") {
@@ -53,6 +66,7 @@ async function createAccessToken(sub = "user-1") {
     sub,
     email: sub + "@example.com",
     sid: "session-1",
+    ver: 0,
   });
 }
 
@@ -364,7 +378,7 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
     const { membershipQuery, projectQuery, documentInsert, contentInsert, transaction } =
       mockWhiteboardDocumentCreateTransaction();
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "  아이디어 스케치  " });
@@ -428,7 +442,7 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
         membershipRows: [{ id: `membership-${role}`, role }],
       });
 
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .post(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
         .set("Authorization", `Bearer ${await createAccessToken()}`)
         .send({ name: "아이디어 스케치" });
@@ -441,7 +455,7 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
     const { documentInsert } = mockWhiteboardDocumentCreateTransaction();
     const name = `  ${"a".repeat(50)}  `;
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name });
@@ -455,7 +469,7 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
   });
 
   it("returns 401 when the request is not authenticated", async () => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .send({ name: "아이디어 스케치" });
 
@@ -509,7 +523,7 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
       body: { name: "아이디어 스케치" },
     },
   ])("returns 400 when $label", async ({ pathWorkspaceId, pathProjectId, body }) => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${pathWorkspaceId}/projects/${pathProjectId}/whiteboard-documents`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send(body);
@@ -524,7 +538,7 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
       membershipRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "아이디어 스케치" });
@@ -542,7 +556,7 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
   ])("returns 404 and does not insert when $label", async ({ projectRows }) => {
     const { documentInsert } = mockWhiteboardDocumentCreateTransaction({ projectRows });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "아이디어 스케치" });
@@ -557,7 +571,7 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
       membershipError: new Error("membership query failed"),
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "아이디어 스케치" });
@@ -569,7 +583,7 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
   it("returns 500 when the project query fails", async () => {
     mockWhiteboardDocumentCreateTransaction({ projectError: new Error("project query failed") });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "아이디어 스케치" });
@@ -581,7 +595,7 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
   it("returns 500 when the whiteboard document insert fails", async () => {
     mockWhiteboardDocumentCreateTransaction({ insertError: new Error("document insert failed") });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "아이디어 스케치" });
@@ -593,7 +607,7 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
   it("returns 500 when the whiteboard document insert returns no row", async () => {
     mockWhiteboardDocumentCreateTransaction({ documentRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "아이디어 스케치" });
@@ -607,7 +621,7 @@ describe("POST /workspaces/:workspaceId/projects/:projectId/whiteboard-documents
       contentInsertError: new Error("content insert failed"),
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "아이디어 스케치" });
@@ -639,7 +653,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
         ],
       });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .query({ search: "  Brand  ", page: "2", limit: "2" })
       .set("Authorization", `Bearer ${await createAccessToken()}`);
@@ -720,7 +734,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
     async (role) => {
       mockWhiteboardDocumentListQueries({ membershipRows: [{ id: `membership-${role}`, role }] });
 
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .get(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
         .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -734,7 +748,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
       documentRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -760,7 +774,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
       documentRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .query({ search: "100%_done\\now" })
       .set("Authorization", `Bearer ${await createAccessToken()}`);
@@ -788,7 +802,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
       documentRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .query({ page: "4", limit: "2" })
       .set("Authorization", `Bearer ${await createAccessToken()}`);
@@ -803,7 +817,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
   });
 
   it("인증이 없으면 401을 반환하고 DB를 조회하지 않는다", async () => {
-    const response = await request(createApp()).get(
+    const response = await request(appUrl()).get(
       `/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`,
     );
 
@@ -825,7 +839,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
   ])(
     "목록 입력이 잘못되면 400을 반환한다: $query",
     async ({ pathWorkspaceId, pathProjectId, query }) => {
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .get(`/workspaces/${pathWorkspaceId}/projects/${pathProjectId}/whiteboard-documents`)
         .query(query)
         .set("Authorization", `Bearer ${await createAccessToken()}`);
@@ -841,7 +855,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
       membershipRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -861,7 +875,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
     async ({ projectRows }) => {
       const { countQuery, documentQuery } = mockWhiteboardDocumentListQueries({ projectRows });
 
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .get(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
         .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -881,7 +895,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents"
     const { membershipQuery, projectQuery, countQuery, documentQuery } =
       mockWhiteboardDocumentListQueries(options);
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/projects/${projectId}/whiteboard-documents`)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -915,7 +929,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents/
   it("상세 조회 성공 시 canvasContent·revision·lastSavedAt을 반환한다", async () => {
     const { documentQuery } = mockWhiteboardDocumentDetailQueries();
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(detailPath)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -964,7 +978,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents/
       ],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(detailPath)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -974,7 +988,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents/
   });
 
   it("인증이 없으면 401을 반환하고 DB를 조회하지 않는다", async () => {
-    const response = await request(createApp()).get(detailPath);
+    const response = await request(appUrl()).get(detailPath);
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe("UNAUTHORIZED");
@@ -1003,7 +1017,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents/
   ])(
     "$label가 UUID가 아니면 400 VALIDATION_ERROR를 반환하고 DB를 조회하지 않는다",
     async ({ pathWorkspaceId, pathProjectId, pathDocumentId }) => {
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .get(
           `/workspaces/${pathWorkspaceId}/projects/${pathProjectId}/whiteboard-documents/${pathDocumentId}`,
         )
@@ -1020,7 +1034,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents/
       membershipRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(detailPath)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -1039,7 +1053,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents/
     async ({ projectRows }) => {
       const { documentQuery } = mockWhiteboardDocumentDetailQueries({ projectRows });
 
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .get(detailPath)
         .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -1056,7 +1070,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents/
   ])("$label면 404 WHITEBOARD_DOCUMENT_NOT_FOUND를 반환한다", async ({ documentRows }) => {
     const { documentQuery } = mockWhiteboardDocumentDetailQueries({ documentRows });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(detailPath)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -1075,7 +1089,7 @@ describe("GET /workspaces/:workspaceId/projects/:projectId/whiteboard-documents/
       const { membershipQuery, projectQuery, documentQuery } =
         mockWhiteboardDocumentDetailQueries(options);
 
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .get(detailPath)
         .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -1108,7 +1122,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
     const { membershipQuery, projectQuery, documentQuery, documentUpdate, transaction } =
       mockWhiteboardDocumentUpdateTransaction();
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(patchPath)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "  변경된 문서 이름  " });
@@ -1174,7 +1188,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
       documentRows: [{ id: createdWhiteboardDocument.id, creatorId: "user-1" }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(patchPath)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "변경된 문서 이름" });
@@ -1190,7 +1204,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
     const { documentUpdate } = mockWhiteboardDocumentUpdateTransaction();
     const name = `  ${"a".repeat(50)}  `;
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(patchPath)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name });
@@ -1203,7 +1217,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
   });
 
   it("인증이 없으면 401을 반환하고 transaction을 호출하지 않는다", async () => {
-    const response = await request(createApp()).patch(patchPath).send({ name: "변경된 문서 이름" });
+    const response = await request(appUrl()).patch(patchPath).send({ name: "변경된 문서 이름" });
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe("UNAUTHORIZED");
@@ -1263,7 +1277,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
   ])(
     "$label이면 400을 반환하고 transaction을 호출하지 않는다",
     async ({ pathWorkspaceId, pathProjectId, pathDocumentId, body }) => {
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .patch(
           `/workspaces/${pathWorkspaceId}/projects/${pathProjectId}/whiteboard-documents/${pathDocumentId}`,
         )
@@ -1283,7 +1297,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
       },
     );
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(patchPath)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "변경된 문서 이름" });
@@ -1306,7 +1320,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
         projectRows,
       });
 
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .patch(patchPath)
         .set("Authorization", `Bearer ${await createAccessToken()}`)
         .send({ name: "변경된 문서 이름" });
@@ -1323,7 +1337,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
       documentRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(patchPath)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "변경된 문서 이름" });
@@ -1340,7 +1354,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
       documentRows: [{ id: createdWhiteboardDocument.id, creatorId: "user-2" }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(patchPath)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "변경된 문서 이름" });
@@ -1357,7 +1371,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
       },
     );
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(patchPath)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "변경된 문서 이름" });
@@ -1374,7 +1388,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
       projectError: new Error("project query failed"),
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(patchPath)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "변경된 문서 이름" });
@@ -1390,7 +1404,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
       documentError: new Error("document query failed"),
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(patchPath)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "변경된 문서 이름" });
@@ -1405,7 +1419,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId/whiteboard-document
       updateError: new Error("document update failed"),
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(patchPath)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "변경된 문서 이름" });
@@ -1427,7 +1441,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documen
       mockWhiteboardDocumentDeleteTransaction();
     const onWhiteboardDocumentDeleted = vi.fn();
 
-    const response = await request(createApp({ onWhiteboardDocumentDeleted }))
+    const response = await request(appUrlWithDeletionHook(onWhiteboardDocumentDeleted))
       .delete(deletePath)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -1468,7 +1482,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documen
       documentRows: [{ id: createdWhiteboardDocument.id, creatorId: "user-1" }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete(deletePath)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -1482,7 +1496,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documen
       throw new Error("socket cleanup failed");
     });
 
-    const response = await request(createApp({ onWhiteboardDocumentDeleted }))
+    const response = await request(appUrlWithDeletionHook(onWhiteboardDocumentDeleted))
       .delete(deletePath)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -1494,7 +1508,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documen
     mockWhiteboardDocumentDeleteTransaction({ deleteError: new Error("delete failed") });
     const onWhiteboardDocumentDeleted = vi.fn();
 
-    const response = await request(createApp({ onWhiteboardDocumentDeleted }))
+    const response = await request(appUrlWithDeletionHook(onWhiteboardDocumentDeleted))
       .delete(deletePath)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -1503,7 +1517,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documen
   });
 
   it("인증이 없으면 401을 반환하고 transaction을 호출하지 않는다", async () => {
-    const response = await request(createApp()).delete(deletePath);
+    const response = await request(appUrl()).delete(deletePath);
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe("UNAUTHORIZED");
@@ -1532,7 +1546,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documen
   ])(
     "$label - UUID가 아니면 400을 반환하고 transaction을 호출하지 않는다",
     async ({ pathWorkspaceId, pathProjectId, pathDocumentId }) => {
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .delete(
           `/workspaces/${pathWorkspaceId}/projects/${pathProjectId}/whiteboard-documents/${pathDocumentId}`,
         )
@@ -1550,7 +1564,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documen
         membershipRows: [],
       });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete(deletePath)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -1567,7 +1581,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documen
       projectRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete(deletePath)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -1586,7 +1600,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documen
           documentRows: [],
         });
 
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .delete(deletePath)
         .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -1610,7 +1624,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documen
       documentRows: [{ id: createdWhiteboardDocument.id, creatorId: "user-2" }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete(deletePath)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -1628,7 +1642,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documen
   ])("$label query가 실패하면 500을 반환한다", async ({ options }) => {
     mockWhiteboardDocumentDeleteTransaction(options);
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete(deletePath)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -1641,7 +1655,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId/whiteboard-documen
       deletedDocumentRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete(deletePath)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 

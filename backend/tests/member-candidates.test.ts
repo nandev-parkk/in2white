@@ -2,10 +2,13 @@ import { and, asc, eq, ilike, or, sql } from "drizzle-orm";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "@/app";
+import { useTestServer } from "./test-server";
 import { db } from "@/db/client";
 import { users, workspaceMemberships, workspaces } from "@/db/schema";
 import { signAccessToken } from "@/lib/jwt";
 import { listMemberCandidates } from "@/services/member.service";
+
+const appUrl = useTestServer(() => createApp());
 
 vi.mock("@/db/client", () => ({ db: { select: vi.fn() } }));
 const workspaceId = "550e8400-e29b-41d4-a716-446655440000";
@@ -59,8 +62,9 @@ async function get(query = {}, id = workspaceId) {
     sub: requesterId,
     email: "owner@example.com",
     sid: "session-1",
+    ver: 0,
   });
-  return request(createApp())
+  return request(appUrl())
     .get(`/workspaces/${id}/member-candidates`)
     .query(query)
     .set("Authorization", `Bearer ${token}`);
@@ -144,7 +148,7 @@ describe("GET /workspaces/:workspaceId/member-candidates", () => {
   it.each([undefined, "Bearer invalid-token"])(
     "미인증 요청을 401로 차단한다: %s",
     async (authorization) => {
-      const pending = request(createApp()).get(`/workspaces/${workspaceId}/member-candidates`);
+      const pending = request(appUrl()).get(`/workspaces/${workspaceId}/member-candidates`);
       if (authorization) pending.set("Authorization", authorization);
       const response = await pending;
       expect(response.status).toBe(401);

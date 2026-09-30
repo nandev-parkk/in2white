@@ -2,10 +2,13 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { and, asc, count, desc, eq, ilike, isNull } from "drizzle-orm";
 import { createApp } from "@/app";
+import { useTestServer } from "./test-server";
 import { db } from "@/db/client";
 import { projects, users, workspaceMemberships } from "@/db/schema";
 import { signAccessToken } from "@/lib/jwt";
 import { updateProject } from "@/services/project.service";
+
+const appUrl = useTestServer(() => createApp());
 
 vi.mock("@/db/client", () => ({
   db: {
@@ -36,6 +39,7 @@ async function createAccessToken(sub = "user-1") {
     sub,
     email: sub + "@example.com",
     sid: "session-1",
+    ver: 0,
   });
 }
 
@@ -222,7 +226,7 @@ describe("POST /workspaces/:workspaceId/projects", () => {
   it("creates a project for a workspace member and returns 201", async () => {
     const { membershipQuery, projectInsert, transaction } = mockProjectCreateTransaction();
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({
@@ -261,7 +265,7 @@ describe("POST /workspaces/:workspaceId/projects", () => {
         membershipRows: [{ id: `membership-${role}`, role }],
       });
 
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .post(`/workspaces/${workspaceId}/projects`)
         .set("Authorization", `Bearer ${await createAccessToken()}`)
         .send({ name: "Brand Campaign" });
@@ -281,7 +285,7 @@ describe("POST /workspaces/:workspaceId/projects", () => {
           ? { name: "Brand Campaign" }
           : { name: "Brand Campaign", description };
 
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .post(`/workspaces/${workspaceId}/projects`)
         .set("Authorization", `Bearer ${await createAccessToken()}`)
         .send(body);
@@ -301,7 +305,7 @@ describe("POST /workspaces/:workspaceId/projects", () => {
     const name = `  ${"a".repeat(50)}  `;
     const description = `  ${"b".repeat(200)}  `;
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name, description });
@@ -318,7 +322,7 @@ describe("POST /workspaces/:workspaceId/projects", () => {
   it("allows duplicate project names in the same workspace", async () => {
     const { projectInsert } = mockProjectCreateTransaction();
     const projectRequest = async () =>
-      request(createApp())
+      request(appUrl())
         .post(`/workspaces/${workspaceId}/projects`)
         .set("Authorization", `Bearer ${await createAccessToken()}`)
         .send({ name: "Brand Campaign" });
@@ -344,7 +348,7 @@ describe("POST /workspaces/:workspaceId/projects", () => {
   });
 
   it("returns 401 when the request is not authenticated", async () => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects`)
       .send({ name: "Brand Campaign" });
 
@@ -377,7 +381,7 @@ describe("POST /workspaces/:workspaceId/projects", () => {
       body: { name: "Brand Campaign" },
     },
   ])("returns 400 when $label", async ({ pathWorkspaceId, body }) => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${pathWorkspaceId}/projects`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send(body);
@@ -390,7 +394,7 @@ describe("POST /workspaces/:workspaceId/projects", () => {
   it("returns 404 and does not insert when the user is not a workspace member", async () => {
     const { projectInsert } = mockProjectCreateTransaction({ membershipRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Brand Campaign" });
@@ -403,7 +407,7 @@ describe("POST /workspaces/:workspaceId/projects", () => {
   it("returns 500 when the membership query fails", async () => {
     mockProjectCreateTransaction({ membershipError: new Error("membership query failed") });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Brand Campaign" });
@@ -415,7 +419,7 @@ describe("POST /workspaces/:workspaceId/projects", () => {
   it("returns 500 when the project insert fails", async () => {
     mockProjectCreateTransaction({ insertError: new Error("project insert failed") });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post(`/workspaces/${workspaceId}/projects`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Brand Campaign" });
@@ -445,7 +449,7 @@ describe("GET /workspaces/:workspaceId/projects", () => {
       ],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/projects`)
       .query({ search: "  Brand  ", page: "2", limit: "2" })
       .set("Authorization", `Bearer ${await createAccessToken()}`);
@@ -520,7 +524,7 @@ describe("GET /workspaces/:workspaceId/projects", () => {
       projectRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/projects`)
       .query({ search: "100%_done\\now" })
       .set("Authorization", `Bearer ${await createAccessToken()}`);
@@ -548,7 +552,7 @@ describe("GET /workspaces/:workspaceId/projects", () => {
       projectRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/projects`)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -570,7 +574,7 @@ describe("GET /workspaces/:workspaceId/projects", () => {
   it("검색 결과가 없으면 빈 목록을 반환한다", async () => {
     mockProjectListQueries({ countRows: [{ total: 0 }], projectRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/projects`)
       .query({ search: "missing" })
       .set("Authorization", `Bearer ${await createAccessToken()}`);
@@ -586,7 +590,7 @@ describe("GET /workspaces/:workspaceId/projects", () => {
   });
 
   it("인증이 없으면 401을 반환하고 DB를 조회하지 않는다", async () => {
-    const response = await request(createApp()).get(`/workspaces/${workspaceId}/projects`);
+    const response = await request(appUrl()).get(`/workspaces/${workspaceId}/projects`);
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe("UNAUTHORIZED");
@@ -601,7 +605,7 @@ describe("GET /workspaces/:workspaceId/projects", () => {
   ])(
     "목록 입력이 잘못되면 400을 반환한다: $query",
     async ({ workspaceId: pathWorkspaceId, query }) => {
-      const response = await request(createApp())
+      const response = await request(appUrl())
         .get(`/workspaces/${pathWorkspaceId}/projects`)
         .query(query)
         .set("Authorization", `Bearer ${await createAccessToken()}`);
@@ -617,7 +621,7 @@ describe("GET /workspaces/:workspaceId/projects", () => {
       membershipRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/projects`)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -633,7 +637,7 @@ describe("GET /workspaces/:workspaceId/projects", () => {
       projectRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/projects`)
       .query({ page: "4", limit: "2" })
       .set("Authorization", `Bearer ${await createAccessToken()}`);
@@ -660,7 +664,7 @@ describe("GET /workspaces/:workspaceId/projects", () => {
   ])("$label 조회가 실패하면 500을 반환한다", async ({ label, options }) => {
     const { membershipQuery, countQuery, projectQuery } = mockProjectListQueries(options);
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get(`/workspaces/${workspaceId}/projects`)
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -691,7 +695,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
   it("allows an owner to update any project name and description", async () => {
     const { projectQuery, projectUpdate } = mockProjectUpdateTransaction();
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({
@@ -735,7 +739,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
       ],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ description: "  Updated description  " });
@@ -753,7 +757,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
       projectRows: [{ id: createdProject.id, creatorId: "user-1" }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "  Updated Campaign  " });
@@ -768,7 +772,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
   it.each([null, "   "])("normalizes description %j to null", async (description) => {
     const { projectUpdate } = mockProjectUpdateTransaction();
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ description });
@@ -781,7 +785,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
   });
 
   it("returns 400 for an empty PATCH body", async () => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({});
@@ -792,7 +796,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
   });
 
   it("rejects an empty service update before opening a transaction", async () => {
-    db.transaction.mockClear();
+    vi.mocked(db.transaction).mockClear();
 
     await expect(
       updateProject({
@@ -832,7 +836,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
       body: { description: "a".repeat(201) },
     },
   ])("returns 400 for $label", async ({ path, body }) => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(`/workspaces/${path}`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send(body);
@@ -843,7 +847,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
   });
 
   it("returns 401 without authentication", async () => {
-    const response = await request(createApp()).patch(
+    const response = await request(appUrl()).patch(
       `/workspaces/${workspaceId}/projects/${createdProject.id}`,
     );
 
@@ -857,7 +861,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
       membershipRows: [],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Updated Campaign" });
@@ -871,7 +875,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
   it("returns 404 when the project is not in the requested workspace", async () => {
     const { projectUpdate } = mockProjectUpdateTransaction({ projectRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Updated Campaign" });
@@ -887,7 +891,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
       projectRows: [{ id: createdProject.id, creatorId: "user-2" }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Updated Campaign" });
@@ -902,7 +906,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
       membershipError: new Error("membership query failed"),
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Updated Campaign" });
@@ -918,7 +922,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
       projectError: new Error("project query failed"),
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Updated Campaign" });
@@ -933,7 +937,7 @@ describe("PATCH /workspaces/:workspaceId/projects/:projectId", () => {
       updateError: new Error("project update failed"),
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch(`/workspaces/${workspaceId}/projects/${createdProject.id}`)
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Updated Campaign" });
@@ -951,7 +955,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId", () => {
   it("allows an owner to delete another creator's project and returns 204", async () => {
     const { membershipQuery, projectQuery, projectDelete } = mockProjectDeleteTransaction();
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/" + workspaceId + "/projects/" + createdProject.id)
       .set("Authorization", "Bearer " + (await createAccessToken()));
 
@@ -989,7 +993,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId", () => {
       projectRows: [{ id: createdProject.id, creatorId: "user-1" }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/" + workspaceId + "/projects/" + createdProject.id)
       .set("Authorization", "Bearer " + (await createAccessToken()));
 
@@ -1000,7 +1004,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId", () => {
   it("returns 404 for a non-member before looking up the project", async () => {
     const { projectQuery, projectDelete } = mockProjectDeleteTransaction({ membershipRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/" + workspaceId + "/projects/" + createdProject.id)
       .set("Authorization", "Bearer " + (await createAccessToken()));
 
@@ -1015,7 +1019,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId", () => {
       membershipRows: [{ role: "member" }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/" + workspaceId + "/projects/" + createdProject.id)
       .set("Authorization", "Bearer " + (await createAccessToken()));
 
@@ -1028,7 +1032,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId", () => {
     { label: "workspace id", path: "not-a-uuid/projects/" + createdProject.id },
     { label: "project id", path: workspaceId + "/projects/not-a-uuid" },
   ])("returns 400 for an invalid $label", async ({ path }) => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/" + path)
       .set("Authorization", "Bearer " + (await createAccessToken()));
 
@@ -1040,7 +1044,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId", () => {
   it("returns 404 when the active project is missing or already deleted", async () => {
     const { projectDelete } = mockProjectDeleteTransaction({ projectRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/" + workspaceId + "/projects/" + createdProject.id)
       .set("Authorization", "Bearer " + (await createAccessToken()));
 
@@ -1050,7 +1054,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId", () => {
   });
 
   it("returns 401 without authentication", async () => {
-    const response = await request(createApp()).delete(
+    const response = await request(appUrl()).delete(
       "/workspaces/" + workspaceId + "/projects/" + createdProject.id,
     );
 
@@ -1066,7 +1070,7 @@ describe("DELETE /workspaces/:workspaceId/projects/:projectId", () => {
   ])("returns 500 when the $label query fails", async ({ options }) => {
     const { projectQuery, projectDelete } = mockProjectDeleteTransaction(options);
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/" + workspaceId + "/projects/" + createdProject.id)
       .set("Authorization", "Bearer " + (await createAccessToken()));
 

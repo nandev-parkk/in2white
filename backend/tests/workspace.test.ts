@@ -2,9 +2,12 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { createApp } from "@/app";
+import { useTestServer } from "./test-server";
 import { db } from "@/db/client";
 import { signAccessToken } from "@/lib/jwt";
 import { projects, users, workspaceMemberships, workspaces } from "@/db/schema";
+
+const appUrl = useTestServer(() => createApp());
 
 vi.mock("@/db/client", () => ({
   db: {
@@ -35,6 +38,7 @@ async function createAccessToken() {
     sub: "user-1",
     email: "user@example.com",
     sid: "session-1",
+    ver: 0,
   });
 }
 
@@ -65,7 +69,7 @@ describe("POST /workspaces", () => {
       callback(transaction as never),
     );
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post("/workspaces")
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Brand Studio" });
@@ -90,7 +94,7 @@ describe("POST /workspaces", () => {
   });
 
   it("returns 401 when the request is not authenticated", async () => {
-    const response = await request(createApp()).post("/workspaces").send({ name: "Brand Studio" });
+    const response = await request(appUrl()).post("/workspaces").send({ name: "Brand Studio" });
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe("UNAUTHORIZED");
@@ -98,7 +102,7 @@ describe("POST /workspaces", () => {
   });
 
   it("returns 400 when the workspace name is blank", async () => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post("/workspaces")
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "   " });
@@ -109,7 +113,7 @@ describe("POST /workspaces", () => {
   });
 
   it("returns 400 when the workspace name exceeds 255 characters", async () => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post("/workspaces")
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "a".repeat(256) });
@@ -145,7 +149,7 @@ describe("POST /workspaces", () => {
       callback(transaction as never),
     );
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .post("/workspaces")
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Brand Studio" });
@@ -180,7 +184,7 @@ describe("GET /workspaces", () => {
       },
     ]);
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get("/workspaces")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -206,7 +210,7 @@ describe("GET /workspaces", () => {
       },
     ]);
     expect(db.select).toHaveBeenCalledOnce();
-    expect(db.select.mock.calls[0]?.[0]).toStrictEqual({
+    expect(vi.mocked(db.select).mock.calls[0]?.[0]).toStrictEqual({
       id: workspaces.id,
       name: workspaces.name,
       ownerId: workspaces.ownerId,
@@ -239,7 +243,7 @@ describe("GET /workspaces", () => {
   it("returns an empty array when the user has no workspace memberships", async () => {
     mockWorkspaceListQuery([]);
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get("/workspaces")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -248,7 +252,7 @@ describe("GET /workspaces", () => {
   });
 
   it("returns 401 when the request is not authenticated", async () => {
-    const response = await request(createApp()).get("/workspaces");
+    const response = await request(appUrl()).get("/workspaces");
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe("UNAUTHORIZED");
@@ -259,7 +263,7 @@ describe("GET /workspaces", () => {
     const query = mockWorkspaceListQuery([]);
     query.orderBy.mockRejectedValueOnce(new Error("workspace list failed"));
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get("/workspaces")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -341,7 +345,7 @@ describe("GET /workspaces/:workspaceId", () => {
       ],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -418,7 +422,7 @@ describe("GET /workspaces/:workspaceId", () => {
       projectCountRows: [{ projectCount: 1 }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get("/workspaces/workspace-default")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -435,7 +439,7 @@ describe("GET /workspaces/:workspaceId", () => {
   });
 
   it("returns 401 when the request is not authenticated", async () => {
-    const response = await request(createApp()).get("/workspaces/workspace-1");
+    const response = await request(appUrl()).get("/workspaces/workspace-1");
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe("UNAUTHORIZED");
@@ -445,7 +449,7 @@ describe("GET /workspaces/:workspaceId", () => {
   it("returns 404 when the user is not a workspace member", async () => {
     mockWorkspaceDetailQueries({ workspaceRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -457,7 +461,7 @@ describe("GET /workspaces/:workspaceId", () => {
   it("returns 500 when the workspace detail query fails", async () => {
     mockWorkspaceDetailQueries({ workspaceError: new Error("workspace detail failed") });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -468,7 +472,7 @@ describe("GET /workspaces/:workspaceId", () => {
   it("returns 500 when a workspace count query fails", async () => {
     mockWorkspaceDetailQueries({ projectCountError: new Error("project count failed") });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .get("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -533,7 +537,7 @@ describe("PATCH /workspaces/:workspaceId", () => {
       updateRows: [updatedWorkspace],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "  Renamed Workspace  " });
@@ -576,7 +580,7 @@ describe("PATCH /workspaces/:workspaceId", () => {
       membershipRows: [{ role: "owner", isDefault: true }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Renamed Workspace" });
@@ -590,7 +594,7 @@ describe("PATCH /workspaces/:workspaceId", () => {
   });
 
   it("returns 401 when the request is not authenticated", async () => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch("/workspaces/workspace-1")
       .send({ name: "Renamed Workspace" });
 
@@ -600,7 +604,7 @@ describe("PATCH /workspaces/:workspaceId", () => {
   });
 
   it("returns 400 when the workspace name is blank", async () => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "   " });
@@ -611,7 +615,7 @@ describe("PATCH /workspaces/:workspaceId", () => {
   });
 
   it("returns 400 when the workspace name exceeds 255 characters", async () => {
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "a".repeat(256) });
@@ -624,7 +628,7 @@ describe("PATCH /workspaces/:workspaceId", () => {
   it("returns 404 when the user is not a workspace member", async () => {
     const { transaction } = mockWorkspaceUpdateTransaction({ membershipRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Renamed Workspace" });
@@ -639,7 +643,7 @@ describe("PATCH /workspaces/:workspaceId", () => {
       membershipRows: [{ role: "member" }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Renamed Workspace" });
@@ -652,7 +656,7 @@ describe("PATCH /workspaces/:workspaceId", () => {
   it("returns 404 when the workspace update returns no row", async () => {
     const { workspaceUpdate } = mockWorkspaceUpdateTransaction({ updateRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Renamed Workspace" });
@@ -665,7 +669,7 @@ describe("PATCH /workspaces/:workspaceId", () => {
   it("returns 500 when updating the workspace fails", async () => {
     mockWorkspaceUpdateTransaction({ updateError: new Error("workspace update failed") });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .patch("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`)
       .send({ name: "Renamed Workspace" });
@@ -711,7 +715,7 @@ describe("DELETE /workspaces/:workspaceId", () => {
   it("deletes an owned non-default workspace and returns 204", async () => {
     const { membershipQuery, transaction, workspaceDelete } = mockWorkspaceDeleteTransaction();
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -740,7 +744,7 @@ describe("DELETE /workspaces/:workspaceId", () => {
   });
 
   it("returns 401 when the request is not authenticated", async () => {
-    const response = await request(createApp()).delete("/workspaces/workspace-1");
+    const response = await request(appUrl()).delete("/workspaces/workspace-1");
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe("UNAUTHORIZED");
@@ -750,7 +754,7 @@ describe("DELETE /workspaces/:workspaceId", () => {
   it("returns 404 when the user is not a workspace member", async () => {
     const { transaction } = mockWorkspaceDeleteTransaction({ membershipRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -764,7 +768,7 @@ describe("DELETE /workspaces/:workspaceId", () => {
       membershipRows: [{ role: "member", isDefault: false }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -778,7 +782,7 @@ describe("DELETE /workspaces/:workspaceId", () => {
       membershipRows: [{ role: "owner", isDefault: true }],
     });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -790,7 +794,7 @@ describe("DELETE /workspaces/:workspaceId", () => {
   it("returns 404 when the workspace delete returns no row", async () => {
     const { workspaceDelete } = mockWorkspaceDeleteTransaction({ deleteRows: [] });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
@@ -802,7 +806,7 @@ describe("DELETE /workspaces/:workspaceId", () => {
   it("returns 500 when deleting the workspace fails", async () => {
     mockWorkspaceDeleteTransaction({ deleteError: new Error("workspace delete failed") });
 
-    const response = await request(createApp())
+    const response = await request(appUrl())
       .delete("/workspaces/workspace-1")
       .set("Authorization", `Bearer ${await createAccessToken()}`);
 
