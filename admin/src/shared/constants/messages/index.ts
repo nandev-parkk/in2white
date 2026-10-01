@@ -1,6 +1,7 @@
 import { AUTH_MESSAGES } from './auth'
 import { COMMON_MESSAGES } from '@in2white/ui/constants/common-messages'
 import { NAV_MESSAGES } from './nav'
+import { USER_MESSAGES } from './user'
 import { VALIDATION_MESSAGES } from './validation'
 
 /**
@@ -12,4 +13,5 @@ export const MESSAGES = {
   validation: VALIDATION_MESSAGES,
   auth: AUTH_MESSAGES,
   nav: NAV_MESSAGES,
+  user: USER_MESSAGES,
 } as const

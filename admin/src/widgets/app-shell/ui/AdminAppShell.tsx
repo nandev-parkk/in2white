@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard } from 'lucide-react'
+import { LayoutDashboard, Users } from 'lucide-react'
 
 import { useAdminSessionStore } from '@/entities/admin-session'
 import { useAdminLogout } from '@/features/auth'
@@ -11,6 +11,7 @@ import { Button } from '@in2white/ui/button'
 
 const MENU_ITEMS = [
   { to: '/', label: MESSAGES.nav.menu.dashboard, icon: LayoutDashboard },
+  { to: '/users', label: MESSAGES.nav.menu.users, icon: Users },
 ] as const
 
 export function AdminAppShell({ children }: PropsWithChildren) {
@@ -45,6 +46,8 @@ export function AdminAppShell({ children }: PropsWithChildren) {
               <Link
                 to={to}
                 className="text-foreground-secondary hover:bg-background-subtle flex items-center gap-2 rounded-md px-2 py-1.5 text-[14px] leading-[1.429] font-medium"
+                /* 대시보드는 모든 경로의 접두사다. 정확히 일치할 때만 활성으로 본다. */
+                activeOptions={{ exact: to === '/' }}
                 activeProps={{ className: 'text-foreground-strong' }}
               >
                 <Icon aria-hidden className="size-4" />

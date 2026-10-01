@@ -2,6 +2,8 @@
 export const VALIDATION_MESSAGES = {
   emailRequired: '이메일을 입력해주세요',
   emailInvalidFormat: '올바른 이메일 형식이 아닙니다',
+  nameRequired: '이름을 입력해주세요',
+  nameTooLong: '이름은 255자 이내로 입력해주세요',
   passwordRequired: '비밀번호를 입력해주세요',
   passwordInvalid: '비밀번호를 정확히 입력해주세요',
   passwordTooShort: '비밀번호는 최소 8자 이상이어야 합니다',
