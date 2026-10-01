@@ -1,5 +1,6 @@
 import { axiosInstance } from '@/shared/api'
 import type { Pagination } from '@/shared/types/pagination'
+import type { WorkspaceRole } from '@/shared/types/workspace-role'
 
 /*
  * 토큰은 `configureAuthInterceptors`가 붙인다. 호출부마다 accessToken을 넘기지 않는
@@ -7,8 +8,6 @@ import type { Pagination } from '@/shared/types/pagination'
  */
 
 export type UserStatusFilter = 'all' | 'active' | 'deactivated'
-
-export type WorkspaceRole = 'owner' | 'member'
 
 export type AdminUser = {
   id: string

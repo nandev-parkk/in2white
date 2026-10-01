@@ -3,6 +3,7 @@ import { COMMON_MESSAGES } from '@in2white/ui/constants/common-messages'
 import { NAV_MESSAGES } from './nav'
 import { USER_MESSAGES } from './user'
 import { VALIDATION_MESSAGES } from './validation'
+import { WORKSPACE_MESSAGES } from './workspace'
 
 /**
  * 어드민 콘솔에서 사용자에게 보이는 모든 문구의 단일 출처.
@@ -14,4 +15,5 @@ export const MESSAGES = {
   auth: AUTH_MESSAGES,
   nav: NAV_MESSAGES,
   user: USER_MESSAGES,
+  workspace: WORKSPACE_MESSAGES,
 } as const

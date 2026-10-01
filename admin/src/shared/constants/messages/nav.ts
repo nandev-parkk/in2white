@@ -3,6 +3,7 @@ export const NAV_MESSAGES = {
   menu: {
     dashboard: '대시보드',
     users: '사용자',
+    workspaces: '워크스페이스',
   },
   action: {
     logout: '로그아웃',

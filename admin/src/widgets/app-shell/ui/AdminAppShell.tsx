@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard, Users } from 'lucide-react'
+import { FolderKanban, LayoutDashboard, Users } from 'lucide-react'
 
 import { useAdminSessionStore } from '@/entities/admin-session'
 import { useAdminLogout } from '@/features/auth'
@@ -12,6 +12,11 @@ import { Button } from '@in2white/ui/button'
 const MENU_ITEMS = [
   { to: '/', label: MESSAGES.nav.menu.dashboard, icon: LayoutDashboard },
   { to: '/users', label: MESSAGES.nav.menu.users, icon: Users },
+  {
+    to: '/workspaces',
+    label: MESSAGES.nav.menu.workspaces,
+    icon: FolderKanban,
+  },
 ] as const
 
 export function AdminAppShell({ children }: PropsWithChildren) {

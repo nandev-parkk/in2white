@@ -21,5 +21,4 @@ export type {
   UserDeletionImpact,
   UserListParams,
   UserStatusFilter,
-  WorkspaceRole,
 } from './api/user'
