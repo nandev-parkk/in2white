@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { adminAuthRouter } from "@/routes/admin/auth.routes";
+import { adminProjectRouter } from "@/routes/admin/project.routes";
 import { adminUserRouter } from "@/routes/admin/user.routes";
+import { adminWhiteboardDocumentRouter } from "@/routes/admin/whiteboard-document.routes";
 import { adminWorkspaceRouter } from "@/routes/admin/workspace.routes";
 
 /*
@@ -12,5 +14,7 @@ export function createAdminRouter(): Router {
   router.use("/auth", adminAuthRouter);
   router.use("/users", adminUserRouter);
   router.use("/workspaces", adminWorkspaceRouter);
+  router.use("/projects", adminProjectRouter);
+  router.use("/whiteboard-documents", adminWhiteboardDocumentRouter);
   return router;
 }
