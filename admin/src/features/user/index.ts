@@ -11,7 +11,6 @@ export {
   useUserDeletionImpact,
   useUsers,
 } from './model/use-users'
-export { UserConfirmDialog } from './ui/UserConfirmDialog'
 export { UserCreateDialog } from './ui/UserCreateDialog'
 export { UserDeleteDialog } from './ui/UserDeleteDialog'
 export { UserEditDialog } from './ui/UserEditDialog'

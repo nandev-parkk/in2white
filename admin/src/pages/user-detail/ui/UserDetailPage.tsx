@@ -3,7 +3,6 @@ import { Link, useNavigate } from '@tanstack/react-router'
 
 import type { AdminUserWorkspace, UpdateUserInput } from '@/entities/user'
 import {
-  UserConfirmDialog,
   UserDeleteDialog,
   UserEditDialog,
   UserPasswordResetDialog,
@@ -22,6 +21,7 @@ import { MESSAGES } from '@/shared/constants/messages'
 import { apiErrorMessage } from '@/shared/lib/api-error'
 import { Button } from '@in2white/ui/button'
 import { Badge } from '@in2white/ui/badge'
+import { ConfirmDialog } from '@in2white/ui/confirm-dialog'
 import { ErrorState } from '@in2white/ui/error-state'
 import { LoadingState } from '@in2white/ui/loading-state'
 import { PageHeader } from '@in2white/ui/page-header'
@@ -316,7 +316,7 @@ function UserDetailPage({ userId }: UserDetailPageProps) {
       )}
 
       {openDialog === 'deactivate' && (
-        <UserConfirmDialog
+        <ConfirmDialog
           open
           title={MESSAGES.user.heading.deactivate}
           description={MESSAGES.user.confirm.deactivate(user.email)}
@@ -342,7 +342,7 @@ function UserDetailPage({ userId }: UserDetailPageProps) {
       )}
 
       {openDialog === 'reactivate' && (
-        <UserConfirmDialog
+        <ConfirmDialog
           open
           title={MESSAGES.user.heading.reactivate}
           description={MESSAGES.user.confirm.reactivate(user.email)}
@@ -367,7 +367,7 @@ function UserDetailPage({ userId }: UserDetailPageProps) {
       )}
 
       {openDialog === 'revoke' && (
-        <UserConfirmDialog
+        <ConfirmDialog
           open
           title={MESSAGES.user.heading.revokeSessions}
           description={MESSAGES.user.confirm.revokeSessions(user.email)}

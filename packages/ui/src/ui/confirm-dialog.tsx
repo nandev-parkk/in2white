@@ -1,15 +1,19 @@
-import { MESSAGES } from '@/shared/constants/messages'
-import { Button } from '@in2white/ui/button'
+import { Button } from './button'
+import { cn } from '../lib/utils'
+import { COMMON_MESSAGES } from '../constants/common-messages'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogTitle,
-} from '@in2white/ui/dialog'
+} from './dialog'
 
-/* 정지·정지 해제·세션 종료는 입력이 없다. 모달마다 같은 마크업을 복제하지 않는다. */
-type UserConfirmDialogProps = {
+/*
+ * 입력 없이 확인만 받는 모달이다. 어드민의 정지·삭제·복구와 멤버 제거가 모두 같은 모양을
+ * 쓰므로 문구만 받는다. 삭제처럼 되돌릴 수 없는 작업은 `destructive`로 버튼 색을 바꾼다.
+ */
+type ConfirmDialogProps = {
   open: boolean
   title: string
   description: string
@@ -19,9 +23,10 @@ type UserConfirmDialogProps = {
   destructive?: boolean
   loading?: boolean
   error?: string
+  className?: string
 }
 
-function UserConfirmDialog({
+function ConfirmDialog({
   open,
   title,
   description,
@@ -31,15 +36,20 @@ function UserConfirmDialog({
   destructive = false,
   loading = false,
   error,
-}: UserConfirmDialogProps) {
+  className,
+}: ConfirmDialogProps) {
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
+        /* 요청 중에는 바깥 클릭·Escape로도 닫지 않는다. 결과를 보여주고 닫는다. */
         if (!loading) onOpenChange(nextOpen)
       }}
     >
-      <DialogContent className="w-[calc(100%-2rem)] max-w-[440px]">
+      {/* 좁은 화면에서도 양쪽 여백을 남긴다. 확인 문구만 담으므로 폭을 넓히지 않는다. */}
+      <DialogContent
+        className={cn('w-[calc(100%-2rem)] max-w-[440px]', className)}
+      >
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
 
@@ -56,7 +66,7 @@ function UserConfirmDialog({
             disabled={loading}
             onClick={() => onOpenChange(false)}
           >
-            {MESSAGES.common.action.cancel}
+            {COMMON_MESSAGES.action.cancel}
           </Button>
           <Button
             type="button"
@@ -72,4 +82,5 @@ function UserConfirmDialog({
   )
 }
 
-export { UserConfirmDialog }
+export { ConfirmDialog }
+export type { ConfirmDialogProps }

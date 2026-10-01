@@ -7,7 +7,6 @@ import type {
   UpdateWorkspaceInput,
 } from '@/entities/workspace'
 import {
-  WorkspaceConfirmDialog,
   WorkspaceEditDialog,
   WorkspaceMemberAddDialog,
   WorkspaceTransferOwnerDialog,
@@ -24,6 +23,7 @@ import { apiErrorMessage } from '@/shared/lib/api-error'
 import { formatDate, formatDateTime } from '@/shared/lib/format-date'
 import { Badge } from '@in2white/ui/badge'
 import { Button } from '@in2white/ui/button'
+import { ConfirmDialog } from '@in2white/ui/confirm-dialog'
 import { ErrorState } from '@in2white/ui/error-state'
 import { LoadingState } from '@in2white/ui/loading-state'
 import { PageHeader } from '@in2white/ui/page-header'
@@ -423,8 +423,9 @@ function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
       )}
 
       {openDialog === 'remove-member' && removeTarget && (
-        <WorkspaceConfirmDialog
+        <ConfirmDialog
           open
+          destructive
           title={MESSAGES.workspace.heading.removeMember}
           description={MESSAGES.workspace.confirm.removeMember(
             removeTarget.email,
@@ -445,8 +446,9 @@ function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
       )}
 
       {openDialog === 'delete' && (
-        <WorkspaceConfirmDialog
+        <ConfirmDialog
           open
+          destructive
           title={MESSAGES.workspace.heading.delete}
           description={MESSAGES.workspace.confirm.delete(workspace.name)}
           confirmLabel={MESSAGES.workspace.action.delete}
