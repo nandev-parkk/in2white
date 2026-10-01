@@ -162,7 +162,7 @@ docker compose build frontend backend
 
 ### 1.11 배포 설정
 
-- `docker-compose.yml`에 `admin` 서비스 추가 (`127.0.0.1:8081:80` 바인딩)
+- `docker-compose.yml`에 `admin` 서비스 추가 (`10102:80` 바인딩)
 - `docs/deployment/docker-compose.md`에 어드민 서비스와 신규 환경변수 반영
 
 ## 단계 2. 사용자 관리
@@ -570,6 +570,110 @@ pnpm --filter admin test
 - **오류 문구 공통화.** 단계 2·3의 후속 작업 그대로 남았다. 단계 5에서 화면이 마지막으로 늘어나므로 그때 `shared/lib/api-error.ts` 한쪽으로 모은다.
 - **워크스페이스 상세의 프로젝트 탭.** 이제 프로젝트 목록 API에 `workspaceId` 필터가 있다. 상세 응답에서 프로젝트 배열을 떼고 그 API로 바꾸면 탭에서도 삭제·복구를 쓸 수 있고 프로젝트 이름을 `/projects/$projectId`로 연결할 수 있다.
 - **어드민 429 응답 본문.** 단계 1의 후속 작업 그대로다. `express-rate-limit` 기본 `text/html`이라 화면이 JSON 오류로 읽지 못한다.
+
+## 단계 5 구현 결과 (2026-10-01, `feat/admin-console`)
+
+### 실제 변경
+
+| 커밋                                                  | 내용                                                                                                                                                                            |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `feat: 어드민 대시보드·감사 로그·운영 상태 API 추가`  | `GET /admin/dashboard/metrics`(총계 4종 + 최근 7일 추이), `GET /admin/system/status`(DB·Valkey 점검 + 실시간 세션 수), `GET /admin/audit-logs`(어드민·액션·대상 타입·기간 필터) |
+| `feat: 어드민 대시보드·감사 로그·운영 상태 화면 추가` | `pages/dashboard` 지표 카드와 추이, `pages/audit-logs` 필터·표·상세 모달, `pages/system` 상태 표시, 라우트 2개, 사이드바 메뉴 2개                                               |
+
+백엔드 파일: `src/schemas/admin-audit-log.schema.ts`(목록 쿼리 + `AuditTargetType`의 단일 출처), `src/services/{admin-dashboard,admin-system}.service.ts`, `src/services/admin-audit-log.service.ts`에 `listAuditLogs` 추가, 컨트롤러·라우터 각 3개, `src/constants/messages.ts`(오류 문구 6건).
+실시간 통계 경로: `WhiteboardRoomManager.stats()` → `WhiteboardCollaboration.stats()` → `AppOptions.whiteboardRealtimeStats` → `createAdminRouter({ realtimeStats })` → `createSystemStatusHandler`.
+어드민 프런트엔드 추가 구성: `entities/{dashboard,audit-log,system}`, `features/{dashboard,audit-log,system}`, `pages/{audit-logs,system}`, `shared/constants/messages/{dashboard,audit-log,system}.ts`, `shared/api/query-keys.ts`(`dashboardMetrics`·`auditLogs`·`systemStatus`), `routes/{audit-logs,system}.tsx`.
+
+### 계획과 달라진 점
+
+| 항목                  | 계획                                             | 실제                                                                                                        | 이유                                                                                                                                                                            |
+| --------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 5.1 실시간 세션 수    | "`src/realtime` 조회"                            | 전역 레지스트리를 두지 않고 `AppOptions.whiteboardRealtimeStats`로 **함수**를 주입. 없으면 `realtime: null` | HTTP 앱이 소켓 서버보다 먼저 만들어진다. 값으로 받으면 항상 최초 상태를 보게 되고, 전역을 두면 테스트가 서로의 상태를 본다. 소켓 없이 HTTP만 띄우는 구성(테스트)도 돌아야 한다. |
+| 5.1 점검 실패 응답    | 언급 없음                                        | 의존성이 죽어도 200이고, 드라이버 오류 원문은 응답에 담지 않고 `logger.warn`에만 남김                       | 500으로 끊으면 어드민이 무엇이 죽었는지 볼 수 없다. 드라이버 메시지에는 `DATABASE_URL`·`VALKEY_URL`의 접속 문자열(비밀번호 포함)이 그대로 들어 있다.                            |
+| 5.1 액션 필터         | "액션 필터"                                      | 완전 일치가 아니라 `ilike` 부분 일치(LIKE 특수문자 이스케이프)                                              | `user.`처럼 접두사로 묶어 보는 것이 실제 조사 방식이다. 완전 일치면 액션 이름을 외워야 한다.                                                                                    |
+| 5.1 기간 역순         | 언급 없음                                        | `from > to`는 400 `AUDIT_PERIOD_REVERSED`                                                                   | 빈 목록을 돌려주면 "기록이 없다"와 "조건이 거꾸로다"를 구분할 수 없다.                                                                                                          |
+| 5.1 `AuditTargetType` | 서비스에 로컬 union                              | `admin-audit-log.schema.ts`의 zod enum이 단일 출처, 서비스가 타입만 재수출                                  | 필터 enum과 기록 측 타입이 갈라지면 쓰기는 되는데 거를 수 없는 대상 타입이 생긴다.                                                                                              |
+| 5.1 추이 집계         | "일별 생성 추이"                                 | UTC로 `date_trunc`하고 빈 날을 JS에서 0으로 채움                                                            | 서버 타임존에 따라 날짜 경계가 달라지면 같은 데이터가 다르게 보인다. 날짜를 건너뛰면 그래프가 실제보다 완만해 보인다.                                                           |
+| 5.2 대시보드 위치     | `pages/home`                                     | 기존 `pages/dashboard`를 채움                                                                               | 단계 1에서 이미 `/`에 `DashboardPage`를 두고 "지표 위젯은 단계 5에서 채운다"고 적어 뒀다. 새 슬라이스를 만들면 라우트와 메뉴를 모두 옮겨야 한다.                                |
+| 5.2 레이어            | 설계의 슬라이스 목록에 `dashboard`·`system` 없음 | `entities/{dashboard,system}` + `features/{dashboard,system}`을 추가                                        | 쿼리 훅을 `features/*/model/use-*.ts`에 두는 기존 관례를 따랐다. 페이지에서 `useQuery`를 직접 부르면 이 앱에서만 규칙이 달라진다.                                               |
+| 5.2 어드민 필터       | "어드민 필터"                                    | 드롭다운 대신 표의 어드민을 눌러 거르고 칩으로 해제                                                         | 어드민 목록 API가 없다. uuid를 외워 입력하게 할 수는 없다.                                                                                                                      |
+| 5.2 기간 입력         | 언급 없음                                        | 날짜를 고르면 요청 함수가 시작일 `00:00:00.000Z`~종료일 `23:59:59.999Z`로 넓혀 보냄                         | 백엔드는 시각으로 비교한다. 종료일을 그대로 보내면 "오늘까지" 조회가 오늘 기록을 모두 빼먹는다.                                                                                 |
+| 5.2 추이 표현         | "추이"                                           | 차트 라이브러리를 넣지 않고 토큰 색 막대 + 같은 숫자의 `sr-only` 표                                         | 7일 3계열에 의존성을 추가할 이유가 없다. 막대는 눈으로만 읽히므로 스크린 리더용 표를 함께 둔다.                                                                                 |
+| 5.2 감사 로그 상세    | "필터 + 표"                                      | 행마다 상세 모달(변경 전/후 `metadata`, IP, User-Agent)                                                     | 변경 전후 값이 감사의 핵심인데 표 한 칸에 들어가지 않는다. 비밀번호 관련 키는 백엔드가 기록 전에 걸러낸다.                                                                      |
+
+### 실행한 검증
+
+| 명령                              | 결과                                                                                    |
+| --------------------------------- | --------------------------------------------------------------------------------------- |
+| `pnpm -r lint`                    | 4개 패키지 통과                                                                         |
+| `pnpm -r format:check`            | 통과                                                                                    |
+| `pnpm -r test`                    | `packages/ui` 46건, `backend` 937건(+16 skip), `admin` 122건 통과 / `frontend` 1건 실패 |
+| `pnpm -r build`                   | 통과 (`admin`은 `vite build && tsc -b`가 타입 검사까지 수행)                            |
+| `pnpm --filter backend typecheck` | 통과 (테스트 포함)                                                                      |
+
+- TDD 순서를 밟았고 red를 실제로 확인했다. 백엔드는 서비스·스키마가 없어 테스트 파일 3개가 import 해석에서 먼저 실패했고(`listAuditLogs is not a function`, `manager.stats is not a function` 포함), 어드민은 신규 모듈 4곳의 import 해석 실패와 사이드바 메뉴 2개 누락을 먼저 확인했다.
+- 조회 엔드포인트 3개 모두 감사 로그를 쓰지 않고 트랜잭션도 열지 않는 것을 단정했다 — 대시보드를 열 때마다 기록하면 감사 로그가 조회로 찬다.
+- 운영 상태가 비밀번호를 흘리지 않는지 백엔드 테스트로 고정했다(`JSON.stringify(status)`에 접속 문자열의 비밀번호가 없다).
+- `frontend`의 실패 1건(`HomePage > 워크스페이스를 불러오는 동안 로딩 상태를 지연 표시한다`)은 이번 변경과 무관하다. 손대지 않은 패키지의 지연 표시 타이밍 테스트이고, 해당 파일만 단독 실행하면 17건 모두 통과한다 — 4개 패키지를 동시에 돌릴 때의 부하에서만 재현된다.
+- 브라우저로 전체 화면을 실제 데이터와 함께 확인했다. 아래 "브라우저 확인" 참고.
+
+### 브라우저 확인 (2026-10-01)
+
+로컬 `.env`에 어드민 변수가 없어 `JWT_ADMIN_SECRET`·`JWT_ADMIN_REFRESH_SECRET`·`ADMIN_CORS_ORIGIN`을 커맨드라인으로 주입하고, 4000번을 쓰는 Docker 백엔드와 겹치지 않게 `PORT=4100`으로 띄웠다. 어드민은 `VITE_API_BASE_URL=http://localhost:4100`으로 5174에서 실행했다. 미적용 상태였던 `0006_admin_console` 마이그레이션을 로컬 DB에 적용했고, `create-admin-user`로 첫 어드민 계정을 만들었다 — 스크립트의 DB 삽입 경로가 이번에 처음 실제로 돌았다.
+
+| 화면                                  | 확인 내용                                                                                                                                                                                            |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 로그인                                | 어드민 계정으로 로그인 후 `/`로 이동. 로그인 전 `/auth/refresh` 401은 세션 복구 시도라 정상                                                                                                          |
+| 대시보드                              | 총계 4/5/2/2가 DB 실제 행 수와 일치, 7일 추이 막대와 `sr-only` 표의 숫자가 일치                                                                                                                      |
+| 사용자                                | 목록·상세·정지·정지 해제 동작. 정지 후 배지와 정지일이 바뀌고 버튼이 전환됨                                                                                                                          |
+| 감사 로그                             | 정지·해제가 `user.deactivate`·`user.reactivate` 2건으로 기록됨. 액션 부분 검색(`user.deact`), 어드민 칩 필터, 종료일을 오늘로 둔 기간 필터, 상세 모달(변경 전/후 `metadata`·IP·User-Agent) 모두 동작 |
+| 운영 상태                             | 데이터베이스·캐시 모두 정상(5ms), 실시간 0/0/0(소켓 연결 없음)                                                                                                                                       |
+| 워크스페이스·프로젝트·화이트보드 문서 | 목록이 실제 데이터로 정상 표시                                                                                                                                                                       |
+
+브라우저에서만 드러난 버그 2건을 고쳤다.
+
+| 문제                                                                | 원인                                                                                     | 수정                                                             |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 추이 막대가 하나도 보이지 않음                                      | 막대 영역이 `h-full`인데 부모인 일별 칸이 `items-end` 때문에 내용 높이로 잡혀 0을 가리킴 | 행을 `items-end` 없이 늘리고 막대 영역을 `min-h-0 flex-1`로 바꿈 |
+| 감사 로그의 어드민 필터 버튼이 테두리에 글자가 닿아 입력란처럼 보임 | `tertiary` 변형에 `px-0 py-0`을 줘 테두리가 글자에 붙음                                  | `ghost` 변형 + `-mx-2 px-2 py-1`                                 |
+
+둘 다 CSS 레이아웃 문제라 jsdom 테스트로는 잡히지 않는다(jsdom은 레이아웃을 계산하지 않아 높이가 항상 0이다). 브라우저에서 `getBoundingClientRect`로 막대 높이가 0 → 135px가 된 것을 확인했고, 수정 후 `admin` 테스트 122건·lint·format·build를 다시 통과시켰다.
+
+확인에 쓴 테스트 사용자(`test4@in2white.com`)는 정지 해제까지 마쳐 원래 상태로 되돌렸다. 감사 로그 2건은 실제 기록이라 남겨 뒀다.
+
+### 남은 후속 작업
+
+- **환경 변수 파일 반영(사용자 작업).** 어드민 계정은 만들었지만 `.env` 파일들은 그대로다. `backend/.env`·`backend/.env.example`에 `JWT_ADMIN_SECRET`·`JWT_ADMIN_REFRESH_SECRET`(각 32자 이상, 네 시크릿 모두 서로 다르게)·`ADMIN_CORS_ORIGIN`, 루트 `.env.compose.example`에 `ADMIN_VITE_API_BASE_URL`·`ADMIN_ENVIRONMENT_LABEL`이 필요하다. 지금은 커맨드라인 주입으로만 띄웠다.
+- **오류 문구 공통화.** 단계 2~4의 후속 작업 그대로 남았다. `shared/lib/api-error.ts`와 `LoginForm`의 매핑이 아직 두 곳이다.
+- **워크스페이스 상세의 프로젝트 탭.** 단계 4의 후속 작업 그대로다.
+- **어드민 429 응답 본문.** 단계 1의 후속 작업 그대로다.
+- **감사 로그 보관 정책.** 설계 §비범위대로 장기 보관·외부 연동은 다루지 않았다. `createdAt` 인덱스는 `0006_admin_console`에 이미 있으므로 남은 것은 보관 기간뿐이다 — 운영 데이터가 쌓인 뒤 다시 본다.
+
+## 단계 5 완료 후 재점검 (2026-10-01)
+
+- 감사 로그 날짜 필터의 UTC 경계를 브라우저 현지 날짜 경계로 수정하고, 서로 다른 시간대 회귀 테스트로 확인했다.
+- 운영 상태 조회의 DB·Valkey 점검에 각각 3초 제한을 두고, 무응답 시 `down`으로 반환하는 테스트를 추가했다.
+- `docker-compose.yml`의 제품 화면·API·어드민 콘솔 바인딩을 실제 `.env.compose`의 LAN URL에 맞게 전체 인터페이스로 통일했다. 배포 문서도 실제 구성에 맞게 정정했다.
+- 계획과의 차이: 단계 5 화면 구현 후 점검에서 발견한 결함 수정이며 신규 API나 데이터 모델 변경은 없다.
+- 검증: `admin` 테스트 122건·lint·build, `backend` 테스트 938건(16건 skip)·lint·build, `docker compose config --no-interpolate --quiet` 모두 통과했다.
+- 관련 원인과 적용 조건은 [`docs/solutions/admin-console-review-fixes.md`](../../solutions/admin-console-review-fixes.md)에 기록했다.
+
+## 후속 작업 처리 (2026-10-01)
+
+- 기존 계획에서 언급한 워크스페이스 상세의 프로젝트 탭은 이미 `WorkspaceDetailPage`와 테스트에 구현돼 있어 재작업하지 않았다.
+- `LoginForm`의 중복 오류 본문 해석을 공통 `apiErrorMessage`로 통합했다.
+- 어드민 로그인 429를 JSON 오류 계약으로 바꾸고, HTML 응답을 확인한 실패 테스트부터 통과시켰다.
+- 대시보드·운영 상태 카드가 공유 `CardTitle`·`CardDescription`을 재사용하도록 정리했다. 표의 작은 텍스트 링크는 공유 `Button`의 기존 변형과 모양·크기가 달라 기본 버튼을 유지했다.
+- 공유 `Calendar`는 정의돼 있지 않다. 감사 로그 날짜 필터는 공유 `Input`과 브라우저 기본 `type="date"`를 사용한다.
+- `backend/.env.example`, `.env.compose.example`, `admin/.env.example`을 채우고 로컬 무시 파일의 어드민 시크릿을 생성했다. Compose 제품 LAN URL을 어드민 API URL에 재사용하고 어드민 오리진도 LAN 주소의 `10102` 포트로 확정했다.
+- 검증: `admin` 테스트 122건·lint·build, `backend` 테스트 938건(16건 skip)·lint·build·typecheck, `docker compose --env-file .env.compose config --quiet`, 관련 코드·문서 Prettier와 `git diff --check` 통과.
+- 해결 기록: [`docs/solutions/admin-console-followup-fixes.md`](../../solutions/admin-console-followup-fixes.md).
+
+## 배포 호스트 포트 변경 (2026-10-02)
+
+- frontend `10101:80`, admin `10102:80`, backend `10103:4000`으로 호스트 포트를 변경했다. 백엔드 내부 `PORT=4000`과 컨테이너 healthcheck는 그대로 둔다.
+- `.env.compose`의 브라우저 API URL과 두 CORS 오리진을 새 호스트 포트로 맞췄다. 배포 가이드와 현재 설계의 포트 예시도 갱신했다.
+- 검증: `docker compose --env-file .env.compose config --quiet`와 해석된 포트·URL 점검, `git diff --check`.
 
 ## 프리미티브 추가 절차
 

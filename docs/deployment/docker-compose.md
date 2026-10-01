@@ -14,7 +14,7 @@
 | `admin`    | 어드민 콘솔 빌드 결과를 Nginx로 제공         | 80            | 없음                        |
 | `backend`  | `node dist/server.js`로 API와 Socket.IO 제공 | 4000          | 외부 PostgreSQL·Valkey 사용 |
 
-예시 공개 주소는 `https://app.example.com`, `https://admin.example.com`, `https://api.example.com`이다. 호스트의 리버스 프록시가 각각 `127.0.0.1:8080`, `127.0.0.1:8081`, `127.0.0.1:4000`으로 전달한다. 세 주소는 실제 도메인으로 교체한다.
+현재 Compose는 제품 화면(`10101`), 어드민 콘솔(`10102`), API(`10103`)를 호스트의 모든 인터페이스에 바인딩해 LAN 주소에서 접근할 수 있게 한다. 백엔드 컨테이너 내부 포트는 `4000`이다. `CORS_ORIGIN`과 `ADMIN_CORS_ORIGIN`은 각 화면을 여는 실제 주소로 맞춘다. 공개 도메인을 사용할 때는 실제 프록시 주소에 맞춰 브라우저용 API URL과 CORS 오리진을 설정한다.
 
 ## 이미지 구성
 
@@ -28,7 +28,7 @@
 
 ## Compose 구성
 
-실제 설정은 [`docker-compose.yml`](../../docker-compose.yml)을 사용한다. 어드민 콘솔은 호스트 `127.0.0.1:8081`로만 공개한다 — 서비스 전체를 조작하는 화면이므로 외부에 열어야 한다면 리버스 프록시에서 인증·IP 제한을 앞단에 둔다. 외부 PostgreSQL·Valkey 주소는 백엔드 환경 변수로 전달한다. 백엔드의 `/health`는 프로세스 응답만 확인하며 외부 서비스 연결을 검사하지 않으므로 연결 상태는 별도로 감시한다.
+실제 설정은 [`docker-compose.yml`](../../docker-compose.yml)을 사용한다. 어드민 콘솔도 LAN에 공개한다. 서비스 전체를 조작하는 화면이므로 LAN 바깥으로 공개할 때는 리버스 프록시에서 인증·IP 제한을 앞단에 둔다. 외부 PostgreSQL·Valkey 주소는 백엔드 환경 변수로 전달한다. 백엔드의 `/health`는 프로세스 응답만 확인하며 외부 서비스 연결을 검사하지 않으므로 연결 상태는 별도로 감시한다.
 
 ## 환경 변수와 비밀값
 
@@ -82,15 +82,15 @@ docker compose --env-file .env.compose run --rm \
 
 ```caddyfile
 app.example.com {
-    reverse_proxy 127.0.0.1:8080
+    reverse_proxy 127.0.0.1:10101
 }
 
 admin.example.com {
-    reverse_proxy 127.0.0.1:8081
+    reverse_proxy 127.0.0.1:10102
 }
 
 api.example.com {
-    reverse_proxy 127.0.0.1:4000
+    reverse_proxy 127.0.0.1:10103
 }
 ```
 
