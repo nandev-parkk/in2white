@@ -32,6 +32,7 @@ export const ERROR_MESSAGES = {
   WORKSPACE_DELETE_FORBIDDEN: "워크스페이스를 삭제할 권한이 없습니다",
   WORKSPACE_DEFAULT_DELETE_FORBIDDEN: "기본 워크스페이스는 삭제할 수 없습니다",
   WORKSPACE_ID_INVALID: "유효하지 않은 워크스페이스 ID입니다",
+  TRANSFER_TARGET_NOT_MEMBER: "소유자 이전 대상은 워크스페이스 멤버여야 합니다",
   USER_ID_INVALID: "유효하지 않은 사용자 ID입니다",
   USER_NOT_FOUND: "사용자를 찾을 수 없습니다",
   USER_STATUS_INVALID: "정지 여부 필터 값이 올바르지 않습니다",
@@ -43,6 +44,8 @@ export const ERROR_MESSAGES = {
   MEMBER_REMOVE_FORBIDDEN: "멤버를 내보낼 권한이 없습니다",
   MEMBER_SELF_REMOVE_FORBIDDEN: "자기 자신은 내보낼 수 없습니다",
   MEMBER_NOT_FOUND: "워크스페이스 멤버를 찾을 수 없습니다",
+  MEMBER_OWNER_REMOVE_FORBIDDEN:
+    "워크스페이스 소유자는 제거할 수 없습니다. 소유자를 먼저 이전해주세요",
   MEMBER_ALREADY_EXISTS: "이미 워크스페이스 멤버입니다",
   PROJECT_NAME_REQUIRED: "프로젝트 이름을 입력해주세요",
   PROJECT_NAME_TOO_LONG: "프로젝트 이름은 50자 이내로 입력해주세요",

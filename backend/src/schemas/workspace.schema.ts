@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ERROR_MESSAGES } from "@/constants/messages";
 
-const workspaceNameSchema = z
+export const workspaceNameSchema = z
   .string({ error: ERROR_MESSAGES.WORKSPACE_NAME_REQUIRED })
   .trim()
   .min(1, ERROR_MESSAGES.WORKSPACE_NAME_REQUIRED)
