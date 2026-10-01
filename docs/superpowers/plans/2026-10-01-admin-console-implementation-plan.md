@@ -520,6 +520,57 @@ pnpm --filter admin test
 - **오류 문구 공통화.** 단계 2의 후속 작업 그대로다. 단계 4에서 화면이 또 늘어나므로 그때 `shared/lib/api-error.ts` 한쪽으로 모은다.
 - **상세 탭의 대량 데이터.** 멤버·프로젝트 목록이 커지면 상세 응답이 통째로 커진다. 단계 4에서 프로젝트 목록 API가 생기면 워크스페이스 상세의 프로젝트 탭을 그 API의 필터 조회로 바꾸는 것을 검토한다.
 
+## 단계 4 구현 결과 (2026-10-01, `feat/admin-console`)
+
+### 실제 변경
+
+| 커밋                                                   | 내용                                                                                                                                                                                                                              |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `feat: 어드민 프로젝트·화이트보드 문서 관리 API 추가`  | `GET /admin/projects`(검색·워크스페이스·삭제 상태 필터, 문서 수 집계), `GET /admin/projects/:projectId`(프로젝트 + 하위 문서), 프로젝트·문서 각각의 `DELETE`(소프트 삭제)와 `POST .../restore`, `GET /admin/whiteboard-documents` |
+| `refactor: 확인 모달을 공용 ConfirmDialog로 올린다`    | `UserConfirmDialog`·`WorkspaceConfirmDialog`를 `@in2white/ui/confirm-dialog` 하나로 합침                                                                                                                                          |
+| `feat: 어드민 프로젝트·화이트보드 문서 관리 화면 추가` | `entities/{project,whiteboard-document}`, `features/{project,whiteboard-document}`, `pages/{projects,project-detail,whiteboard-documents}`, 라우트 3개, 사이드바 메뉴 2개                                                         |
+
+백엔드 파일: `src/schemas/admin-project.schema.ts`, `src/schemas/admin-whiteboard-document.schema.ts`, `src/schemas/admin-resource.schema.ts`(삭제 상태 필터 공용), `src/services/admin-project.service.ts`, `src/services/admin-whiteboard-document.service.ts`, 컨트롤러·라우터 각 2개, `src/utils/resource-status.ts`, `src/constants/messages.ts`(오류 문구 2건).
+어드민 프런트엔드 추가 구성: `shared/types/resource-status.ts`, `shared/lib/clamp-page.ts`, `shared/constants/messages/{project,whiteboard-document}.ts`, `shared/api/query-keys.ts`(`projects`·`projectDetails`·`project(id)`·`whiteboardDocuments`), `routes/{projects,projects_.$projectId,whiteboard-documents}`.
+
+### 계획과 달라진 점
+
+| 항목                  | 계획                                                           | 실제                                                                                                                                  | 이유                                                                                                                                                         |
+| --------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 4.1 삭제 상태 필터    | 언급 없음                                                      | 프로젝트·문서 목록이 같은 `status`(`all`\|`active`\|`deleted`, 기본 `all`) 쿼리를 공유하고 스키마를 `admin-resource.schema.ts`로 분리 | 두 목록의 목적이 같다 — 복구 대상 찾기다. 기본값이 `active`면 어드민이 필터를 바꾸기 전까지 복구 대상이 아예 보이지 않는다.                                  |
+| 4.1 상세 조회         | 언급 없음                                                      | `getProjectDetail`은 삭제 여부로 걸러내지 않고 하위 문서도 삭제된 것까지 반환                                                         | 삭제된 프로젝트의 상세를 열 수 없으면 복구 화면이 성립하지 않는다.                                                                                           |
+| 4.1 문서 복구 조건    | 언급 없음                                                      | 프로젝트가 삭제된 상태에서도 문서 복구를 허용하고 응답에 `project.deletedAt`을 담음                                                   | 막으면 어드민이 복구 순서를 추측해야 한다. 한계는 화면에서 배지와 모달 문구로 알린다.                                                                        |
+| 4.1 문서 본문         | 언급 없음                                                      | `whiteboard_document_contents`를 읽지 않음                                                                                            | 어드민은 문서를 열어보지 않는다. 본문은 사용자의 것이고, 조회 경로를 만들면 감사 로그 없는 열람 경로가 생긴다.                                               |
+| 4.1 문서 상세         | 언급 없음                                                      | `GET /admin/whiteboard-documents/:id` 없음                                                                                            | 문서 단건에 더 보여줄 정보가 없다. 목록과 프로젝트 상세에서 삭제·복구가 모두 가능하다.                                                                       |
+| 4.1 생성·수정         | 언급 없음                                                      | 프로젝트·문서 모두 어드민 `POST`/`PATCH` 없음                                                                                         | 내용은 사용자의 것이다. 어드민의 일은 감추기와 되살리기뿐이다.                                                                                               |
+| 4.2 확인 모달         | 단계 3에서 "세 번째가 생기면 `@in2white/ui`로 올린다"로 미뤄둠 | `@in2white/ui/confirm-dialog`로 올리고 기본 variant를 `primary`, 파괴적 작업만 `destructive`로 둠                                     | 단계 4에서 삭제·복구 4종이 늘어 사용처가 여섯 곳이 됐다. 복구는 되돌릴 수 있으니 같은 빨간 버튼을 쓰면 위험도 구분이 사라진다.                               |
+| 4.2 목록 페이지 보정  | 단계 2·3에서 미뤄둔 후속 작업                                  | `shared/lib/clamp-page.ts`(순수 함수)로 응답을 받을 때마다 현재 페이지를 유효 범위로 끌어내림                                         | 훅으로 만들면 `totalPages`를 아는 시점이 그 `page`를 쓰는 쿼리 뒤라서 순서가 꼬인다. placeholder 응답에서는 보정하지 않아 페이지 전환 중 되돌아가지 않는다.  |
+| 4.2 상세 삭제 후 이동 | 워크스페이스처럼 목록 이동 가정                                | 프로젝트 상세는 삭제 후에도 그 화면에 머물고 복구 버튼으로 바뀜                                                                       | 소프트 삭제라 바로 되돌릴 수 있다. 목록으로 보내면 방금 지운 것을 다시 찾아야 한다.                                                                          |
+| 4.2 행 단위 작업      | 언급 없음                                                      | 한 행에 삭제·복구 중 하나만 노출                                                                                                      | 둘 다 두면 상태에 따라 반드시 실패하는 버튼이 생긴다. 단계 3의 소유자 제거와 같은 판단이다.                                                                  |
+| 4.2 뮤테이션 인자     | 언급 없음                                                      | 요청 함수를 `mutationFn`에 그대로 넘기지 않고 `(id) => request(id)`로 감쌈                                                            | TanStack Query가 `mutationFn`에 두 번째 인자로 컨텍스트를 넘긴다. 그대로 넘기면 요청 함수의 선택 인자 자리에 들어간다(테스트가 2개 인자 호출로 실패해 발견). |
+
+### 실행한 검증
+
+| 명령                              | 결과                                                                               |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| `pnpm -r lint`                    | 4개 패키지 통과                                                                    |
+| `pnpm -r format:check`            | 통과                                                                               |
+| `pnpm -r test`                    | `packages/ui` 46건, `backend` 892건(+16 skip), `admin` 95건, `frontend` 444건 통과 |
+| `pnpm -r build`                   | 통과 (`admin`은 `vite build && tsc -b`가 타입 검사까지 수행)                       |
+| `pnpm --filter backend typecheck` | 통과 (테스트 포함)                                                                 |
+
+- TDD 순서를 밟았고 red를 실제로 확인했다. 백엔드는 스키마·서비스가 없어 테스트 파일 2개가 import 해석에서 먼저 실패했고(`Tests no tests`), 어드민은 페이지 3개의 import 해석 실패를 먼저 확인했다.
+- 감사 로그는 변경 엔드포인트 4개(프로젝트·문서의 삭제·복구) 모두에서 같은 트랜잭션 안에 1건씩 기록되는지 테스트로 고정했다. 조회 엔드포인트는 기록하지 않는 것도 단정했다.
+- 프로젝트 복구가 개별 삭제되지 않았던 문서만 다시 보이게 하고 개별 삭제된 문서는 삭제 상태로 남기는지, 이미 삭제된 리소스의 `DELETE`가 404, 삭제되지 않은 리소스의 복구가 400 `RESOURCE_NOT_DELETED`인지를 테스트로 고정했다.
+- **화면과 백엔드의 실제 연동은 여전히 검증하지 못했다.** 로컬 `.env`에 어드민 변수가 없어 백엔드가 부팅하지 않는다.
+
+### 남은 후속 작업
+
+- **환경 변수 파일 반영과 첫 어드민 계정 생성(사용자 작업).** 단계 1~3의 후속 작업 그대로다. 단계 5의 대시보드·운영 상태는 실제 데이터를 봐야 값이 맞는지 확인할 수 있으므로 이것이 먼저다.
+- **오류 문구 공통화.** 단계 2·3의 후속 작업 그대로 남았다. 단계 5에서 화면이 마지막으로 늘어나므로 그때 `shared/lib/api-error.ts` 한쪽으로 모은다.
+- **워크스페이스 상세의 프로젝트 탭.** 이제 프로젝트 목록 API에 `workspaceId` 필터가 있다. 상세 응답에서 프로젝트 배열을 떼고 그 API로 바꾸면 탭에서도 삭제·복구를 쓸 수 있고 프로젝트 이름을 `/projects/$projectId`로 연결할 수 있다.
+- **어드민 429 응답 본문.** 단계 1의 후속 작업 그대로다. `express-rate-limit` 기본 `text/html`이라 화면이 JSON 오류로 읽지 못한다.
+
 ## 프리미티브 추가 절차
 
 `components.json`은 `packages/ui/`에 있다. 프리미티브가 거기 있으므로 CLI도 거기서 돈다.
