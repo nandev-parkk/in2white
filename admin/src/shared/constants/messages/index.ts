@@ -1,8 +1,10 @@
 import { AUTH_MESSAGES } from './auth'
 import { COMMON_MESSAGES } from '@in2white/ui/constants/common-messages'
 import { NAV_MESSAGES } from './nav'
+import { PROJECT_MESSAGES } from './project'
 import { USER_MESSAGES } from './user'
 import { VALIDATION_MESSAGES } from './validation'
+import { WHITEBOARD_DOCUMENT_MESSAGES } from './whiteboard-document'
 import { WORKSPACE_MESSAGES } from './workspace'
 
 /**
@@ -16,4 +18,6 @@ export const MESSAGES = {
   nav: NAV_MESSAGES,
   user: USER_MESSAGES,
   workspace: WORKSPACE_MESSAGES,
+  project: PROJECT_MESSAGES,
+  whiteboardDocument: WHITEBOARD_DOCUMENT_MESSAGES,
 } as const

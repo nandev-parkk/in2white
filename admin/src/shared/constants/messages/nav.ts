@@ -4,6 +4,8 @@ export const NAV_MESSAGES = {
     dashboard: '대시보드',
     users: '사용자',
     workspaces: '워크스페이스',
+    projects: '프로젝트',
+    whiteboardDocuments: '화이트보드 문서',
   },
   action: {
     logout: '로그아웃',

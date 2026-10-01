@@ -1,6 +1,12 @@
 import type { PropsWithChildren } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { FolderKanban, LayoutDashboard, Users } from 'lucide-react'
+import {
+  FileText,
+  Folder,
+  FolderKanban,
+  LayoutDashboard,
+  Users,
+} from 'lucide-react'
 
 import { useAdminSessionStore } from '@/entities/admin-session'
 import { useAdminLogout } from '@/features/auth'
@@ -16,6 +22,12 @@ const MENU_ITEMS = [
     to: '/workspaces',
     label: MESSAGES.nav.menu.workspaces,
     icon: FolderKanban,
+  },
+  { to: '/projects', label: MESSAGES.nav.menu.projects, icon: Folder },
+  {
+    to: '/whiteboard-documents',
+    label: MESSAGES.nav.menu.whiteboardDocuments,
+    icon: FileText,
   },
 ] as const
 

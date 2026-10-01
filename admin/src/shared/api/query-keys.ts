@@ -12,4 +12,9 @@ export const QUERY_KEYS = {
     ['users', 'member-candidates', search] as const,
   workspaces: ['workspaces'] as const,
   workspace: (workspaceId: string) => ['workspace', workspaceId] as const,
+  projects: ['projects'] as const,
+  /** 모든 프로젝트 상세의 공통 접두사. 어느 프로젝트의 문서인지 모를 때 통째로 비운다. */
+  projectDetails: ['project'] as const,
+  project: (projectId: string) => ['project', projectId] as const,
+  whiteboardDocuments: ['whiteboard-documents'] as const,
 } as const
