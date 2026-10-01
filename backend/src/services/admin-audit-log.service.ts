@@ -1,12 +1,18 @@
-import { adminAuditLogs } from "@/db/schema";
+import { and, asc, count, desc, eq, gte, ilike, lte } from "drizzle-orm";
+import { db } from "@/db/client";
+import { adminAuditLogs, adminUsers } from "@/db/schema";
 import type { TransactionHandle } from "@/db/transaction";
+import type { AuditTargetType } from "@/schemas/admin-audit-log.schema";
+import type { PaginationMeta } from "@/utils/pagination";
+import { createPaginationMeta, getPaginationOffset } from "@/utils/pagination";
+import { buildContainsSearchPattern } from "@/utils/search";
 
 /*
  * 대상 변경과 같은 트랜잭션에 기록하기 위해 핸들을 인자로 받는다. 전역 `db`를 쓰면
  * 변경은 롤백됐는데 로그만 남거나, 변경은 성공했는데 로그가 없는 상태가 생긴다.
  */
 
-export type AuditTargetType = "user" | "workspace" | "project" | "whiteboard_document" | "admin";
+export type { AuditTargetType };
 
 export interface AuditLogEntry {
   adminId: string;
@@ -73,4 +79,117 @@ export async function recordAuditLog(tx: TransactionHandle, entry: AuditLogEntry
   }
 
   return log;
+}
+
+export interface AdminAuditLogAdmin {
+  id: string;
+  email: string;
+  name: string;
+}
+
+export interface AdminAuditLogListItem {
+  id: string;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  summary: string;
+  metadata: Record<string, unknown>;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: Date;
+  admin: AdminAuditLogAdmin;
+}
+
+export interface ListAuditLogsInput {
+  adminId?: string;
+  action?: string;
+  targetType?: AuditTargetType;
+  from?: Date;
+  to?: Date;
+  page: number;
+  limit: number;
+}
+
+export interface ListAuditLogsResult {
+  auditLogs: AdminAuditLogListItem[];
+  pagination: PaginationMeta;
+}
+
+const AUDIT_LOG_COLUMNS = {
+  id: adminAuditLogs.id,
+  action: adminAuditLogs.action,
+  targetType: adminAuditLogs.targetType,
+  targetId: adminAuditLogs.targetId,
+  summary: adminAuditLogs.summary,
+  metadata: adminAuditLogs.metadata,
+  ip: adminAuditLogs.ip,
+  userAgent: adminAuditLogs.userAgent,
+  createdAt: adminAuditLogs.createdAt,
+} as const;
+
+/* 어드민 계정 참조는 restrict라 삭제되지 않는다 — inner join으로 빠지는 행이 없다. */
+const AUDIT_LOG_ADMIN_COLUMNS = {
+  adminId: adminUsers.id,
+  adminEmail: adminUsers.email,
+  adminName: adminUsers.name,
+} as const;
+
+interface AuditLogFlatRow {
+  id: string;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  summary: string;
+  metadata: Record<string, unknown>;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: Date;
+  adminId: string;
+  adminEmail: string;
+  adminName: string;
+}
+
+function toAuditLogListItem({
+  adminId,
+  adminEmail,
+  adminName,
+  ...log
+}: AuditLogFlatRow): AdminAuditLogListItem {
+  return { ...log, admin: { id: adminId, email: adminEmail, name: adminName } };
+}
+
+export async function listAuditLogs({
+  adminId,
+  action,
+  targetType,
+  from,
+  to,
+  page,
+  limit,
+}: ListAuditLogsInput): Promise<ListAuditLogsResult> {
+  const whereCondition = and(
+    adminId ? eq(adminAuditLogs.adminId, adminId) : undefined,
+    action ? ilike(adminAuditLogs.action, buildContainsSearchPattern(action)) : undefined,
+    targetType ? eq(adminAuditLogs.targetType, targetType) : undefined,
+    from ? gte(adminAuditLogs.createdAt, from) : undefined,
+    to ? lte(adminAuditLogs.createdAt, to) : undefined,
+  );
+
+  const [countRows, logRows] = await Promise.all([
+    db.select({ total: count() }).from(adminAuditLogs).where(whereCondition),
+    db
+      .select({ ...AUDIT_LOG_COLUMNS, ...AUDIT_LOG_ADMIN_COLUMNS })
+      .from(adminAuditLogs)
+      .innerJoin(adminUsers, eq(adminAuditLogs.adminId, adminUsers.id))
+      .where(whereCondition)
+      /* 같은 밀리초에 기록된 로그가 페이지 경계에서 흔들리지 않게 id로 한 번 더 정렬한다. */
+      .orderBy(desc(adminAuditLogs.createdAt), asc(adminAuditLogs.id))
+      .limit(limit)
+      .offset(getPaginationOffset({ page, limit })),
+  ]);
+
+  return {
+    auditLogs: logRows.map(toAuditLogListItem),
+    pagination: createPaginationMeta({ page, limit, total: Number(countRows[0]?.total ?? 0) }),
+  };
 }

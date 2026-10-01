@@ -17,4 +17,7 @@ export const QUERY_KEYS = {
   projectDetails: ['project'] as const,
   project: (projectId: string) => ['project', projectId] as const,
   whiteboardDocuments: ['whiteboard-documents'] as const,
+  dashboardMetrics: ['dashboard-metrics'] as const,
+  auditLogs: ['audit-logs'] as const,
+  systemStatus: ['system-status'] as const,
 } as const

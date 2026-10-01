@@ -1,10 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate } from '@tanstack/react-router'
-import { isAxiosError } from 'axios'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
 import { MESSAGES } from '@/shared/constants/messages'
+import { apiErrorMessage } from '@/shared/lib/api-error'
 import { Button } from '@in2white/ui/button'
 import { Input } from '@in2white/ui/input'
 import { PasswordInput } from '@in2white/ui/password-input'
@@ -23,20 +23,6 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>
 
-function getErrorMessage(error: unknown): string {
-  // 백엔드 에러 핸들러(backend/src/middlewares/error-handler.middleware.ts)는
-  // 모든 에러를 { error: { message, code } } 형태로 응답한다 — 최상위 message가 아니다.
-  if (isAxiosError(error) && error.response) {
-    const data = error.response.data as
-      { error?: { message?: string } } | undefined
-    if (data?.error?.message) {
-      return data.error.message
-    }
-  }
-
-  return MESSAGES.common.error.network
-}
-
 export function LoginForm() {
   const navigate = useNavigate()
   const login = useAdminLogin()
@@ -53,7 +39,7 @@ export function LoginForm() {
       await login.mutateAsync(values)
       navigate({ to: '/', replace: true })
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      toast.error(apiErrorMessage(error))
     }
   }
 

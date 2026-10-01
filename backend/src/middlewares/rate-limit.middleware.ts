@@ -1,4 +1,5 @@
 import rateLimit from "express-rate-limit";
+import { ERROR_MESSAGES } from "@/constants/messages";
 
 export const PRODUCT_RATE_LIMIT = {
   windowMs: 15 * 60 * 1000,
@@ -24,4 +25,10 @@ export const adminLoginRateLimitMiddleware = rateLimit({
   ...ADMIN_LOGIN_RATE_LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
+  message: {
+    error: {
+      code: "RATE_LIMIT_EXCEEDED",
+      message: ERROR_MESSAGES.ADMIN_LOGIN_RATE_LIMITED,
+    },
+  },
 });

@@ -1,10 +1,12 @@
 import type { PropsWithChildren } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
+  Activity,
   FileText,
   Folder,
   FolderKanban,
   LayoutDashboard,
+  ScrollText,
   Users,
 } from 'lucide-react'
 
@@ -29,6 +31,8 @@ const MENU_ITEMS = [
     label: MESSAGES.nav.menu.whiteboardDocuments,
     icon: FileText,
   },
+  { to: '/audit-logs', label: MESSAGES.nav.menu.auditLogs, icon: ScrollText },
+  { to: '/system', label: MESSAGES.nav.menu.system, icon: Activity },
 ] as const
 
 export function AdminAppShell({ children }: PropsWithChildren) {

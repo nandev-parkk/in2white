@@ -16,6 +16,7 @@ import {
   type ParticipantIdentity,
   WhiteboardRoomManager,
   type SceneUpdateResult,
+  type WhiteboardRealtimeStats,
   type WhiteboardRoomEvent,
 } from "@/realtime/whiteboard-room-manager";
 import type {
@@ -171,6 +172,8 @@ export interface WhiteboardCollaborationDependencies {
 
 export interface WhiteboardCollaboration {
   documentDeleted(documentId: string): void;
+  /** 어드민 운영 화면이 현재 열린 방·참여자·소켓 수를 읽는다. */
+  stats(): WhiteboardRealtimeStats;
   close(): Promise<void>;
 }
 
@@ -580,6 +583,7 @@ export function createWhiteboardCollaborationServer(
 
   return {
     documentDeleted,
+    stats: () => manager.stats(),
     close,
   };
 }

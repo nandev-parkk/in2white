@@ -6,6 +6,8 @@ export const NAV_MESSAGES = {
     workspaces: '워크스페이스',
     projects: '프로젝트',
     whiteboardDocuments: '화이트보드 문서',
+    auditLogs: '감사 로그',
+    system: '운영 상태',
   },
   action: {
     logout: '로그아웃',

@@ -1,7 +1,10 @@
+import { AUDIT_LOG_MESSAGES } from './audit-log'
 import { AUTH_MESSAGES } from './auth'
 import { COMMON_MESSAGES } from '@in2white/ui/constants/common-messages'
+import { DASHBOARD_MESSAGES } from './dashboard'
 import { NAV_MESSAGES } from './nav'
 import { PROJECT_MESSAGES } from './project'
+import { SYSTEM_MESSAGES } from './system'
 import { USER_MESSAGES } from './user'
 import { VALIDATION_MESSAGES } from './validation'
 import { WHITEBOARD_DOCUMENT_MESSAGES } from './whiteboard-document'
@@ -16,8 +19,11 @@ export const MESSAGES = {
   validation: VALIDATION_MESSAGES,
   auth: AUTH_MESSAGES,
   nav: NAV_MESSAGES,
+  dashboard: DASHBOARD_MESSAGES,
   user: USER_MESSAGES,
   workspace: WORKSPACE_MESSAGES,
   project: PROJECT_MESSAGES,
   whiteboardDocument: WHITEBOARD_DOCUMENT_MESSAGES,
+  auditLog: AUDIT_LOG_MESSAGES,
+  system: SYSTEM_MESSAGES,
 } as const

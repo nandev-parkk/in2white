@@ -5,6 +5,7 @@ import compression from "compression";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import { getEnv } from "@/config/env";
+import type { WhiteboardRealtimeStats } from "@/realtime/whiteboard-room-manager";
 import { createRouter } from "@/routes/index";
 import { createAdminRouter } from "@/routes/admin/index";
 import { rateLimitMiddleware } from "@/middlewares/rate-limit.middleware";
@@ -14,6 +15,11 @@ import { logger } from "@/utils/logger";
 
 export interface AppOptions {
   onWhiteboardDocumentDeleted?: (documentId: string) => void;
+  /*
+   * 실시간 통계는 소켓 서버가 가지고 있지만 이 앱이 소켓 서버보다 먼저 만들어진다.
+   * 값 대신 호출 시점에 읽는 함수를 받아, 운영 상태 조회가 그 순간의 수를 보게 한다.
+   */
+  whiteboardRealtimeStats?: () => WhiteboardRealtimeStats;
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -47,7 +53,7 @@ export function createApp(options: AppOptions = {}) {
   );
   app.use(rateLimitMiddleware);
 
-  app.use("/admin", createAdminRouter());
+  app.use("/admin", createAdminRouter({ realtimeStats: options.whiteboardRealtimeStats }));
 
   app.use(
     createRouter({

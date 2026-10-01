@@ -56,6 +56,8 @@ describe('AdminAppShell', () => {
       screen.getByRole('navigation', { name: '어드민 사이드바' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '대시보드' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '감사 로그' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '운영 상태' })).toBeInTheDocument()
     expect(screen.getByLabelText('현재 환경: local')).toBeInTheDocument()
     expect(screen.getByText('admin@in2white.team')).toBeInTheDocument()
   })

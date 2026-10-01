@@ -444,3 +444,60 @@ describe("WhiteboardRoomManager", () => {
     expect(manager.leave("socket-2")).toMatchObject({ participantLeft: true, roomEmpty: true });
   });
 });
+
+/* 어드민 운영 화면이 "지금 몇 명이 어디에 붙어 있는지"를 이 집계로만 알 수 있다. */
+describe("WhiteboardRoomManager.stats", () => {
+  it("reports zero for every counter while no room is open", () => {
+    const { manager } = createManager();
+
+    expect(manager.stats()).toEqual({
+      documentCount: 0,
+      participantCount: 0,
+      socketCount: 0,
+    });
+  });
+
+  /* 한 사용자가 탭을 여러 개 열면 참여자 1명에 소켓 2개다 — 두 수를 따로 센다. */
+  it("counts sockets separately from participants", async () => {
+    const { manager } = createManager();
+    await join(manager, "socket-1", "user-1");
+    await join(manager, "socket-2", "user-1");
+    await join(manager, "socket-3", "user-2");
+
+    expect(manager.stats()).toEqual({
+      documentCount: 1,
+      participantCount: 2,
+      socketCount: 3,
+    });
+  });
+
+  it("sums participants across documents", async () => {
+    const { manager } = createManager();
+    await join(manager, "socket-1", "user-1");
+    await manager.join(
+      "socket-2",
+      { userId: "user-2", name: "two" },
+      anotherDocumentId,
+      snapshot(),
+    );
+
+    expect(manager.stats()).toEqual({
+      documentCount: 2,
+      participantCount: 2,
+      socketCount: 2,
+    });
+  });
+
+  it("drops a room from the count once the last participant leaves", async () => {
+    const { manager } = createManager();
+    await join(manager, "socket-1", "user-1");
+
+    manager.leave("socket-1");
+
+    expect(manager.stats()).toEqual({
+      documentCount: 0,
+      participantCount: 0,
+      socketCount: 0,
+    });
+  });
+});

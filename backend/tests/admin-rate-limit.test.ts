@@ -25,6 +25,10 @@ describe("어드민 로그인 rate limit", () => {
     const blocked = await request(appUrl()).post("/admin/auth/login").send({});
 
     expect(blocked.status).toBe(429);
+    expect(blocked.headers["content-type"]).toMatch(/application\/json/);
+    expect(blocked.body).toEqual({
+      error: { code: "RATE_LIMIT_EXCEEDED", message: expect.any(String) },
+    });
   });
 
   it("어드민 로그인 버킷이 다른 어드민 경로까지 막지는 않는다", async () => {
