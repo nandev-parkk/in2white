@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, count, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "@/app";
@@ -260,7 +260,9 @@ describe("addMember", () => {
       ),
     );
     expect(userQuery.from).toHaveBeenCalledWith(users);
-    expect(userQuery.where).toHaveBeenCalledWith(eq(users.id, targetUserId));
+    expect(userQuery.where).toHaveBeenCalledWith(
+      and(eq(users.id, targetUserId), isNull(users.deactivatedAt)),
+    );
     expect(existingQuery.from).toHaveBeenCalledWith(workspaceMemberships);
     expect(existingQuery.where).toHaveBeenCalledWith(
       and(
@@ -330,6 +332,29 @@ describe("addMember", () => {
       eq(workspaceMemberships.workspaceId, workspaces.id),
     );
     expect(userQuery.where).not.toHaveBeenCalled();
+    expect(membershipInsert.values).not.toHaveBeenCalled();
+  });
+
+  /*
+   * 후보 검색에서 빠지더라도 userId를 직접 넣은 요청이 통과하면 정지가 무의미해진다.
+   * 조회 조건에서 제외해 정지 계정은 없는 사용자로 취급한다.
+   */
+  it("정지된 계정은 없는 사용자로 취급해 추가할 수 없다", async () => {
+    const { userQuery, existingQuery, membershipInsert } = mockAddMemberTransaction({
+      userRows: [],
+    });
+
+    await expect(
+      addMember({ workspaceId, requesterId: "owner-1", userId: targetUserId }),
+    ).rejects.toMatchObject({
+      status: 404,
+      code: "USER_NOT_FOUND",
+    });
+
+    expect(userQuery.where).toHaveBeenCalledWith(
+      and(eq(users.id, targetUserId), isNull(users.deactivatedAt)),
+    );
+    expect(existingQuery.where).not.toHaveBeenCalled();
     expect(membershipInsert.values).not.toHaveBeenCalled();
   });
 

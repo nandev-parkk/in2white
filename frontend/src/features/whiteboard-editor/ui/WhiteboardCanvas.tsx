@@ -16,16 +16,16 @@ import type { RemoteExcalidrawElement } from '@excalidraw/excalidraw/data/reconc
 import '@excalidraw/excalidraw/index.css'
 import type { WhiteboardDocumentDetail } from '@/entities/whiteboard-document'
 import { CanvasTopBar } from './CanvasTopBar'
-import { Button } from '@/shared/ui/button'
+import { Button } from '@in2white/ui/button'
 import { MoreVertical } from 'lucide-react'
-import { toast } from '@/shared/ui/toast'
+import { toast } from '@in2white/ui/toast'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
+} from '@in2white/ui/dropdown-menu'
 import { useWhiteboardEditor } from '../model/use-whiteboard-editor'
 import { diffScene, hasDelta, mergeScene } from '../model/scene-sync'
 import { downloadSceneFile, downloadScenePdf } from '../model/export-scene'

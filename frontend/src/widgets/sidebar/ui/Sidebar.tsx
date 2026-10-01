@@ -1,6 +1,6 @@
 import * as React from 'react'
-import { DelayedLoading } from '@/shared/ui/loading-state'
-import { cn } from '@/shared/lib/utils'
+import { DelayedLoading } from '@in2white/ui/loading-state'
+import { cn } from '@in2white/ui/lib/utils'
 import {
   Check,
   ChevronLeft,
@@ -14,10 +14,10 @@ import {
   Users,
 } from 'lucide-react'
 import type { WorkspaceSummary } from '@/entities/workspace'
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/avatar'
-import { CompactEmptyState } from '@/shared/ui/compact-empty-state'
-import { Search as SearchField } from '@/shared/ui/search'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
+import { Avatar, AvatarFallback, AvatarImage } from '@in2white/ui/avatar'
+import { CompactEmptyState } from '@in2white/ui/compact-empty-state'
+import { Search as SearchField } from '@in2white/ui/search'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@in2white/ui/tooltip'
 import type { PresenceUser } from '@/shared/ui/presence-avatar-stack'
 import { useScrollActiveItem } from '@/shared/hooks/use-scroll-active-item'
 import { MESSAGES } from '@/shared/constants/messages'

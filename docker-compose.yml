@@ -1,18 +1,33 @@
 services:
   frontend:
     build:
-      context: ./frontend
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:?VITE_API_BASE_URL을 설정하세요}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8080:80"
+      - "10101:80"
 
-  backend:
-    build: ./backend
+  # 어드민 콘솔도 제품 화면처럼 호스트 네트워크에 공개한다.
+  admin:
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${ADMIN_VITE_API_BASE_URL:?ADMIN_VITE_API_BASE_URL을 설정하세요}
+        VITE_ENVIRONMENT_LABEL: ${ADMIN_ENVIRONMENT_LABEL:-production}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:4000:4000"
+      - "10102:80"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "10103:4000"
     environment:
       NODE_ENV: production
       PORT: "4000"
@@ -20,7 +35,10 @@ services:
       VALKEY_URL: ${VALKEY_URL:?VALKEY_URL을 설정하세요}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET을 설정하세요}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET을 설정하세요}
+      JWT_ADMIN_SECRET: ${JWT_ADMIN_SECRET:?JWT_ADMIN_SECRET을 설정하세요}
+      JWT_ADMIN_REFRESH_SECRET: ${JWT_ADMIN_REFRESH_SECRET:?JWT_ADMIN_REFRESH_SECRET을 설정하세요}
       CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN을 설정하세요}
+      ADMIN_CORS_ORIGIN: ${ADMIN_CORS_ORIGIN:?ADMIN_CORS_ORIGIN을 설정하세요}
     healthcheck:
       test:
         - CMD

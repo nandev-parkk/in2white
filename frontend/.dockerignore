@@ -1,9 +1,0 @@
-node_modules
-dist
-storybook-static
-.tanstack
-.env
-.env.*
-!.env.example
-.git
-*.log

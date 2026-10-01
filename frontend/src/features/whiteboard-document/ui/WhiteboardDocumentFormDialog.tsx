@@ -2,15 +2,15 @@ import { useState, type FormEvent } from 'react'
 
 import type { WhiteboardDocumentInput } from '@/entities/whiteboard-document'
 import { MESSAGES } from '@/shared/constants/messages'
-import { Button } from '@/shared/ui/button'
+import { Button } from '@in2white/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogTitle,
-} from '@/shared/ui/dialog'
-import { Input } from '@/shared/ui/input'
+} from '@in2white/ui/dialog'
+import { Input } from '@in2white/ui/input'
 
 type WhiteboardDocumentFormDialogProps = {
   open: boolean

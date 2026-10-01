@@ -9,6 +9,7 @@ export function createApplicationServer(
   const httpServer = createServer(
     createApp({
       onWhiteboardDocumentDeleted: (documentId) => collaboration.documentDeleted(documentId),
+      whiteboardRealtimeStats: () => collaboration.stats(),
     }),
   );
   const collaboration = createWhiteboardCollaborationServer(httpServer, { shutdownDeadlineAt });

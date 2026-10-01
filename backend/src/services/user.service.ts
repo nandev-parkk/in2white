@@ -2,7 +2,8 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { users, workspaceMemberships, workspaces } from "@/db/schema";
 
-const DEFAULT_WORKSPACE_NAME = "My Workspace";
+/** 어드민 계정 생성도 같은 이름을 쓴다 — 제품과 어드민이 만든 기본 워크스페이스가 달라 보이면 안 된다. */
+export const DEFAULT_WORKSPACE_NAME = "My Workspace";
 
 export interface UpsertUserWithDefaultWorkspaceInput {
   email: string;

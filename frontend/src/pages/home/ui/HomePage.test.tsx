@@ -5,7 +5,7 @@ import { afterEach, vi } from 'vitest'
 
 import { useSessionStore } from '@/entities/session'
 import type { WorkspaceSummary } from '@/entities/workspace'
-import { toast } from '@/shared/ui/toast'
+import { toast } from '@in2white/ui/toast'
 
 import { HomePage } from './HomePage'
 
@@ -79,7 +79,7 @@ vi.mock('@/features/project/ui/ProjectListContent', () => ({
   ),
 }))
 
-vi.mock('@/shared/ui/toast', () => ({
+vi.mock('@in2white/ui/toast', () => ({
   toast: { success: vi.fn() },
 }))
 

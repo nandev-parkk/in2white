@@ -1,0 +1,15 @@
+packages:
+  - frontend
+  - admin
+  - backend
+  - packages/*
+
+# frontend/backend 각각의 pnpm-workspace.yaml에서 통합한 설정
+allowBuilds:
+  bcrypt: true
+  core-js: false
+  cpu-features: false
+  esbuild: true
+  protobufjs: true
+  ssh2: false
+  unrs-resolver: true

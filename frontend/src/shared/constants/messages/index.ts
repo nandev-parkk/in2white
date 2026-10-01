@@ -1,6 +1,6 @@
 import { ACCOUNT_MESSAGES } from './account'
 import { AUTH_MESSAGES } from './auth'
-import { COMMON_MESSAGES } from './common'
+import { COMMON_MESSAGES } from '@in2white/ui/constants/common-messages'
 import { MEMBER_MESSAGES } from './member'
 import { NAV_MESSAGES } from './nav'
 import { PROJECT_MESSAGES } from './project'

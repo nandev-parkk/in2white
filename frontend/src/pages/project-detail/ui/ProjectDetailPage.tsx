@@ -15,17 +15,17 @@ import { ProjectDetailHeader } from '@/features/project/ui/ProjectDetailHeader'
 import { ProjectFormDialog } from '@/features/project/ui/ProjectFormDialog'
 import { WhiteboardDocumentListContent } from '@/features/whiteboard-document'
 import { AuthenticatedWorkspaceLayout } from '@/pages/shared/ui/AuthenticatedWorkspaceLayout'
-import { Button } from '@/shared/ui/button'
-import { EmptyState } from '@/shared/ui/empty-state'
-import { ErrorState } from '@/shared/ui/error-state'
+import { Button } from '@in2white/ui/button'
+import { EmptyState } from '@in2white/ui/empty-state'
+import { ErrorState } from '@in2white/ui/error-state'
 import type { SidebarNavKey } from '@/widgets/sidebar'
-import { Skeleton } from '@/shared/ui/skeleton'
-import { DelayedLoading } from '@/shared/ui/loading-state'
+import { Skeleton } from '@in2white/ui/skeleton'
+import { DelayedLoading } from '@in2white/ui/loading-state'
 import {
   ListToolbarSkeleton,
   ResourceListSkeleton,
-} from '@/shared/ui/resource-list-skeleton'
-import { toast } from '@/shared/ui/toast'
+} from '@in2white/ui/resource-list-skeleton'
+import { toast } from '@in2white/ui/toast'
 import { MESSAGES } from '@/shared/constants/messages'
 
 type ProjectDetailPageProps = {

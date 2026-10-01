@@ -1,6 +1,6 @@
 import { Users } from 'lucide-react'
 
-import { Button } from '@/shared/ui/button'
+import { Button } from '@in2white/ui/button'
 import { MESSAGES } from '@/shared/constants/messages'
 
 type WorkspaceAccessDeniedPageProps = {

@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { cn } from '@/shared/lib/utils'
+import { cn } from '@in2white/ui/lib/utils'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@in2white/ui/avatar'
 
 type PresenceUser = {
   id: string

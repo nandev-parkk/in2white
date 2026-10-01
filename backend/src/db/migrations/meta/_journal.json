@@ -43,6 +43,13 @@
       "when": 1789140707865,
       "tag": "0005_greedy_shriek",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790787222386,
+      "tag": "0006_admin_console",
+      "breakpoints": true
     }
   ]
 }

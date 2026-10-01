@@ -3,8 +3,8 @@ import { useEffect } from 'react'
 import { selectDefaultWorkspace } from '@/entities/workspace'
 import type { SessionUser } from '@/entities/session'
 import { useWorkspaces } from '@/features/workspace'
-import { Button } from '@/shared/ui/button'
-import { LoadingState } from '@/shared/ui/loading-state'
+import { Button } from '@in2white/ui/button'
+import { LoadingState } from '@in2white/ui/loading-state'
 import { MESSAGES } from '@/shared/constants/messages'
 
 type WorkspaceRedirectPageProps = {

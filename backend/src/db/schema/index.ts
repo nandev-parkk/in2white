@@ -1,4 +1,6 @@
 export * from "@/db/schema/users";
+export * from "@/db/schema/admin-users";
+export * from "@/db/schema/admin-audit-logs";
 export * from "@/db/schema/workspaces";
 export * from "@/db/schema/workspace-memberships";
 export * from "@/db/schema/projects";

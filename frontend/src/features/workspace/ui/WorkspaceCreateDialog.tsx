@@ -6,9 +6,9 @@ import {
   DialogDescription,
   DialogFooter,
   DialogTitle,
-} from '@/shared/ui/dialog'
-import { Input } from '@/shared/ui/input'
-import { Button } from '@/shared/ui/button'
+} from '@in2white/ui/dialog'
+import { Input } from '@in2white/ui/input'
+import { Button } from '@in2white/ui/button'
 import { MESSAGES } from '@/shared/constants/messages'
 
 type WorkspaceCreateDialogProps = {

@@ -16,6 +16,7 @@ const mockUser = {
   email: "user@example.com",
   passwordHash: "hashed-value",
   sessionVersion: 0,
+  deactivatedAt: null,
   createdAt: new Date(),
 };
 
@@ -72,6 +73,38 @@ describe("auth.service login", () => {
       sub: "user-1",
       sid: expect.any(String),
       ver: 0,
+    });
+  });
+
+  /*
+   * 정지 여부는 비밀번호 검증을 통과한 뒤에 본다. 먼저 보면 이메일만 아는 공격자가
+   * 계정 상태를 알아낼 수 있다.
+   */
+  it("rejects a deactivated account with 403 and issues no session", async () => {
+    vi.mocked(userService.getUserByEmail).mockResolvedValue({
+      ...mockUser,
+      deactivatedAt: new Date("2026-09-30T00:00:00.000Z"),
+    });
+    vi.mocked(passwordLib.comparePassword).mockResolvedValue(true);
+
+    await expect(login("user@example.com", "correct")).rejects.toMatchObject({
+      status: 403,
+      code: "ACCOUNT_DEACTIVATED",
+    });
+    expect(jwtLib.signAccessToken).not.toHaveBeenCalled();
+    expect(sessionService.saveRefreshSession).not.toHaveBeenCalled();
+  });
+
+  it("still answers INVALID_CREDENTIALS when a deactivated account gets the password wrong", async () => {
+    vi.mocked(userService.getUserByEmail).mockResolvedValue({
+      ...mockUser,
+      deactivatedAt: new Date("2026-09-30T00:00:00.000Z"),
+    });
+    vi.mocked(passwordLib.comparePassword).mockResolvedValue(false);
+
+    await expect(login("user@example.com", "wrong")).rejects.toMatchObject({
+      status: 401,
+      code: "INVALID_CREDENTIALS",
     });
   });
 });
@@ -170,6 +203,47 @@ describe("auth.service refresh", () => {
     expect(sessionService.deleteRefreshSession).toHaveBeenCalledWith("user-1", "sid-old");
     expect(jwtLib.signAccessToken).not.toHaveBeenCalled();
     expect(sessionService.rotateRefreshSession).not.toHaveBeenCalled();
+  });
+
+  it("rejects a deactivated account with 403 and discards the session", async () => {
+    vi.mocked(jwtLib.verifyRefreshToken).mockResolvedValue({
+      sub: "user-1",
+      sid: "sid-1",
+      ver: 0,
+      type: "refresh",
+    });
+    vi.mocked(userService.getUserById).mockResolvedValue({
+      ...mockUser,
+      deactivatedAt: new Date("2026-09-30T00:00:00.000Z"),
+    });
+    vi.mocked(sessionService.deleteRefreshSession).mockResolvedValue(undefined);
+
+    await expect(refresh("valid-refresh-token")).rejects.toMatchObject({
+      status: 403,
+      code: "ACCOUNT_DEACTIVATED",
+    });
+    // 정지된 순간부터 남은 refresh 토큰은 무용지물이어야 한다.
+    expect(sessionService.deleteRefreshSession).toHaveBeenCalledWith("user-1", "sid-1");
+    expect(sessionService.rotateRefreshSession).not.toHaveBeenCalled();
+  });
+
+  it("still returns ACCOUNT_DEACTIVATED when the session cleanup fails", async () => {
+    vi.mocked(jwtLib.verifyRefreshToken).mockResolvedValue({
+      sub: "user-1",
+      sid: "sid-1",
+      ver: 0,
+      type: "refresh",
+    });
+    vi.mocked(userService.getUserById).mockResolvedValue({
+      ...mockUser,
+      deactivatedAt: new Date("2026-09-30T00:00:00.000Z"),
+    });
+    vi.mocked(sessionService.deleteRefreshSession).mockRejectedValue(new Error("valkey down"));
+
+    await expect(refresh("valid-refresh-token")).rejects.toMatchObject({
+      status: 403,
+      code: "ACCOUNT_DEACTIVATED",
+    });
   });
 
   it("still returns INVALID_REFRESH_TOKEN when stale-session cleanup fails", async () => {

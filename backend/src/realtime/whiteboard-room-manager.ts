@@ -167,6 +167,13 @@ export type LeaveRoomResult = {
 
 export type CloseDocumentResult = { documentId: string; socketIds: string[] };
 
+/* 어드민 운영 화면이 읽는 집계다. 한 사용자가 탭을 여러 개 열면 참여자 1명에 소켓 여러 개다. */
+export interface WhiteboardRealtimeStats {
+  documentCount: number;
+  participantCount: number;
+  socketCount: number;
+}
+
 export interface DirtyWhiteboardRoom {
   documentId: string;
   revision: number;
@@ -454,6 +461,20 @@ export class WhiteboardRoomManager {
       }
     }
     return { documentId, userId, participantLeft, roomEmpty };
+  }
+
+  /*
+   * 메모리 상태를 그대로 센다 — 방은 참여자가 모두 떠나고 저장이 끝나면 사라지므로
+   * 남아 있는 방 수가 곧 "지금 열려 있는 문서 수"다.
+   */
+  stats(): WhiteboardRealtimeStats {
+    let participantCount = 0;
+    let socketCount = 0;
+    for (const room of this.rooms.values()) {
+      participantCount += room.participants.size;
+      socketCount += this.roomSocketCount(room);
+    }
+    return { documentCount: this.rooms.size, participantCount, socketCount };
   }
 
   closeDocument(documentId: string): CloseDocumentResult | null {

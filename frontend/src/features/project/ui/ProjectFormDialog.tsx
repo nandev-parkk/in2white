@@ -2,16 +2,16 @@ import { useState, type FormEvent } from 'react'
 
 import type { CreateProjectInput } from '@/entities/project'
 import { MESSAGES } from '@/shared/constants/messages'
-import { Button } from '@/shared/ui/button'
+import { Button } from '@in2white/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogTitle,
-} from '@/shared/ui/dialog'
-import { Input } from '@/shared/ui/input'
-import { Textarea } from '@/shared/ui/textarea'
+} from '@in2white/ui/dialog'
+import { Input } from '@in2white/ui/input'
+import { Textarea } from '@in2white/ui/textarea'
 
 type ProjectFormDialogProps = {
   open: boolean

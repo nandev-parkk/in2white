@@ -1,7 +1,7 @@
 import { ArrowLeft, MoreVertical } from 'lucide-react'
 
 import type { Project } from '@/entities/project'
-import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
+import { Avatar, AvatarFallback } from '@in2white/ui/avatar'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -9,13 +9,13 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@/shared/ui/breadcrumb'
+} from '@in2white/ui/breadcrumb'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
+} from '@in2white/ui/dropdown-menu'
 import { MESSAGES } from '@/shared/constants/messages'
 
 type ProjectDetailHeaderProps = {

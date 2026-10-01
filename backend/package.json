@@ -20,7 +20,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "create-test-user": "tsx src/scripts/create-test-user.ts",
-    "prepare": "cd .. && husky backend/.husky"
+    "create-admin-user": "tsx src/scripts/create-admin-user.ts"
   },
   "keywords": [],
   "author": "",

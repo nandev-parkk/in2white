@@ -18,7 +18,7 @@ vi.mock('@/features/whiteboard-document', () => ({
   useWhiteboardDocuments: vi.fn(),
 }))
 
-vi.mock('@/shared/ui/toast', () => ({
+vi.mock('@in2white/ui/toast', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }))
 

@@ -56,9 +56,9 @@ export async function deleteRefreshSession(userId: string, sid: string): Promise
   await valkey.del(sessionKey(userId, sid));
 }
 
-export async function deleteOtherRefreshSessions(userId: string, keepSid: string): Promise<void> {
+/* `keepKey`를 주면 그 키만 남기고, 주지 않으면 사용자의 모든 세션 키를 지운다. */
+async function deleteRefreshSessions(userId: string, keepKey?: string): Promise<void> {
   let cursor = "0";
-  const keepKey = sessionKey(userId, keepSid);
 
   do {
     const [nextCursor, keys] = await valkey.scan(
@@ -68,10 +68,18 @@ export async function deleteOtherRefreshSessions(userId: string, keepSid: string
       "COUNT",
       100,
     );
-    const staleKeys = keys.filter((key) => key !== keepKey);
+    const staleKeys = keepKey === undefined ? keys : keys.filter((key) => key !== keepKey);
     if (staleKeys.length > 0) {
       await valkey.del(...staleKeys);
     }
     cursor = nextCursor;
   } while (cursor !== "0");
+}
+
+export async function deleteOtherRefreshSessions(userId: string, keepSid: string): Promise<void> {
+  await deleteRefreshSessions(userId, sessionKey(userId, keepSid));
+}
+
+export async function deleteAllRefreshSessions(userId: string): Promise<void> {
+  await deleteRefreshSessions(userId);
 }

@@ -3,8 +3,8 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
 import type { ChangeAccountPasswordInput } from '@/entities/account'
-import { Button } from '@/shared/ui/button'
-import { PasswordInput } from '@/shared/ui/password-input'
+import { Button } from '@in2white/ui/button'
+import { PasswordInput } from '@in2white/ui/password-input'
 
 import { accountPasswordFormSchema } from '../model/account-form-schema'
 import { MESSAGES } from '@/shared/constants/messages'

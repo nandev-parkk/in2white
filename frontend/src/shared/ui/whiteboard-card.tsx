@@ -1,9 +1,9 @@
 import * as React from 'react'
 import { motion } from 'motion/react'
-import { cn } from '@/shared/lib/utils'
+import { cn } from '@in2white/ui/lib/utils'
 import { Calendar, Clock } from 'lucide-react'
-import { useCardMotion } from '@/shared/lib/hooks/use-card-motion'
-import { Avatar, AvatarFallback } from '@/shared/ui/avatar'
+import { useCardMotion } from '@in2white/ui/lib/hooks/use-card-motion'
+import { Avatar, AvatarFallback } from '@in2white/ui/avatar'
 import { MESSAGES } from '@/shared/constants/messages'
 
 // motion.article과 이름이 겹치는 drag·animation 핸들러만 제외하고 article 속성을 받는다

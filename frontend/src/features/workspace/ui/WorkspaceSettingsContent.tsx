@@ -3,16 +3,16 @@ import { CircleAlert } from 'lucide-react'
 
 import type { WorkspaceSummary } from '@/entities/workspace'
 import { useDeleteWorkspace, useUpdateWorkspace } from '@/features/workspace'
-import { Button } from '@/shared/ui/button'
+import { Button } from '@in2white/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogTitle,
-} from '@/shared/ui/dialog'
-import { Input } from '@/shared/ui/input'
-import { toast } from '@/shared/ui/toast'
+} from '@in2white/ui/dialog'
+import { Input } from '@in2white/ui/input'
+import { toast } from '@in2white/ui/toast'
 import { MESSAGES } from '@/shared/constants/messages'
 
 type WorkspaceSettingsContentProps = {

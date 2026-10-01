@@ -5,6 +5,8 @@ import { workspaceMemberships } from "@/db/schema/workspace-memberships";
 import { projects } from "@/db/schema/projects";
 import { whiteboardDocuments } from "@/db/schema/whiteboard-documents";
 import { whiteboardDocumentContents } from "@/db/schema/whiteboard-document-contents";
+import { adminUsers } from "@/db/schema/admin-users";
+import { adminAuditLogs } from "@/db/schema/admin-audit-logs";
 
 export const usersRelations = relations(users, ({ many }) => ({
   ownedWorkspaces: many(workspaces),
@@ -69,3 +71,14 @@ export const whiteboardDocumentContentsRelations = relations(
     }),
   }),
 );
+
+export const adminUsersRelations = relations(adminUsers, ({ many }) => ({
+  auditLogs: many(adminAuditLogs),
+}));
+
+export const adminAuditLogsRelations = relations(adminAuditLogs, ({ one }) => ({
+  admin: one(adminUsers, {
+    fields: [adminAuditLogs.adminId],
+    references: [adminUsers.id],
+  }),
+}));

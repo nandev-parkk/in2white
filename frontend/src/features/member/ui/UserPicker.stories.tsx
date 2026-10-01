@@ -1,7 +1,7 @@
 import { useMemo, useState, type ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 
-import { Button } from '@/shared/ui/button'
+import { Button } from '@in2white/ui/button'
 import { UserPicker, type PickableUser } from './UserPicker'
 
 const USERS: PickableUser[] = [

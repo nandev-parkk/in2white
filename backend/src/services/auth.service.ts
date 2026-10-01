@@ -43,6 +43,14 @@ export async function login(email: string, password: string): Promise<LoginResul
     throw new HttpError(401, "INVALID_CREDENTIALS", ERROR_MESSAGES.INVALID_CREDENTIALS);
   }
 
+  /*
+   * 정지 여부는 비밀번호 검증을 통과한 뒤에 본다. 먼저 보면 이메일만 아는 사람이
+   * 비밀번호 없이 계정의 존재와 상태를 알아낼 수 있다.
+   */
+  if (user.deactivatedAt) {
+    throw new HttpError(403, "ACCOUNT_DEACTIVATED", ERROR_MESSAGES.ACCOUNT_DEACTIVATED);
+  }
+
   const sid = randomUUID();
   const [accessToken, refreshToken] = await Promise.all([
     signAccessToken({ sub: user.id, email: user.email, sid, ver: user.sessionVersion }),
@@ -79,6 +87,20 @@ export async function refresh(refreshToken: string): Promise<RefreshResult> {
       logger.warn({ err }, "Stale refresh session cleanup failed after version mismatch");
     }
     throw new HttpError(401, "INVALID_REFRESH_TOKEN", ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
+  }
+
+  /*
+   * 정지는 로그인만 막는 게 아니다. 이미 발급된 refresh 토큰이 남아 있으면 최대 14일간
+   * 세션이 살아 있으므로, 갱신 시점에 막고 해당 세션도 함께 폐기한다.
+   */
+  if (user.deactivatedAt) {
+    try {
+      await deleteRefreshSession(user.id, payload.sid);
+    } catch (err) {
+      logger.warn({ err }, "Session cleanup failed after deactivated account refresh");
+    }
+
+    throw new HttpError(403, "ACCOUNT_DEACTIVATED", ERROR_MESSAGES.ACCOUNT_DEACTIVATED);
   }
 
   const [accessToken, newRefreshToken] = await Promise.all([

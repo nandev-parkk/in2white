@@ -6,7 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
+} from '@in2white/ui/dropdown-menu'
 import { MESSAGES } from '@/shared/constants/messages'
 
 type WhiteboardDocumentMenuProps = {

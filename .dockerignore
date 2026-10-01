@@ -1,0 +1,15 @@
+# 빌드 컨텍스트가 워크스페이스 루트이므로 모든 패키지의 산출물을 함께 제외한다.
+**/node_modules
+**/dist
+**/storybook-static
+**/.tanstack
+**/.vite
+
+**/.env
+**/.env.*
+!**/.env.example
+
+.git
+.husky
+docs
+**/*.log
