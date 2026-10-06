@@ -72,7 +72,7 @@ cd frontend && pnpm lint && pnpm test && pnpm build
 ### 0.8 Docker 빌드 컨텍스트 조정
 
 - 루트 `.dockerignore` 작성 (`frontend/.dockerignore` 내용을 기준으로 워크스페이스 전체에 맞게)
-- `frontend/Dockerfile` — 루트 컨텍스트 기준으로 `pnpm-workspace.yaml`, 루트 `package.json`, `pnpm-lock.yaml`, `packages/ui`, `frontend` 복사 후 `pnpm --filter frontend build`
+- `frontend/Dockerfile` — 루트 컨텍스트 기준으로 `pnpm-workspace.yaml`, 루트 `package.json`, `pnpm-lock.yaml`, `packages/ui`, `frontend` 복사 후 `pnpm --filter client build`
 - `backend/Dockerfile`도 루트 컨텍스트로 맞춘다
 - `docker-compose.yml`의 `build.context`를 `.`로, `dockerfile`을 각 경로로 지정
 - `docker compose build frontend backend` 성공 확인
@@ -295,8 +295,8 @@ docker compose build frontend backend
 
 ```bash
 pnpm --filter @in2white/ui test
-pnpm --filter frontend test
-pnpm --filter backend test
+pnpm --filter client test
+pnpm --filter server test
 pnpm --filter admin test
 ```
 
@@ -401,7 +401,7 @@ pnpm --filter admin test
 | `pnpm -r format:check`               | 통과                                                                               |
 | `pnpm -r test`                       | `packages/ui` 41건, `frontend` 444건, `admin` 12건, `backend` 641건(+16 skip) 통과 |
 | `pnpm -r build`                      | 통과 (`admin`은 `vite build && tsc -b`)                                            |
-| `pnpm --filter backend typecheck`    | 통과 (테스트 포함)                                                                 |
+| `pnpm --filter server typecheck`    | 통과 (테스트 포함)                                                                 |
 | `docker compose config`              | `admin` 서비스 해석 확인 (`ADMIN_ENVIRONMENT_LABEL` 기본값 `production`)           |
 | `docker build -f admin/Dockerfile .` | 성공. 컨테이너에서 `/` 응답, `/login` SPA fallback, 번들에 환경 배지 값 포함 확인  |
 | `pnpm --filter admin dev`            | 5174 포트에서 응답 확인                                                            |
@@ -413,7 +413,7 @@ pnpm --filter admin test
 ### 남은 후속 작업
 
 - **환경 변수 파일 반영(사용자 작업).** 권한 설정이 `.env*` 쓰기를 막아 반영하지 못했다. `backend/.env.example`과 로컬 `.env`에 `JWT_ADMIN_SECRET`·`JWT_ADMIN_REFRESH_SECRET`·`ADMIN_CORS_ORIGIN`(로컬은 `http://localhost:5174`), 루트 `.env.compose.example`에는 여기에 `ADMIN_VITE_API_BASE_URL`·`ADMIN_ENVIRONMENT_LABEL`까지 추가한다. 세 시크릿은 서로 다른 32자 이상의 값이어야 하며, 로컬 `.env`에 없으면 백엔드가 부팅하지 않는다.
-- **첫 어드민 계정 생성(사용자 작업).** `ADMIN_USER_PASSWORD=<비밀번호> pnpm --filter backend create-admin-user <이메일> <이름>`.
+- **첫 어드민 계정 생성(사용자 작업).** `ADMIN_USER_PASSWORD=<비밀번호> pnpm --filter server create-admin-user <이메일> <이름>`.
 - **어드민 429 응답 본문.** `express-rate-limit` 기본 `text/html`이다. 제품 버킷도 같으므로 단계 1에서는 건드리지 않았다. JSON 오류 계약으로 통일할지는 별도로 판단한다.
 - **`admin` 컨테이너 포트 바인딩.** 설계대로 `127.0.0.1:8081:80`을 유지했다. 제품 서비스는 작업 트리에서 전체 인터페이스 바인딩으로 바뀌어 있으므로, 어드민도 프록시 앞단에서 노출한다면 함께 정리한다.
 
@@ -456,7 +456,7 @@ pnpm --filter admin test
 | `pnpm -r format:check`            | 통과                                                                               |
 | `pnpm -r test`                    | `packages/ui` 41건, `backend` 753건(+16 skip), `admin` 41건, `frontend` 444건 통과 |
 | `pnpm -r build`                   | 통과                                                                               |
-| `pnpm --filter backend typecheck` | 통과 (테스트 포함)                                                                 |
+| `pnpm --filter server typecheck` | 통과 (테스트 포함)                                                                 |
 
 - TDD 순서를 밟았고 red를 실제로 확인했다. `deleteAllRefreshSessions`가 없어 27건, `getUserDeletionImpact`·`deleteUser`가 없어 15건이 먼저 실패했다. 어드민 화면은 신규 모듈 import 해석 실패(목록·생성·삭제 모달 테스트 3종)를 먼저 확인했다.
 - 비밀번호 재설정 테스트는 감사 로그 `metadata`에 평문이 섞이지 않는지 `JSON.stringify(entry)` 단정으로 고정했고, Valkey 삭제가 실패해도 200과 커밋이 유지되는 경로를 함께 고정했다.
@@ -507,7 +507,7 @@ pnpm --filter admin test
 | `pnpm -r format:check`            | 통과                                                                               |
 | `pnpm -r test`                    | `packages/ui` 41건, `backend` 825건(+16 skip), `admin` 71건, `frontend` 444건 통과 |
 | `pnpm -r build`                   | 통과                                                                               |
-| `pnpm --filter backend typecheck` | 통과 (테스트 포함)                                                                 |
+| `pnpm --filter server typecheck` | 통과 (테스트 포함)                                                                 |
 
 - TDD 순서를 밟았고 red를 실제로 확인했다. 백엔드는 `admin-workspace.schema`·`admin-workspace.service`가 없어 테스트 파일 2개가 import 해석 단계에서 먼저 실패했고(`Tests no tests`), 어드민 화면은 신규 모듈 6개의 import 해석 실패를 먼저 확인했다.
 - 감사 로그는 변경 엔드포인트 5개 모두에서 같은 트랜잭션 안에 1건씩 기록되는지 테스트로 고정했다. 멤버 제거·워크스페이스 삭제는 행이 사라져 `targetId`로 아무것도 조회되지 않으므로 `metadata.before`에 식별 정보를 남기는 것까지 단정했다.
@@ -557,7 +557,7 @@ pnpm --filter admin test
 | `pnpm -r format:check`            | 통과                                                                               |
 | `pnpm -r test`                    | `packages/ui` 46건, `backend` 892건(+16 skip), `admin` 95건, `frontend` 444건 통과 |
 | `pnpm -r build`                   | 통과 (`admin`은 `vite build && tsc -b`가 타입 검사까지 수행)                       |
-| `pnpm --filter backend typecheck` | 통과 (테스트 포함)                                                                 |
+| `pnpm --filter server typecheck` | 통과 (테스트 포함)                                                                 |
 
 - TDD 순서를 밟았고 red를 실제로 확인했다. 백엔드는 스키마·서비스가 없어 테스트 파일 2개가 import 해석에서 먼저 실패했고(`Tests no tests`), 어드민은 페이지 3개의 import 해석 실패를 먼저 확인했다.
 - 감사 로그는 변경 엔드포인트 4개(프로젝트·문서의 삭제·복구) 모두에서 같은 트랜잭션 안에 1건씩 기록되는지 테스트로 고정했다. 조회 엔드포인트는 기록하지 않는 것도 단정했다.
@@ -609,7 +609,7 @@ pnpm --filter admin test
 | `pnpm -r format:check`            | 통과                                                                                    |
 | `pnpm -r test`                    | `packages/ui` 46건, `backend` 937건(+16 skip), `admin` 122건 통과 / `frontend` 1건 실패 |
 | `pnpm -r build`                   | 통과 (`admin`은 `vite build && tsc -b`가 타입 검사까지 수행)                            |
-| `pnpm --filter backend typecheck` | 통과 (테스트 포함)                                                                      |
+| `pnpm --filter server typecheck` | 통과 (테스트 포함)                                                                      |
 
 - TDD 순서를 밟았고 red를 실제로 확인했다. 백엔드는 서비스·스키마가 없어 테스트 파일 3개가 import 해석에서 먼저 실패했고(`listAuditLogs is not a function`, `manager.stats is not a function` 포함), 어드민은 신규 모듈 4곳의 import 해석 실패와 사이드바 메뉴 2개 누락을 먼저 확인했다.
 - 조회 엔드포인트 3개 모두 감사 로그를 쓰지 않고 트랜잭션도 열지 않는 것을 단정했다 — 대시보드를 열 때마다 기록하면 감사 로그가 조회로 찬다.

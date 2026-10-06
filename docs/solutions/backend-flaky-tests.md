@@ -30,7 +30,7 @@
 
 ## 해결 방법
 
-### 파일마다 서버를 하나만 유지 (`backend/tests/test-server.ts`)
+### 파일마다 서버를 하나만 유지 (`server/tests/test-server.ts`)
 
 `useTestServer()` 헬퍼가 `beforeAll`에서 서버 하나를 열고 `afterAll`에서 닫으며, 테스트는 그 주소로 요청한다.
 
@@ -41,7 +41,7 @@ const appUrl = useTestServer(() => createApp());
 
 적용 파일: `app`, `member`, `member-candidates`, `project`, `project-detail`, `whiteboard-document`, `workspace` 테스트 (총 158곳).
 
-### 커넥션 재사용 차단 (`backend/tests/setup.ts`)
+### 커넥션 재사용 차단 (`server/tests/setup.ts`)
 
 남은 임시 서버에서도 소켓이 재사용되지 않도록 테스트 전역에서 keep-alive를 끈다. `vitest.config.ts`의 `setupFiles`로 연결했다.
 
@@ -58,7 +58,7 @@ http.globalAgent = new http.Agent({ keepAlive: false });
 CPU를 포화시킨 상태(`yes` 8개)에서 전체 스위트를 20회 반복했다.
 
 ```bash
-cd backend && npx vitest run
+cd server && npx vitest run
 ```
 
 | 상태 | 부하 20회 결과 |

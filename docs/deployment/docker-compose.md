@@ -2,43 +2,49 @@
 
 ## 적용 범위와 현재 상태
 
-프런트엔드(Vite 정적 파일), 어드민 콘솔(Vite 정적 파일), 백엔드(Express·Socket.IO)를 Docker Compose로 운영하고, PostgreSQL과 Valkey는 외부 서비스에 연결하는 기준이다. TLS를 처리하는 리버스 프록시는 호스트에서 별도로 실행한다고 가정한다.
+프런트엔드(Vite 정적 파일), 어드민 콘솔(Vite 정적 파일), 백엔드(Express·Socket.IO), PostgreSQL, Valkey를 Docker Compose로 운영한다. TLS를 처리하는 리버스 프록시는 호스트에서 별도로 실행한다고 가정한다.
 
-저장소의 `docker-compose.yml`은 세 앱 서비스만 정의한다. 외부 PostgreSQL·Valkey와 TLS 리버스 프록시를 준비하고 아래의 환경 변수를 설정해야 배포할 수 있다.
+PostgreSQL과 Valkey는 Compose 내부 네트워크에만 연결하며 호스트 포트를 열지 않는다. TLS 리버스 프록시를 별도로 준비하고 아래의 앱 주소와 비밀값을 설정해야 배포할 수 있다.
 
 ## 구성
 
-| 서비스     | 역할                                         | 컨테이너 포트 | 저장 데이터                 |
-| ---------- | -------------------------------------------- | ------------- | --------------------------- |
-| `frontend` | `pnpm build` 결과를 Nginx로 제공             | 80            | 없음                        |
-| `admin`    | 어드민 콘솔 빌드 결과를 Nginx로 제공         | 80            | 없음                        |
-| `backend`  | `node dist/server.js`로 API와 Socket.IO 제공 | 4000          | 외부 PostgreSQL·Valkey 사용 |
+| 서비스 | 역할 | 컨테이너 포트 | 저장 데이터 |
+| --- | --- | --- | --- |
+| `client` | `pnpm build` 결과를 Nginx로 제공 | 80 | 없음 |
+| `admin` | 어드민 콘솔 빌드 결과를 Nginx로 제공 | 80 | 없음 |
+| `server` | `node dist/server.js`로 API와 Socket.IO 제공 | 10103 | PostgreSQL·Valkey 사용 |
+| `postgres` | 앱 전용 DB를 제공 (`postgres:18`) | 5432 | `postgres_data` 볼륨 |
+| `valkey` | 세션 저장소 제공 (`valkey/valkey:9.1.0-alpine`, AOF 활성화) | 6379 | `valkey_data` 볼륨 |
+| `db-provision` | PostgreSQL 앱 역할·DB 준비 후 종료 | - | 없음 |
 
-현재 Compose는 제품 화면(`10101`), 어드민 콘솔(`10102`), API(`10103`)를 호스트의 모든 인터페이스에 바인딩해 LAN 주소에서 접근할 수 있게 한다. 백엔드 컨테이너 내부 포트는 `4000`이다. `CORS_ORIGIN`과 `ADMIN_CORS_ORIGIN`은 각 화면을 여는 실제 주소로 맞춘다. 공개 도메인을 사용할 때는 실제 프록시 주소에 맞춰 브라우저용 API URL과 CORS 오리진을 설정한다.
+현재 Compose는 제품 화면(`10101`), 어드민 콘솔(`10102`), API(`10103`)를 호스트의 모든 인터페이스에 바인딩해 LAN 주소에서 접근할 수 있게 한다. 백엔드 컨테이너 내부 포트는 `10103`이다. `CORS_ORIGIN`과 `ADMIN_CORS_ORIGIN`은 각 화면을 여는 실제 주소로 맞춘다. 공개 도메인을 사용할 때는 실제 프록시 주소에 맞춰 브라우저용 API URL과 CORS 오리진을 설정한다.
 
 ## 이미지 구성
 
-[`frontend/Dockerfile`](../../frontend/Dockerfile), [`admin/Dockerfile`](../../admin/Dockerfile), [`backend/Dockerfile`](../../backend/Dockerfile)은 모두 빌드 컨텍스트를 워크스페이스 루트로 두고 루트 잠금 파일로 의존성을 설치한다. 루트 [`.dockerignore`](../../.dockerignore)가 로컬 의존성, 빌드 결과, 실제 `.env`를 빌드 컨텍스트에서 제외한다.
+[`client/Dockerfile`](../../client/Dockerfile), [`admin/Dockerfile`](../../admin/Dockerfile), [`server/Dockerfile`](../../server/Dockerfile)은 모두 빌드 컨텍스트를 워크스페이스 루트로 두고 루트 잠금 파일로 의존성을 설치한다. 루트 [`.dockerignore`](../../.dockerignore)가 로컬 의존성, 빌드 결과, 실제 `.env`를 빌드 컨텍스트에서 제외한다.
 
-- **프런트엔드:** Node 24와 pnpm 12.4.1로 컨테이너 안에서 `pnpm build`를 실행한다. `dist/`만 Nginx 이미지에 복사하며, [`nginx.conf`](../../frontend/nginx.conf)는 클라이언트 경로를 `index.html`로 돌린다.
+- **프런트엔드:** Node 24와 pnpm 12.4.1로 컨테이너 안에서 `pnpm build`를 실행한다. `dist/`만 Nginx 이미지에 복사하며, [`nginx.conf`](../../client/nginx.conf)는 클라이언트 경로를 `index.html`로 돌린다.
 - **어드민 콘솔:** 프런트엔드와 같은 방식이며 `pnpm --filter admin build` 결과를 제공한다. 공유 디자인 시스템 `packages/ui`를 함께 복사해 빌드한다.
-- **백엔드:** Node 24와 pnpm 12.4.1로 `pnpm build`를 실행하고 `node dist/server.js`로 시작한다. 같은 이미지에 `drizzle-kit`과 마이그레이션 파일을 두어 `./node_modules/.bin/drizzle-kit migrate`를 별도로 실행할 수 있다.
+- **백엔드:** Node 24와 pnpm 12.4.1로 `pnpm build`를 실행하고 `node dist/server.js`로 시작한다. 같은 이미지를 `db-provision`도 사용해 최초 시작 시 앱 전용 DB 계정·데이터베이스를 만든다. `drizzle-kit`과 마이그레이션 파일도 포함되어 있어 마이그레이션을 별도로 실행할 수 있다.
 
-`VITE_API_BASE_URL`은 브라우저용 **빌드 시점** 값이다. `http://backend:4000` 같은 Compose 내부 주소가 아니라 브라우저에서 접근할 수 있는 `https://api.example.com`을 사용한다. 주소가 바뀌면 해당 이미지를 다시 빌드해야 한다. 어드민 콘솔은 같은 값을 `ADMIN_VITE_API_BASE_URL`로 따로 받으며, 상단바 환경 배지 문구인 `ADMIN_ENVIRONMENT_LABEL`도 빌드 시점에 고정된다.
+`VITE_API_BASE_URL`은 브라우저용 **빌드 시점** 값이다. `http://server:10103` 같은 Compose 내부 주소가 아니라 브라우저에서 접근할 수 있는 `https://api.example.com`을 사용한다. 주소가 바뀌면 해당 이미지를 다시 빌드해야 한다. 어드민 콘솔은 같은 값을 `ADMIN_VITE_API_BASE_URL`로 따로 받으며, 상단바 환경 배지 문구인 `ADMIN_ENVIRONMENT_LABEL`도 빌드 시점에 고정된다.
 
 ## Compose 구성
 
-실제 설정은 [`docker-compose.yml`](../../docker-compose.yml)을 사용한다. 어드민 콘솔도 LAN에 공개한다. 서비스 전체를 조작하는 화면이므로 LAN 바깥으로 공개할 때는 리버스 프록시에서 인증·IP 제한을 앞단에 둔다. 외부 PostgreSQL·Valkey 주소는 백엔드 환경 변수로 전달한다. 백엔드의 `/health`는 프로세스 응답만 확인하며 외부 서비스 연결을 검사하지 않으므로 연결 상태는 별도로 감시한다.
+실제 설정은 [`docker-compose.yml`](../../docker-compose.yml)을 사용한다. 제품 화면(`10101`), 어드민 콘솔(`10102`), API(`10103`)는 호스트의 모든 인터페이스에 공개한다. PostgreSQL과 Valkey는 호스트 포트를 공개하지 않고 앱 컨테이너에서만 접근한다. 백엔드의 `/health`는 프로세스 응답만 확인하며 DB·Valkey 연결은 별도로 감시한다.
 
 ## 환경 변수와 비밀값
 
-루트 [`.env.compose.example`](../../.env.compose.example)을 `.env.compose`로 복사한 뒤 모든 값을 채우고 `docker compose --env-file .env.compose`로 사용한다. 루트 `.gitignore`는 `.env.*`를 제외한다. 파일 권한은 운영 계정만 읽도록 제한한다.
+루트 [`.env.example`](../../.env.example)을 `.env`로 복사한 뒤 값을 채우면 Compose가 자동으로 읽는다. 루트 `.gitignore`는 `.env`와 `.env.*`를 제외한다. 파일 권한은 운영 계정만 읽도록 제한한다.
 
 ```dotenv
 VITE_API_BASE_URL=https://api.example.com
 CORS_ORIGIN=https://app.example.com
-DATABASE_URL=<외부 PostgreSQL 연결 URL>
-VALKEY_URL=<외부 Valkey 연결 URL>
+# openssl rand -hex 32로 생성. PostgreSQL의 관리자·앱 비밀번호는 유지해야 한다.
+POSTGRES_ADMIN_PASSWORD=<임의 hex 값>
+POSTGRES_APP_USER=in2white
+POSTGRES_APP_PASSWORD=<임의 hex 값>
+POSTGRES_APP_DATABASE=in2white
 JWT_SECRET=<서로 다른 32자 이상의 임의 값>
 JWT_REFRESH_SECRET=<서로 다른 32자 이상의 임의 값>
 JWT_ADMIN_SECRET=<서로 다른 32자 이상의 임의 값>
@@ -48,33 +54,29 @@ ADMIN_VITE_API_BASE_URL=https://api.example.com
 ADMIN_ENVIRONMENT_LABEL=production
 ```
 
-`CORS_ORIGIN`과 `ADMIN_CORS_ORIGIN`은 각각 제품 프런트엔드와 어드민 콘솔의 정확한 origin(스킴·호스트·포트) 하나를 지정한다. 네 개의 JWT 시크릿은 모두 서로 다른 값으로 만들며, 예를 들어 각각 `openssl rand -hex 32`로 생성할 수 있다. 값이 겹치면 백엔드가 부팅 단계에서 거부한다 — 어드민 토큰과 제품 토큰이 서로의 영역에서 서명 검증을 통과해버리는 것을 막기 위해서다. `ADMIN_ENVIRONMENT_LABEL`은 어드민 상단바에 그대로 보이는 문구다. 스테이징 콘솔을 운영으로 착각해 조작하는 사고를 막는 값이므로 환경마다 다르게 채운다(설정하지 않으면 `production`으로 빌드된다). `DATABASE_URL`과 `VALKEY_URL`은 외부 서비스 제공자가 발급한 주소를 사용한다. DB 비밀번호에 URL 특수 문자가 있으면 URL 안의 비밀번호를 인코딩한다. 컨테이너에서 외부 서비스의 DNS와 네트워크 접근이 가능해야 하며, TLS·접근 허용 목록·인증서 설정은 제공자 지침에 맞춘다.
+`CORS_ORIGIN`과 `ADMIN_CORS_ORIGIN`은 각각 제품 프런트엔드와 어드민 콘솔의 정확한 origin(스킴·호스트·포트) 하나를 지정한다. 네 개의 JWT 시크릿은 모두 서로 다른 값으로 만들며, 예를 들어 각각 `openssl rand -hex 32`로 생성할 수 있다. 값이 겹치면 백엔드가 부팅 단계에서 거부한다. PostgreSQL 비밀번호도 URL 안에 직접 들어가므로 `openssl rand -hex 32`로 생성해 URL 안전 문자를 사용한다. 이 비밀번호와 앱 계정·DB 이름은 PostgreSQL 볼륨을 유지하는 동안 바꾸지 않는다. 앱 URL은 Compose가 내부 서비스 이름으로 구성하며 관리자 URL은 일회성 프로비저닝 컨테이너에만 전달한다. `ADMIN_ENVIRONMENT_LABEL`은 어드민 상단바에 표시되는 문구다.
 
 ## 최초 배포와 업데이트
 
-아래 명령은 `.env.compose`를 채운 다음 실행한다. 외부 PostgreSQL·Valkey를 준비하고, 컨테이너가 두 서비스에 접근할 수 있도록 허용한 뒤 DNS·TLS 리버스 프록시를 설정한다.
+루트 [`.env.example`](../../.env.example)을 `.env`로 복사하고 앱 주소, PostgreSQL 비밀번호, JWT 비밀값을 설정한다. 새 DB에서 첫 관리자 계정을 자동 생성하려면 `ADMIN_BOOTSTRAP_EMAIL`, `ADMIN_BOOTSTRAP_NAME`, `ADMIN_BOOTSTRAP_PASSWORD`도 설정한다. 비밀번호는 제품 계정과 같은 정책(8~32자, 영문·숫자·특수문자 포함)을 따른다.
+
+`docker compose up -d`가 다음 순서로 초기화한다.
+
+1. `db-provision`: Compose PostgreSQL 안에 앱 전용 역할과 데이터베이스를 준비한다.
+2. `db-migrate`: Drizzle이 아직 적용되지 않은 SQL migration을 앱 데이터베이스에 적용한다.
+3. `admin-bootstrap`: 관리자 계정이 없으면 `.env`의 초기 계정 정보를 해시해 저장한다.
+4. API 서버 시작
+
+이미 관리자가 있으면 계정 생성은 건너뛰고 비밀번호도 변경하지 않는다. 관리자가 없는데 초기 계정 값이 빠졌거나 유효하지 않으면 bootstrap이 실패하고 API 서버도 시작하지 않는다. 이 절차는 호스트 PostgreSQL의 데이터를 복사하지 않으며 Compose의 `postgres_data` 볼륨을 사용한다.
 
 ```bash
-docker compose --env-file .env.compose config --quiet
-docker compose --env-file .env.compose build frontend admin backend
-docker compose --env-file .env.compose run --rm backend ./node_modules/.bin/drizzle-kit migrate
-docker compose --env-file .env.compose up -d backend frontend admin
-docker compose --env-file .env.compose ps
+docker compose config --quiet
+docker compose build client admin server
+docker compose up -d
+docker compose ps
 ```
 
-어드민 계정은 가입 화면이 없다. 첫 계정은 마이그레이션 후에 아래 스크립트로 만든다. 비밀번호는 인자가 아니라 환경 변수로 전달해 셸 히스토리와 `ps` 출력에 평문이 남지 않게 한다.
-
-```bash
-docker compose --env-file .env.compose run --rm \
-  -e ADMIN_USER_PASSWORD='<비밀번호>' \
-  backend node dist/scripts/create-admin-user.js <이메일> <이름>
-```
-
-비밀번호는 제품과 같은 정책(8~32자, 영문·숫자·특수문자 포함)을 따른다. 같은 이메일로 다시 실행하면 중복으로 거부된다. 이후 어드민 계정 추가는 어드민 콘솔에서 처리한다.
-
-스키마 변경이 있는 업데이트는 먼저 외부 PostgreSQL을 백업하고, 해당 릴리스의 마이그레이션이 이전 버전과 호환되는지 확인한 뒤 같은 순서로 빌드·마이그레이션·재시작한다. 마이그레이션은 서버 시작 시 자동 실행되지 않는다.
-
-배포 후에는 `curl -fsS https://api.example.com/health`로 API 응답을 확인하고, 프런트엔드에서 로그인과 화이트보드의 실시간 연결, 어드민 콘솔에서 로그인과 상단바 환경 배지까지 확인한다. `/health` 성공만으로 DB·Valkey 또는 Socket.IO가 정상이라는 결론을 내릴 수 없다. 로그는 `docker compose --env-file .env.compose logs -f backend frontend admin`으로 확인한다.
+이후 관리자를 추가할 때는 기존 계정으로 어드민 콘솔에 로그인해 관리 화면에서 만든다. schema 변경이 있는 업데이트는 먼저 PostgreSQL을 백업한 뒤 새 이미지를 빌드하고 Compose를 다시 올린다. 이미 적용된 migration은 자동 롤백되지 않으므로 이전 앱 버전으로 되돌릴 때는 백업 복원 여부를 별도로 판단한다.
 
 ## TLS, 쿠키, Socket.IO
 
@@ -100,6 +102,6 @@ Socket.IO는 백엔드 HTTP 서버의 `/socket.io/`를 사용한다. 프록시�
 
 ## 데이터 보존과 롤백
 
-PostgreSQL 백업·복원과 Valkey 지속성은 외부 서비스 제공자의 설정 및 운영 절차를 따른다. Valkey에는 로그인 세션이 저장되므로 지속성이 꺼지거나 데이터가 유실되면 사용자가 다시 로그인해야 할 수 있다. Compose에는 데이터 볼륨이 없다. 이전 애플리케이션 버전으로 되돌릴 때는 해당 릴리스 이미지를 다시 배포하고, 이미 적용한 DB 마이그레이션은 자동으로 되돌아가지 않으므로 외부 PostgreSQL 백업 복원 여부를 별도로 판단한다.
+PostgreSQL과 Valkey 데이터는 각각 `postgres_data`, `valkey_data` named volume에 저장된다. `docker compose down`은 데이터를 유지하고 `docker compose down -v`는 두 데이터 볼륨을 삭제한다. Valkey는 AOF를 사용하며 로그인 세션이 유실되면 사용자가 다시 로그인해야 할 수 있다. 이전 애플리케이션 버전으로 되돌릴 때 이미 적용한 DB 마이그레이션은 자동으로 되돌아가지 않으므로 백업 복원 여부를 별도로 판단한다.
 
 현재 화이트보드 Room 상태는 백엔드 프로세스 메모리에 있으므로 백엔드는 **한 인스턴스**로 운영한다. 여러 인스턴스로 확장하려면 Room 상태와 Socket.IO 이벤트를 공유하도록 구현을 변경해야 한다.

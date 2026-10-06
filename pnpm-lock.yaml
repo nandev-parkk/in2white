@@ -291,140 +291,7 @@ importers:
         specifier: ^5.0.0
         version: 5.0.2(@types/node@24.19.0)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@24.19.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
-  backend:
-    dependencies:
-      bcrypt:
-        specifier: ^6.0.0
-        version: 6.0.0
-      compression:
-        specifier: ^1.8.1
-        version: 1.8.2(supports-color@7.2.0)
-      cookie-parser:
-        specifier: ^1.4.7
-        version: 1.4.7
-      cors:
-        specifier: ^2.8.6
-        version: 2.8.6
-      dotenv:
-        specifier: ^17.4.2
-        version: 17.4.2
-      drizzle-orm:
-        specifier: ^0.45.2
-        version: 0.45.3(postgres@3.4.9)
-      drizzle-zod:
-        specifier: ^0.8.3
-        version: 0.8.3(drizzle-orm@0.45.3(postgres@3.4.9))(zod@4.6.5)
-      express:
-        specifier: ^4
-        version: 4.22.3(supports-color@7.2.0)
-      express-rate-limit:
-        specifier: ^8.7.0
-        version: 8.7.0(express@4.22.3(supports-color@7.2.0))(supports-color@7.2.0)
-      helmet:
-        specifier: ^8.3.0
-        version: 8.3.0
-      iovalkey:
-        specifier: ^0.4.0
-        version: 0.4.0(supports-color@7.2.0)
-      jose:
-        specifier: ^6.2.12
-        version: 6.2.12
-      pino:
-        specifier: ^10.3.1
-        version: 10.3.1
-      pino-http:
-        specifier: ^11.0.0
-        version: 11.0.0
-      postgres:
-        specifier: ^3.4.9
-        version: 3.4.9
-      socket.io:
-        specifier: ^4.8.3
-        version: 4.8.4(supports-color@7.2.0)
-      zod:
-        specifier: ^4.5.4
-        version: 4.6.5
-    devDependencies:
-      '@eslint/js':
-        specifier: ^9.39.5
-        version: 9.39.5
-      '@testcontainers/postgresql':
-        specifier: ^12.1.0
-        version: 12.2.0(supports-color@7.2.0)
-      '@types/bcrypt':
-        specifier: ^6.0.0
-        version: 6.0.0
-      '@types/compression':
-        specifier: ^1.8.1
-        version: 1.8.1
-      '@types/cookie-parser':
-        specifier: ^1.4.10
-        version: 1.4.10(@types/express@4.17.25)
-      '@types/cors':
-        specifier: ^2.8.19
-        version: 2.8.19
-      '@types/express':
-        specifier: ^4
-        version: 4.17.25
-      '@types/node':
-        specifier: ^26.4.1
-        version: 26.6.3
-      '@types/supertest':
-        specifier: ^7.2.1
-        version: 7.2.1
-      drizzle-kit:
-        specifier: ^0.31.10
-        version: 0.31.11
-      eslint:
-        specifier: ^9.39.5
-        version: 9.39.5(jiti@2.7.0)(supports-color@7.2.0)
-      eslint-config-prettier:
-        specifier: ^10.1.8
-        version: 10.1.8(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))
-      eslint-import-resolver-typescript:
-        specifier: ^4.4.5
-        version: 4.4.5(eslint-plugin-import@2.32.0)(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)
-      eslint-plugin-import:
-        specifier: ^2.32.0
-        version: 2.32.0(@typescript-eslint/parser@8.71.0(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@5.9.3))(eslint-import-resolver-typescript@4.4.5)(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)
-      husky:
-        specifier: ^9.1.7
-        version: 9.1.7
-      lint-staged:
-        specifier: ^17.5.0
-        version: 17.6.0
-      pino-pretty:
-        specifier: ^13.1.3
-        version: 13.1.3
-      prettier:
-        specifier: ^3.9.6
-        version: 3.9.9
-      rimraf:
-        specifier: ^6.1.3
-        version: 6.1.3
-      socket.io-client:
-        specifier: ^4.8.3
-        version: 4.8.4(supports-color@7.2.0)
-      supertest:
-        specifier: ^7.2.2
-        version: 7.3.0(supports-color@7.2.0)
-      tsc-alias:
-        specifier: ^1.9.4
-        version: 1.9.5
-      tsx:
-        specifier: ^4.23.13
-        version: 4.23.15
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      typescript-eslint:
-        specifier: ^8.69.0
-        version: 8.71.0(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@5.9.3)
-      vitest:
-        specifier: ^5.0.0
-        version: 5.0.2(@types/node@26.6.3)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
-
-  frontend:
+  client:
     dependencies:
       '@excalidraw/excalidraw':
         specifier: ^0.18.1
@@ -704,6 +571,139 @@ importers:
       vitest:
         specifier: ^5.0.0
         version: 5.0.2(@types/node@24.19.0)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@24.19.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+
+  server:
+    dependencies:
+      bcrypt:
+        specifier: ^6.0.0
+        version: 6.0.0
+      compression:
+        specifier: ^1.8.1
+        version: 1.8.2(supports-color@7.2.0)
+      cookie-parser:
+        specifier: ^1.4.7
+        version: 1.4.7
+      cors:
+        specifier: ^2.8.6
+        version: 2.8.6
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.3(postgres@3.4.9)
+      drizzle-zod:
+        specifier: ^0.8.3
+        version: 0.8.3(drizzle-orm@0.45.3(postgres@3.4.9))(zod@4.6.5)
+      express:
+        specifier: ^4
+        version: 4.22.3(supports-color@7.2.0)
+      express-rate-limit:
+        specifier: ^8.7.0
+        version: 8.7.0(express@4.22.3(supports-color@7.2.0))(supports-color@7.2.0)
+      helmet:
+        specifier: ^8.3.0
+        version: 8.3.0
+      iovalkey:
+        specifier: ^0.4.0
+        version: 0.4.0(supports-color@7.2.0)
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
+      pino:
+        specifier: ^10.3.1
+        version: 10.3.1
+      pino-http:
+        specifier: ^11.0.0
+        version: 11.0.0
+      postgres:
+        specifier: ^3.4.9
+        version: 3.4.9
+      socket.io:
+        specifier: ^4.8.3
+        version: 4.8.4(supports-color@7.2.0)
+      zod:
+        specifier: ^4.5.4
+        version: 4.6.5
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.39.5
+        version: 9.39.5
+      '@testcontainers/postgresql':
+        specifier: ^12.1.0
+        version: 12.2.0(supports-color@7.2.0)
+      '@types/bcrypt':
+        specifier: ^6.0.0
+        version: 6.0.0
+      '@types/compression':
+        specifier: ^1.8.1
+        version: 1.8.1
+      '@types/cookie-parser':
+        specifier: ^1.4.10
+        version: 1.4.10(@types/express@4.17.25)
+      '@types/cors':
+        specifier: ^2.8.19
+        version: 2.8.19
+      '@types/express':
+        specifier: ^4
+        version: 4.17.25
+      '@types/node':
+        specifier: ^26.4.1
+        version: 26.6.3
+      '@types/supertest':
+        specifier: ^7.2.1
+        version: 7.2.1
+      drizzle-kit:
+        specifier: ^0.31.10
+        version: 0.31.11
+      eslint:
+        specifier: ^9.39.5
+        version: 9.39.5(jiti@2.7.0)(supports-color@7.2.0)
+      eslint-config-prettier:
+        specifier: ^10.1.8
+        version: 10.1.8(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))
+      eslint-import-resolver-typescript:
+        specifier: ^4.4.5
+        version: 4.4.5(eslint-plugin-import@2.32.0)(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)
+      eslint-plugin-import:
+        specifier: ^2.32.0
+        version: 2.32.0(@typescript-eslint/parser@8.71.0(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@5.9.3))(eslint-import-resolver-typescript@4.4.5)(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)
+      husky:
+        specifier: ^9.1.7
+        version: 9.1.7
+      lint-staged:
+        specifier: ^17.5.0
+        version: 17.6.0
+      pino-pretty:
+        specifier: ^13.1.3
+        version: 13.1.3
+      prettier:
+        specifier: ^3.9.6
+        version: 3.9.9
+      rimraf:
+        specifier: ^6.1.3
+        version: 6.1.3
+      socket.io-client:
+        specifier: ^4.8.3
+        version: 4.8.4(supports-color@7.2.0)
+      supertest:
+        specifier: ^7.2.2
+        version: 7.3.0(supports-color@7.2.0)
+      tsc-alias:
+        specifier: ^1.9.4
+        version: 1.9.5
+      tsx:
+        specifier: ^4.23.13
+        version: 4.23.15
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      typescript-eslint:
+        specifier: ^8.69.0
+        version: 8.71.0(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@5.9.3)
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.2(@types/node@26.6.3)(jsdom@30.1.1(@noble/hashes@1.8.0))(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
 packages:
 

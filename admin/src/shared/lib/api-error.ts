@@ -7,7 +7,7 @@ type ApiErrorBody = {
 }
 
 /*
- * 백엔드 에러 핸들러(backend/src/middlewares/error-handler.middleware.ts)는 모든 에러를
+ * 백엔드 에러 핸들러(server/src/middlewares/error-handler.middleware.ts)는 모든 에러를
  * `{ error: { message, code } }`로 응답한다 — 최상위 `message`가 아니다.
  */
 export function apiErrorMessage(error: unknown): string {

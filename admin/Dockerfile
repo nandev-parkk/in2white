@@ -9,16 +9,16 @@ ENV HUSKY=0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/ui/package.json ./packages/ui/
 COPY admin/package.json ./admin/
-COPY frontend/package.json ./frontend/
-COPY backend/package.json ./backend/
-RUN pnpm install --frozen-lockfile --filter admin...
+COPY client/package.json ./client/
+COPY server/package.json ./server/
+RUN pnpm install --frozen-lockfile --filter in2white-admin...
 
 COPY packages/ui ./packages/ui
 COPY admin ./admin
 ARG VITE_API_BASE_URL
 # 상단바 환경 배지 값이다. 빌드 시점에 고정되므로 환경마다 이미지를 따로 빌드한다.
 ARG VITE_ENVIRONMENT_LABEL
-RUN test -n "$VITE_API_BASE_URL" && pnpm --filter admin build
+RUN test -n "$VITE_API_BASE_URL" && pnpm --fail-if-no-match --filter in2white-admin build
 
 FROM nginx:1.28-alpine
 COPY admin/nginx.conf /etc/nginx/conf.d/default.conf
