@@ -5,24 +5,23 @@ dist/
 .env
 .env.*
 !.env.example
-!.env.compose.example
 *.log
 .DS_Store
 .idea/
 
 # 프론트엔드 로그·빌드 결과물
-/frontend/**/logs
-/frontend/**/npm-debug.log*
-/frontend/**/yarn-debug.log*
-/frontend/**/yarn-error.log*
-/frontend/**/pnpm-debug.log*
-/frontend/**/lerna-debug.log*
-/frontend/**/dist-ssr
-/frontend/**/*.local
-/frontend/**/storybook-static
+/client/**/logs
+/client/**/npm-debug.log*
+/client/**/yarn-debug.log*
+/client/**/yarn-error.log*
+/client/**/pnpm-debug.log*
+/client/**/lerna-debug.log*
+/client/**/dist-ssr
+/client/**/*.local
+/client/**/storybook-static
 
 # 프론트엔드 자동 생성 라우트
-/frontend/src/routeTree.gen.ts
+/client/src/routeTree.gen.ts
 
 # 어드민 콘솔 빌드 결과물·자동 생성 라우트
 /admin/**/dist-ssr
@@ -30,13 +29,13 @@ dist/
 /admin/src/routeTree.gen.ts
 
 # 프론트엔드 에디터 설정
-/frontend/.vscode/*
-!/frontend/.vscode/extensions.json
-/frontend/**/*.suo
-/frontend/**/*.ntvs*
-/frontend/**/*.njsproj
-/frontend/**/*.sln
-/frontend/**/*.sw?
+/client/.vscode/*
+!/client/.vscode/extensions.json
+/client/**/*.suo
+/client/**/*.ntvs*
+/client/**/*.njsproj
+/client/**/*.sln
+/client/**/*.sw?
 
 # AI 코드 도구 로컬 설정
 .serena/

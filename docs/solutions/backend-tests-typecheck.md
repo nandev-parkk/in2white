@@ -12,7 +12,7 @@
 
 ## 근본 원인
 
-`backend/tsconfig.json`은 빌드용 설정이라 `rootDir`이 `src`이고 `include`가 `["src/**/*.ts"]`다. 테스트는 `tests/`에 있어서 이 설정의 검사 대상 밖이다. vitest는 esbuild로 타입을 지우고 트랜스파일만 하므로 테스트 코드의 타입은 아무도 보지 않았다.
+`server/tsconfig.json`은 빌드용 설정이라 `rootDir`이 `src`이고 `include`가 `["src/**/*.ts"]`다. 테스트는 `tests/`에 있어서 이 설정의 검사 대상 밖이다. vitest는 esbuild로 타입을 지우고 트랜스파일만 하므로 테스트 코드의 타입은 아무도 보지 않았다.
 
 그래서 아래 불일치가 런타임에 우연히 통과하며 누적됐다.
 
@@ -27,7 +27,7 @@
 
 빌드 설정은 그대로 두고 검사용 설정을 분리했다. `rootDir`을 `.`로 올리고 `noEmit`을 켜서 `dist`에 영향이 없다.
 
-`backend/tsconfig.test.json`
+`server/tsconfig.test.json`
 
 ```json
 {
@@ -40,7 +40,7 @@
 }
 ```
 
-`backend/package.json`
+`server/package.json`
 
 ```json
 "typecheck": "tsc -p tsconfig.test.json"
@@ -71,7 +71,7 @@ saveSnapshot = vi.fn<Deps["saveSnapshot"]>().mockResolvedValue({ status: "saved"
 ## 검증
 
 ```bash
-cd backend
+cd server
 npm run typecheck   # 오류 0건 (수정 전 20건)
 npm run build       # 성공
 npx eslint .        # 0건
@@ -93,4 +93,4 @@ npm run test:integration   # 41 files / 560 passed, skip 0
 - `vi.mock`으로 대체한 모듈의 메서드에는 `vi.mocked()`를 거쳐 mock API를 호출한다.
 - 주입용 mock은 `ReturnType<typeof vi.fn>`으로 선언하지 않고 `Mock<Deps["키"]>`처럼 실제 의존성 타입을 참조한다.
 - 타입에 없는 속성의 부재를 검증할 때는 속성 접근 대신 런타임 키 목록(`getTableColumns` 등)에 `not.toHaveProperty`를 쓴다.
-- CI가 없으므로 자동 실행 지점은 pre-commit 훅뿐이다. 훅에 넣으려면 `backend/.husky/pre-commit`을 `cd backend && pnpm exec lint-staged && pnpm run typecheck`로 바꾼다. 다만 `frontend/.husky`와 `core.hooksPath`를 두고 경쟁하므로 어느 쪽이 활성인지 먼저 확인한다.
+- CI가 없으므로 자동 실행 지점은 pre-commit 훅뿐이다. 훅에 넣으려면 `.husky/pre-commit`을 `cd server && pnpm exec lint-staged && pnpm run typecheck`로 바꾼다. 다만 `.husky`와 `core.hooksPath`를 두고 경쟁하므로 어느 쪽이 활성인지 먼저 확인한다.

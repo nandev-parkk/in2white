@@ -1,51 +1,127 @@
+x-server-image: &server-image
+  image: in2white-server:v1.0
+  build:
+    context: .
+    dockerfile: server/Dockerfile
+
+x-server-environment: &server-environment
+  NODE_ENV: production
+  PORT: "10103"
+  DATABASE_URL: postgres://${POSTGRES_APP_USER:?}:${POSTGRES_APP_PASSWORD:?}@postgres:5432/${POSTGRES_APP_DATABASE:?}
+  VALKEY_URL: redis://valkey:6379
+  JWT_SECRET: ${JWT_SECRET:?}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?}
+  JWT_ADMIN_SECRET: ${JWT_ADMIN_SECRET:?}
+  JWT_ADMIN_REFRESH_SECRET: ${JWT_ADMIN_REFRESH_SECRET:?}
+  CORS_ORIGIN: ${CORS_ORIGIN:?}
+  ADMIN_CORS_ORIGIN: ${ADMIN_CORS_ORIGIN:?}
+
 services:
-  frontend:
+  client:
+    image: in2white-client:v1.0
     build:
       context: .
-      dockerfile: frontend/Dockerfile
+      dockerfile: client/Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:?VITE_API_BASE_URL을 설정하세요}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:?}
     restart: unless-stopped
     ports:
       - "10101:80"
 
   # 어드민 콘솔도 제품 화면처럼 호스트 네트워크에 공개한다.
   admin:
+    image: in2white-admin:v1.0
     build:
       context: .
       dockerfile: admin/Dockerfile
       args:
-        VITE_API_BASE_URL: ${ADMIN_VITE_API_BASE_URL:?ADMIN_VITE_API_BASE_URL을 설정하세요}
+        VITE_API_BASE_URL: ${ADMIN_VITE_API_BASE_URL:?}
         VITE_ENVIRONMENT_LABEL: ${ADMIN_ENVIRONMENT_LABEL:-production}
     restart: unless-stopped
     ports:
       - "10102:80"
 
-  backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  valkey:
+    image: valkey/valkey:9.1.0-alpine
+    restart: unless-stopped
+    command: ["valkey-server", "--appendonly", "yes"]
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  db-provision:
+    <<: *server-image
+    command: ["node", "dist/scripts/provision-database.js"]
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_APP_USER:?}:${POSTGRES_APP_PASSWORD:?}@postgres:5432/${POSTGRES_APP_DATABASE:?}
+      POSTGRES_ADMIN_URL: postgres://postgres:${POSTGRES_ADMIN_PASSWORD:?}@postgres:5432/postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  db-migrate:
+    <<: *server-image
+    # 런타임 사용자는 root 소유 node_modules를 변경할 수 없으므로 pnpm 대신 CLI를 직접 실행한다.
+    command: ["./node_modules/.bin/drizzle-kit", "migrate"]
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_APP_USER:?}:${POSTGRES_APP_PASSWORD:?}@postgres:5432/${POSTGRES_APP_DATABASE:?}
+    depends_on:
+      db-provision:
+        condition: service_completed_successfully
+
+  admin-bootstrap:
+    <<: *server-image
+    command: ["node", "dist/scripts/bootstrap-admin-user.js"]
+    environment:
+      <<: *server-environment
+      ADMIN_BOOTSTRAP_EMAIL: ${ADMIN_BOOTSTRAP_EMAIL-}
+      ADMIN_BOOTSTRAP_NAME: ${ADMIN_BOOTSTRAP_NAME-}
+      ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD-}
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+
+  server:
+    <<: *server-image
     restart: unless-stopped
     ports:
-      - "10103:4000"
-    environment:
-      NODE_ENV: production
-      PORT: "4000"
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL을 설정하세요}
-      VALKEY_URL: ${VALKEY_URL:?VALKEY_URL을 설정하세요}
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET을 설정하세요}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET을 설정하세요}
-      JWT_ADMIN_SECRET: ${JWT_ADMIN_SECRET:?JWT_ADMIN_SECRET을 설정하세요}
-      JWT_ADMIN_REFRESH_SECRET: ${JWT_ADMIN_REFRESH_SECRET:?JWT_ADMIN_REFRESH_SECRET을 설정하세요}
-      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN을 설정하세요}
-      ADMIN_CORS_ORIGIN: ${ADMIN_CORS_ORIGIN:?ADMIN_CORS_ORIGIN을 설정하세요}
+      - "10103:10103"
+    environment: *server-environment
+    depends_on:
+      admin-bootstrap:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
     healthcheck:
       test:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:4000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+        - "fetch('http://127.0.0.1:10103/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 20s
+
+volumes:
+  postgres_data:
+  valkey_data:
