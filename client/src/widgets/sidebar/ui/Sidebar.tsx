@@ -66,6 +66,7 @@ function WorkspaceMark({ name }: { name?: string }) {
 
 function WorkspaceSwitcher({
   collapsed,
+  mobileDrawer,
   loading,
   workspace,
   workspaces,
@@ -75,6 +76,7 @@ function WorkspaceSwitcher({
   preserveOpen,
 }: {
   collapsed: boolean
+  mobileDrawer: boolean
   loading: boolean
   workspace: WorkspaceSummary | null
   workspaces: WorkspaceSummary[]
@@ -260,7 +262,8 @@ function WorkspaceSwitcher({
         <div
           data-slot="workspace-switcher-popover"
           className={cn(
-            'border-border bg-background-elevated animate-in fade-in-0 zoom-in-95 absolute z-50 flex h-80 w-68 flex-col gap-3 rounded-lg border p-3 shadow-lg transition-[opacity,transform] duration-200 ease-out motion-reduce:animate-none motion-reduce:transition-none',
+            'border-border bg-background-elevated animate-in fade-in-0 zoom-in-95 absolute z-50 flex h-80 flex-col gap-3 rounded-lg border p-3 shadow-lg transition-[opacity,transform] duration-200 ease-out motion-reduce:animate-none motion-reduce:transition-none',
+            mobileDrawer ? 'w-full' : 'w-68',
             collapsed ? 'top-0 left-full ml-2' : 'top-full left-0 mt-2',
           )}
         >
@@ -741,6 +744,7 @@ function Sidebar({
       >
         <WorkspaceSwitcher
           collapsed={visualCollapsed}
+          mobileDrawer={mobileDrawer}
           loading={workspaceLoading}
           workspace={workspace}
           workspaces={workspaces}
