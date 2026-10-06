@@ -1,2 +1,10 @@
 @import 'tailwindcss';
 @import '@in2white/ui/styles/theme.css';
+
+@media (max-width: 639px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

@@ -34,6 +34,7 @@ const SIDEBAR_COMPACT_MAX_WIDTH = 160
 const SIDEBAR_BORDER_COLOR = 'var(--color-sidebar-border)'
 
 type SidebarProps = React.ComponentProps<'div'> & {
+  mobileDrawer?: boolean
   collapsed?: boolean
   onCollapsedChange?: (collapsed: boolean) => void
   workspaceLoading?: boolean
@@ -426,6 +427,7 @@ function SidebarNavItem({
 function Sidebar({
   className,
   style,
+  mobileDrawer = false,
   collapsed,
   onCollapsedChange,
   workspaceLoading = false,
@@ -702,31 +704,33 @@ function Sidebar({
           alt="in2white"
           className="size-8 rounded-sm"
         />
-        <button
-          type="button"
-          onClick={handleToggleClick}
-          aria-label={
-            (pendingCollapsed ?? isCollapsed)
-              ? MESSAGES.nav.a11y.expandSidebar
-              : MESSAGES.nav.a11y.collapseSidebar
-          }
-          className={cn(
-            'text-foreground-strong hover:text-foreground-default hover:bg-background-default absolute z-40 flex cursor-default items-center justify-center transition-[left,top,height,border-radius,background-color,box-shadow,transform] duration-300 ease-in-out hover:shadow-sm active:scale-[0.98] motion-reduce:transition-none',
-            toggleOutside
-              ? 'border-sidebar-border bg-background-default top-4 left-full h-6 w-6 -translate-x-1/2 rounded-full border'
-              : 'top-4 left-[calc(100%-40px)] h-6 w-6 rounded-full',
-          )}
-          style={
-            toggleOutside ? { borderColor: SIDEBAR_BORDER_COLOR } : undefined
-          }
-        >
-          <ChevronLeft
+        {!mobileDrawer && (
+          <button
+            type="button"
+            onClick={handleToggleClick}
+            aria-label={
+              (pendingCollapsed ?? isCollapsed)
+                ? MESSAGES.nav.a11y.expandSidebar
+                : MESSAGES.nav.a11y.collapseSidebar
+            }
             className={cn(
-              'size-3.5 transition-transform duration-300 ease-out motion-reduce:transition-none',
-              (pendingCollapsed ?? isCollapsed) && 'rotate-180',
+              'text-foreground-strong hover:text-foreground-default hover:bg-background-default absolute z-40 flex cursor-default items-center justify-center transition-[left,top,height,border-radius,background-color,box-shadow,transform] duration-300 ease-in-out hover:shadow-sm active:scale-[0.98] motion-reduce:transition-none',
+              toggleOutside
+                ? 'border-sidebar-border bg-background-default top-4 left-full h-6 w-6 -translate-x-1/2 rounded-full border'
+                : 'top-4 left-[calc(100%-40px)] h-6 w-6 rounded-full',
             )}
-          />
-        </button>
+            style={
+              toggleOutside ? { borderColor: SIDEBAR_BORDER_COLOR } : undefined
+            }
+          >
+            <ChevronLeft
+              className={cn(
+                'size-3.5 transition-transform duration-300 ease-out motion-reduce:transition-none',
+                (pendingCollapsed ?? isCollapsed) && 'rotate-180',
+              )}
+            />
+          </button>
+        )}
       </div>
 
       <div
@@ -859,22 +863,24 @@ function Sidebar({
         </button>
       </div>
 
-      <div
-        data-slot="sidebar-resize-handle"
-        role="separator"
-        aria-label={MESSAGES.nav.a11y.resizeSidebar}
-        aria-orientation="vertical"
-        aria-valuemin={SIDEBAR_WIDTH_MIN}
-        aria-valuemax={SIDEBAR_WIDTH_MAX}
-        aria-valuenow={Math.round(sidebarWidth)}
-        tabIndex={0}
-        onPointerDown={handleResizePointerDown}
-        onKeyDown={handleResizeKeyDown}
-        className={cn(
-          'hover:bg-sidebar-border focus-visible:bg-sidebar-border absolute top-0 right-0 z-10 h-full w-1 translate-x-1/2 cursor-col-resize transition-colors duration-150 outline-none',
-          isResizing && 'bg-sidebar-border',
-        )}
-      />
+      {!mobileDrawer && (
+        <div
+          data-slot="sidebar-resize-handle"
+          role="separator"
+          aria-label={MESSAGES.nav.a11y.resizeSidebar}
+          aria-orientation="vertical"
+          aria-valuemin={SIDEBAR_WIDTH_MIN}
+          aria-valuemax={SIDEBAR_WIDTH_MAX}
+          aria-valuenow={Math.round(sidebarWidth)}
+          tabIndex={0}
+          onPointerDown={handleResizePointerDown}
+          onKeyDown={handleResizeKeyDown}
+          className={cn(
+            'hover:bg-sidebar-border focus-visible:bg-sidebar-border absolute top-0 right-0 z-10 h-full w-1 translate-x-1/2 cursor-col-resize transition-colors duration-150 outline-none',
+            isResizing && 'bg-sidebar-border',
+          )}
+        />
+      )}
     </div>
   )
 }
