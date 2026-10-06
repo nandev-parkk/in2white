@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
+import { shouldRetryQuery } from '@/shared/api/query-client'
 import {
   listMembersRequest,
   listMemberCandidatesRequest,
@@ -30,7 +31,8 @@ export function useMembers(
       previousQuery.queryKey[2] === workspaceId
         ? previousData
         : undefined,
-    retry: (count, error) => !isMemberAccessLost(error) && count < 2,
+    retry: (count, error) =>
+      !isMemberAccessLost(error) && shouldRetryQuery(count, error, 2),
   })
 }
 export function useMemberCandidates(

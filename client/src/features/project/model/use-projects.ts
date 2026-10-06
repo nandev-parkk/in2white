@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
+import { shouldRetryQuery } from '@/shared/api/query-client'
 import { useSessionStore } from '@/entities/session'
 
 import {
@@ -56,7 +57,8 @@ export function useProject(
         accessToken as string,
       ),
     enabled: Boolean(accessToken && workspaceId && projectId),
-    retry: (count, error) => !isProjectNotFound(error) && count < 2,
+    retry: (count, error) =>
+      !isProjectNotFound(error) && shouldRetryQuery(count, error, 2),
   })
 }
 

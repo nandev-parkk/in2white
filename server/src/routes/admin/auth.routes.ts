@@ -1,6 +1,11 @@
 import { Router } from "express";
 import { authenticateAdmin } from "@/middlewares/admin-auth.middleware";
-import { adminLoginRateLimitMiddleware } from "@/middlewares/rate-limit.middleware";
+import {
+  adminApiRateLimitMiddleware,
+  adminLoginAccountRateLimitMiddleware,
+  adminLoginRateLimitMiddleware,
+  adminRefreshRateLimitMiddleware,
+} from "@/middlewares/rate-limit.middleware";
 import { asyncHandler } from "@/utils/async-handler";
 import {
   adminLoginHandler,
@@ -11,9 +16,27 @@ import {
 
 export const adminAuthRouter = Router();
 
-// 로그인만 좁은 버킷을 붙인다. refresh는 쿠키를, 나머지는 access 토큰을 요구하므로
-// 무차별 대입의 대상이 아니다.
-adminAuthRouter.post("/login", adminLoginRateLimitMiddleware, asyncHandler(adminLoginHandler));
-adminAuthRouter.post("/refresh", asyncHandler(adminRefreshHandler));
-adminAuthRouter.post("/logout", authenticateAdmin, asyncHandler(adminLogoutHandler));
-adminAuthRouter.get("/me", authenticateAdmin, asyncHandler(adminMeHandler));
+// 로그인 실패와 refresh는 별도 제한을 사용하고, 인증된 me/logout은 관리자 세션 기준으로 제한한다.
+adminAuthRouter.post(
+  "/login",
+  adminLoginRateLimitMiddleware,
+  adminLoginAccountRateLimitMiddleware,
+  asyncHandler(adminLoginHandler),
+);
+adminAuthRouter.post(
+  "/refresh",
+  adminRefreshRateLimitMiddleware,
+  asyncHandler(adminRefreshHandler),
+);
+adminAuthRouter.post(
+  "/logout",
+  authenticateAdmin,
+  adminApiRateLimitMiddleware,
+  asyncHandler(adminLogoutHandler),
+);
+adminAuthRouter.get(
+  "/me",
+  authenticateAdmin,
+  adminApiRateLimitMiddleware,
+  asyncHandler(adminMeHandler),
+);

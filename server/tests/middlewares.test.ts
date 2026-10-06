@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { Request, Response } from "express";
 import { notFoundMiddleware } from "@/middlewares/not-found.middleware";
 import { errorHandlerMiddleware } from "@/middlewares/error-handler.middleware";
-import { rateLimitMiddleware } from "@/middlewares/rate-limit.middleware";
+import {
+  adminApiRateLimitMiddleware,
+  productApiRateLimitMiddleware,
+} from "@/middlewares/rate-limit.middleware";
 import { HttpError } from "@/utils/http-error";
 
 function createMockResponse() {
@@ -60,8 +63,9 @@ describe("errorHandlerMiddleware with HttpError", () => {
   });
 });
 
-describe("rateLimitMiddleware", () => {
-  it("is an express middleware function", () => {
-    expect(typeof rateLimitMiddleware).toBe("function");
+describe("API rate limit middleware", () => {
+  it("exposes Express middleware for product and admin API requests", () => {
+    expect(typeof productApiRateLimitMiddleware).toBe("function");
+    expect(typeof adminApiRateLimitMiddleware).toBe("function");
   });
 });

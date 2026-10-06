@@ -7,6 +7,7 @@ import {
   updateWhiteboardDocumentHandler,
 } from "@/controllers/whiteboard-document.controller";
 import { authenticate } from "@/middlewares/auth.middleware";
+import { productApiRateLimitMiddleware } from "@/middlewares/rate-limit.middleware";
 import { asyncHandler } from "@/utils/async-handler";
 
 export interface WhiteboardDocumentRouteDependencies {
@@ -17,13 +18,34 @@ export function createWhiteboardDocumentRouter(
   dependencies: WhiteboardDocumentRouteDependencies = {},
 ): Router {
   const router = Router({ mergeParams: true });
-  router.get("/", authenticate, asyncHandler(listWhiteboardDocumentsHandler));
-  router.get("/:documentId", authenticate, asyncHandler(getWhiteboardDocumentHandler));
-  router.post("/", authenticate, asyncHandler(createWhiteboardDocumentHandler));
-  router.patch("/:documentId", authenticate, asyncHandler(updateWhiteboardDocumentHandler));
+  router.get(
+    "/",
+    authenticate,
+    productApiRateLimitMiddleware,
+    asyncHandler(listWhiteboardDocumentsHandler),
+  );
+  router.get(
+    "/:documentId",
+    authenticate,
+    productApiRateLimitMiddleware,
+    asyncHandler(getWhiteboardDocumentHandler),
+  );
+  router.post(
+    "/",
+    authenticate,
+    productApiRateLimitMiddleware,
+    asyncHandler(createWhiteboardDocumentHandler),
+  );
+  router.patch(
+    "/:documentId",
+    authenticate,
+    productApiRateLimitMiddleware,
+    asyncHandler(updateWhiteboardDocumentHandler),
+  );
   router.delete(
     "/:documentId",
     authenticate,
+    productApiRateLimitMiddleware,
     asyncHandler(
       createDeleteWhiteboardDocumentHandler({
         onDocumentDeleted: dependencies.onDocumentDeleted,

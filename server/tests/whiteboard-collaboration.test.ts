@@ -39,8 +39,8 @@ const whiteboardDocument: WhiteboardDocumentDetail = {
   updatedAt: new Date("2026-09-11T00:00:00.000Z"),
 };
 
-async function createAccessToken(sub = "user-1") {
-  return signAccessToken({ sub, email: `${sub}@example.com`, sid: `session-${sub}`, ver: 0 });
+async function createAccessToken(sub = "user-1", sid = `session-${sub}`) {
+  return signAccessToken({ sub, email: `${sub}@example.com`, sid, ver: 0 });
 }
 
 function waitForEvent<T>(socket: ClientSocket, event: string): Promise<T> {
@@ -111,9 +111,9 @@ describe("whiteboard collaboration server", () => {
     }
   });
 
-  async function connect(sub = "user-1") {
+  async function connect(sub = "user-1", sid = `session-${sub}`) {
     const client = createClient(url, {
-      auth: { accessToken: await createAccessToken(sub) },
+      auth: { accessToken: await createAccessToken(sub, sid) },
       reconnection: false,
     });
     clients.push(client);
@@ -345,6 +345,24 @@ describe("whiteboard collaboration server", () => {
     ).resolves.toMatchObject({ ok: false, error: { code: "PAYLOAD_TOO_LARGE" } });
   });
 
+  it("rate-limits repeated whiteboard joins per socket", async () => {
+    const client = await connect();
+    const invalidJoin = () =>
+      emitWithAck<{ ok: false; error: { code: string } }>(client, "whiteboard:join", {});
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await expect(invalidJoin()).resolves.toMatchObject({
+        ok: false,
+        error: { code: "INVALID_PAYLOAD" },
+      });
+    }
+
+    await expect(invalidJoin()).resolves.toMatchObject({
+      ok: false,
+      error: { code: "RATE_LIMITED" },
+    });
+  });
+
   it("rate-limits the 41st scene update in one burst", async () => {
     const client = await connect();
     await join(client);
@@ -380,7 +398,7 @@ describe("whiteboard collaboration server", () => {
 
   it("rejects the 61st socket including tabs from the same user", async () => {
     for (let index = 0; index < 60; index += 1) {
-      const client = await connect("same-user");
+      const client = await connect("same-user", `room-session-${index}`);
       await expect(join(client)).resolves.toMatchObject({ ok: true });
     }
     const overflow = await connect("same-user");
@@ -542,6 +560,85 @@ describe("whiteboard collaboration server", () => {
     );
 
     expect(broadcastCursorXs).not.toContain(60);
+  });
+
+  it("limits invalid token authentication failures by client IP", async () => {
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      const client = createClient(url, {
+        auth: { accessToken: "invalid-token" },
+        reconnection: false,
+      });
+      clients.push(client);
+      const error = await new Promise<Error>((resolve) => {
+        client.once("connect_error", resolve);
+      });
+      expect(error).toMatchObject({ data: { code: "UNAUTHORIZED" } });
+    }
+
+    const blocked = createClient(url, {
+      auth: { accessToken: "invalid-token" },
+      reconnection: false,
+    });
+    clients.push(blocked);
+    const result = await Promise.race([
+      new Promise<{ error: Error }>((resolve) =>
+        blocked.once("connect_error", (error) => resolve({ error })),
+      ),
+      new Promise<{ connected: true }>((resolve) =>
+        blocked.once("connect", () => resolve({ connected: true })),
+      ),
+    ]);
+
+    expect(result).toMatchObject({ error: { data: { code: "RATE_LIMITED" } } });
+  }, 30_000);
+
+  it("limits repeated authenticated session connections", async () => {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      const client = await connect("reconnect-user");
+      const disconnected = new Promise<void>((resolve) =>
+        client.once("disconnect", () => resolve()),
+      );
+      client.disconnect();
+      await disconnected;
+    }
+
+    const blocked = createClient(url, {
+      auth: { accessToken: await createAccessToken("reconnect-user") },
+      reconnection: false,
+    });
+    clients.push(blocked);
+    const result = await Promise.race([
+      new Promise<{ error: Error }>((resolve) =>
+        blocked.once("connect_error", (error) => resolve({ error })),
+      ),
+      new Promise<{ connected: true }>((resolve) =>
+        blocked.once("connect", () => resolve({ connected: true })),
+      ),
+    ]);
+
+    expect(result).toMatchObject({ error: { data: { code: "RATE_LIMITED" } } });
+  }, 30_000);
+
+  it("caps concurrent sockets at five per authenticated session", async () => {
+    for (let index = 0; index < 5; index += 1) {
+      await connect("socket-cap-user");
+    }
+
+    const blocked = createClient(url, {
+      auth: { accessToken: await createAccessToken("socket-cap-user") },
+      reconnection: false,
+    });
+    clients.push(blocked);
+    const result = await Promise.race([
+      new Promise<{ error: Error }>((resolve) =>
+        blocked.once("connect_error", (error) => resolve({ error })),
+      ),
+      new Promise<{ connected: true }>((resolve) =>
+        blocked.once("connect", () => resolve({ connected: true })),
+      ),
+    ]);
+
+    expect(result).toMatchObject({ error: { data: { code: "RATE_LIMITED" } } });
   });
 
   it("emits auth expired before disconnecting the socket", async () => {

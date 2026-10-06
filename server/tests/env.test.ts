@@ -15,6 +15,12 @@ describe("parseEnv", () => {
     const result = parseEnv(validSource);
     expect(result.NODE_ENV).toBe("development");
     expect(result.PORT).toBe(4000);
+    expect(result.TRUST_PROXY_HOPS).toBe(0);
+  });
+
+  it("accepts a non-negative trusted proxy hop count", () => {
+    expect(parseEnv({ ...validSource, TRUST_PROXY_HOPS: "1" }).TRUST_PROXY_HOPS).toBe(1);
+    expect(() => parseEnv({ ...validSource, TRUST_PROXY_HOPS: "-1" })).toThrow(/TRUST_PROXY_HOPS/);
   });
 
   it("applies a default for CORS_ORIGIN", () => {

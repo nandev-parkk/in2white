@@ -4,6 +4,7 @@ import { z } from "zod";
 const baseEnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
+  TRUST_PROXY_HOPS: z.coerce.number().int().nonnegative().default(0),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   VALKEY_URL: z.string().min(1, "VALKEY_URL is required"),
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),

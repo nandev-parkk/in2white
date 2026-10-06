@@ -6,9 +6,20 @@ import {
 } from "@/controllers/member.controller";
 import { authenticate } from "@/middlewares/auth.middleware";
 import { asyncHandler } from "@/utils/async-handler";
+import { productApiRateLimitMiddleware } from "@/middlewares/rate-limit.middleware";
 
 export const memberRouter = Router({ mergeParams: true });
 
-memberRouter.get("/", authenticate, asyncHandler(listMembersHandler));
-memberRouter.post("/", authenticate, asyncHandler(addMemberHandler));
-memberRouter.delete("/:userId", authenticate, asyncHandler(removeMemberHandler));
+memberRouter.get(
+  "/",
+  authenticate,
+  productApiRateLimitMiddleware,
+  asyncHandler(listMembersHandler),
+);
+memberRouter.post("/", authenticate, productApiRateLimitMiddleware, asyncHandler(addMemberHandler));
+memberRouter.delete(
+  "/:userId",
+  authenticate,
+  productApiRateLimitMiddleware,
+  asyncHandler(removeMemberHandler),
+);

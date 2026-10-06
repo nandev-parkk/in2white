@@ -8,7 +8,6 @@ import { getEnv } from "@/config/env";
 import type { WhiteboardRealtimeStats } from "@/realtime/whiteboard-room-manager";
 import { createRouter } from "@/routes/index";
 import { createAdminRouter } from "@/routes/admin/index";
-import { rateLimitMiddleware } from "@/middlewares/rate-limit.middleware";
 import { notFoundMiddleware } from "@/middlewares/not-found.middleware";
 import { errorHandlerMiddleware } from "@/middlewares/error-handler.middleware";
 import { logger } from "@/utils/logger";
@@ -24,6 +23,7 @@ export interface AppOptions {
 
 export function createApp(options: AppOptions = {}) {
   const app = express();
+  app.set("trust proxy", getEnv().TRUST_PROXY_HOPS);
 
   app.use(helmet());
   /*
@@ -51,8 +51,6 @@ export function createApp(options: AppOptions = {}) {
       redact: ["req.headers.authorization", "req.headers.cookie", 'res.headers["set-cookie"]'],
     }),
   );
-  app.use(rateLimitMiddleware);
-
   app.use("/admin", createAdminRouter({ realtimeStats: options.whiteboardRealtimeStats }));
 
   app.use(

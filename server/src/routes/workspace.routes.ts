@@ -9,17 +9,44 @@ import {
 } from "@/controllers/workspace.controller";
 import { authenticate } from "@/middlewares/auth.middleware";
 import { asyncHandler } from "@/utils/async-handler";
+import { productApiRateLimitMiddleware } from "@/middlewares/rate-limit.middleware";
 
 export const workspaceRouter = Router();
 
-workspaceRouter.post("/", authenticate, asyncHandler(createWorkspaceHandler));
-workspaceRouter.get("/", authenticate, asyncHandler(listWorkspacesHandler));
-workspaceRouter.get("/:workspaceId", authenticate, asyncHandler(getWorkspaceDetailHandler));
-workspaceRouter.patch("/:workspaceId", authenticate, asyncHandler(updateWorkspaceHandler));
-workspaceRouter.delete("/:workspaceId", authenticate, asyncHandler(deleteWorkspaceHandler));
+workspaceRouter.post(
+  "/",
+  authenticate,
+  productApiRateLimitMiddleware,
+  asyncHandler(createWorkspaceHandler),
+);
+workspaceRouter.get(
+  "/",
+  authenticate,
+  productApiRateLimitMiddleware,
+  asyncHandler(listWorkspacesHandler),
+);
+workspaceRouter.get(
+  "/:workspaceId",
+  authenticate,
+  productApiRateLimitMiddleware,
+  asyncHandler(getWorkspaceDetailHandler),
+);
+workspaceRouter.patch(
+  "/:workspaceId",
+  authenticate,
+  productApiRateLimitMiddleware,
+  asyncHandler(updateWorkspaceHandler),
+);
+workspaceRouter.delete(
+  "/:workspaceId",
+  authenticate,
+  productApiRateLimitMiddleware,
+  asyncHandler(deleteWorkspaceHandler),
+);
 
 workspaceRouter.get(
   "/:workspaceId/member-candidates",
   authenticate,
+  productApiRateLimitMiddleware,
   asyncHandler(listMemberCandidatesHandler),
 );
