@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 
 import type { Project } from '@/entities/project'
 import { Avatar, AvatarFallback } from '@in2white/ui/avatar'
+import { cn } from '@in2white/ui/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,12 +59,21 @@ function ProjectCard({
   return (
     <motion.article
       {...cardMotion}
-      className="border-border bg-background-default hover:border-border-strong flex min-h-[204px] min-w-0 flex-col rounded-md border p-4 transition-colors duration-150 ease-out motion-reduce:transition-none"
+      className={cn(
+        'border-border bg-background-default hover:border-border-strong relative flex min-h-[204px] min-w-0 flex-col rounded-md border p-4 transition-colors duration-150 ease-out motion-reduce:transition-none',
+        onOpen && 'cursor-pointer',
+      )}
     >
       <div className="flex items-center justify-between gap-2">
         <Folder className="text-foreground-default size-5" />
         {canManage && (
-          <ProjectMenu project={project} onEdit={onEdit} onDelete={onDelete} />
+          <div className="relative z-10">
+            <ProjectMenu
+              project={project}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          </div>
         )}
       </div>
 
@@ -73,7 +83,7 @@ function ProjectCard({
             <button
               type="button"
               onClick={() => onOpen(project)}
-              className="focus-visible:ring-action-focus-ring block w-full truncate rounded-sm text-left outline-none hover:underline focus-visible:ring-3"
+              className="focus-visible:ring-action-focus-ring block w-full truncate rounded-sm text-left outline-none after:absolute after:inset-0 after:content-[''] hover:underline focus-visible:ring-3"
             >
               {project.name}
             </button>

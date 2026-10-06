@@ -36,20 +36,21 @@ function WhiteboardCard({
       data-slot="whiteboard-card"
       {...cardMotion}
       className={cn(
-        'border-border-subtle bg-background-default hover:border-border flex w-full flex-col overflow-hidden rounded-md border transition-colors duration-150 ease-out motion-reduce:transition-none',
+        'border-border-subtle bg-background-default hover:border-border relative flex w-full flex-col overflow-hidden rounded-md border transition-colors duration-150 ease-out motion-reduce:transition-none',
         className,
+        onOpen && 'cursor-pointer',
       )}
       {...props}
     >
       <div className="bg-background-subtle relative h-26 bg-[radial-gradient(var(--border-strong)_1.5px,transparent_1.5px)] bg-[length:32px_32px] bg-[position:16px_16px]">
-        {menu && <div className="absolute top-2 right-2">{menu}</div>}
+        {menu && <div className="absolute top-2 right-2 z-10">{menu}</div>}
       </div>
       <div className="flex flex-col gap-2 p-4">
         <p className="text-card-title text-foreground-strong">
           {onOpen ? (
             <button
               type="button"
-              className="text-left hover:underline focus-visible:outline-2"
+              className="text-left after:absolute after:inset-0 after:content-[''] hover:underline focus-visible:outline-2"
               onClick={onOpen}
             >
               {title}

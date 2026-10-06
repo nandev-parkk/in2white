@@ -38,8 +38,15 @@ function DialogContent({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content>) {
   const contentRef = React.useRef<HTMLDivElement>(null)
+  const [contentElement, setContentElement] =
+    React.useState<HTMLDivElement | null>(null)
+  const setContentRef = React.useCallback((content: HTMLDivElement | null) => {
+    contentRef.current = content
+    setContentElement(content)
+  }, [])
 
   React.useEffect(() => {
+    if (!contentElement) return
     const visualViewport = window.visualViewport
     if (!visualViewport) return
 
@@ -48,25 +55,37 @@ function DialogContent({
       const currentViewport = window.visualViewport
       if (!content || !currentViewport) return
 
-      content.style.top = `${currentViewport.offsetTop + currentViewport.height / 2}px`
+      // 주소창 변화는 넘기고, 소프트 키보드가 차지할 만큼 줄면 위쪽 정렬한다.
+      const keyboardOpen = window.innerHeight - currentViewport.height > 100
+      content.style.top = `${currentViewport.offsetTop + (keyboardOpen ? 16 : currentViewport.height / 2)}px`
       content.style.maxHeight = `calc(${currentViewport.height}px - 2rem)`
+
+      if (keyboardOpen) {
+        content.style.setProperty('translate', '-50% 0')
+      } else {
+        content.style.removeProperty('translate')
+      }
     }
 
     updateViewport()
     visualViewport.addEventListener('resize', updateViewport)
     visualViewport.addEventListener('scroll', updateViewport)
+    window.addEventListener('resize', updateViewport)
+    window.addEventListener('scroll', updateViewport, { passive: true })
 
     return () => {
       visualViewport.removeEventListener('resize', updateViewport)
       visualViewport.removeEventListener('scroll', updateViewport)
+      window.removeEventListener('resize', updateViewport)
+      window.removeEventListener('scroll', updateViewport)
     }
-  }, [])
+  }, [contentElement])
 
   return (
     <DialogPrimitive.Portal>
       <DialogOverlay />
       <DialogPrimitive.Content
-        ref={contentRef}
+        ref={setContentRef}
         tabIndex={-1}
         data-slot="dialog-content"
         className={cn(

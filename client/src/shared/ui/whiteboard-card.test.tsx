@@ -73,4 +73,21 @@ describe('WhiteboardCard', () => {
 
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
+
+  it('제목 버튼의 클릭 영역을 카드 전체로 늘리고 메뉴를 위에 둔다', () => {
+    renderCard({
+      onOpen: vi.fn(),
+      menu: <button type="button">더 보기</button>,
+    })
+
+    const card = screen.getByRole('article')
+    const titleButton = screen.getByRole('button', {
+      name: '킥오프 화이트보드',
+    })
+    const menuButton = screen.getByRole('button', { name: '더 보기' })
+
+    expect(card).toHaveClass('relative')
+    expect(titleButton).toHaveClass('after:absolute', 'after:inset-0')
+    expect(menuButton.parentElement).toHaveClass('z-10')
+  })
 })

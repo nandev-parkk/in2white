@@ -57,6 +57,7 @@ export default function WhiteboardCanvas({
     userId,
   })
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null)
+  const canvasRoot = useRef<HTMLElement>(null)
   const selected = useRef<string[]>([])
   const applying = useRef(false)
   const ready = useRef(false)
@@ -144,6 +145,38 @@ export default function WhiteboardCanvas({
     ) as Parameters<ExcalidrawImperativeAPI['updateScene']>[0]['collaborators']
     api.updateScene({ collaborators, captureUpdate: CaptureUpdateAction.NEVER })
   }, [api, editor.participants, userId])
+  useEffect(() => {
+    const excalidrawApi = api
+    if (!excalidrawApi) return
+
+    const visualViewport = window.visualViewport
+    let frame = 0
+
+    // iPad 키보드가 닫힌 뒤에도 Excalidraw가 최신 컨테이너 크기를 다시 읽게 한다.
+    function refreshCanvasLayout() {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const height = window.visualViewport?.height ?? window.innerHeight
+        if (canvasRoot.current) canvasRoot.current.style.height = `${height}px`
+        excalidrawApi?.refresh()
+        frame = 0
+      })
+    }
+
+    refreshCanvasLayout()
+    visualViewport?.addEventListener('resize', refreshCanvasLayout)
+    visualViewport?.addEventListener('scroll', refreshCanvasLayout)
+    window.addEventListener('resize', refreshCanvasLayout)
+    window.addEventListener('scroll', refreshCanvasLayout, { passive: true })
+
+    return () => {
+      cancelAnimationFrame(frame)
+      visualViewport?.removeEventListener('resize', refreshCanvasLayout)
+      visualViewport?.removeEventListener('scroll', refreshCanvasLayout)
+      window.removeEventListener('resize', refreshCanvasLayout)
+      window.removeEventListener('scroll', refreshCanvasLayout)
+    }
+  }, [api])
   /** 편집기가 들고 있는 최신 장면. API가 아직 없으면 동기화 장면을 쓴다. */
   function currentScene(): CanvasContent {
     if (!api) return editor.scene
@@ -173,7 +206,7 @@ export default function WhiteboardCanvas({
   }
 
   return (
-    <main className="flex h-dvh min-h-0 flex-col">
+    <main ref={canvasRoot} className="flex h-dvh min-h-0 flex-col">
       <CanvasTopBar
         title={document.name}
         saveStatus={editor.status}

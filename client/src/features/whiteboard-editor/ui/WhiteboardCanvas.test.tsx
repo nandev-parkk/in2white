@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { useWhiteboardEditor } from '../model/use-whiteboard-editor'
 import WhiteboardCanvas from './WhiteboardCanvas'
@@ -8,6 +8,7 @@ const canvas = vi.hoisted(() => ({
   updateScene: vi.fn(),
   resetScene: vi.fn(),
   addFiles: vi.fn(),
+  refresh: vi.fn(),
   getSceneElementsIncludingDeleted: vi.fn(),
   getAppState: () => ({}),
   getFiles: () => ({}),
@@ -63,7 +64,14 @@ vi.mock('@tanstack/react-router', () => ({ useBlocker: vi.fn() }))
 vi.mock('../model/use-whiteboard-editor', () => ({
   useWhiteboardEditor: vi.fn(),
 }))
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+  Object.defineProperty(window, 'visualViewport', {
+    configurable: true,
+    value: undefined,
+  })
+})
 
 it('재입장 직후의 빈 초기 이벤트를 저장된 요소의 전체 삭제로 보내지 않는다', () => {
   const shape = {
@@ -227,4 +235,68 @@ it('명시적 되돌리기는 낮은 서버 버전도 반영하며 캔버스 초
   expect(canvas.updateScene).toHaveBeenCalledWith(
     expect.objectContaining({ elements: [saved] }),
   )
+})
+
+it('visual viewport가 바뀌면 캔버스 높이와 Excalidraw 레이아웃을 갱신한다', async () => {
+  const visualViewport = new EventTarget() as VisualViewport & {
+    height: number
+  }
+  Object.defineProperties(visualViewport, {
+    height: { configurable: true, writable: true, value: 600 },
+    offsetTop: { configurable: true, writable: true, value: 0 },
+  })
+  Object.defineProperty(window, 'visualViewport', {
+    configurable: true,
+    value: visualViewport,
+  })
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    callback(0)
+    return 1
+  })
+  vi.stubGlobal('cancelAnimationFrame', vi.fn())
+
+  const view = {
+    scene: { elements: [] },
+    participants: [],
+    status: 'saved' as const,
+    readOnly: false,
+    error: null,
+    hasUnsavedChanges: false,
+    onSceneChange: vi.fn(),
+    onPresenceChange: vi.fn(),
+    retry: vi.fn(),
+    discard: vi.fn(),
+  }
+  vi.mocked(useWhiteboardEditor).mockReturnValue(view)
+  const { container } = render(
+    <WhiteboardCanvas
+      workspaceId="workspace"
+      projectId="project"
+      userId="user"
+      accessToken="token"
+      onBack={vi.fn()}
+      document={{
+        id: 'document',
+        projectId: 'project',
+        creatorId: 'user',
+        name: '문서',
+        canvasContent: { elements: [] },
+        revision: 0,
+        lastSavedAt: '',
+        createdAt: '',
+        updatedAt: '',
+      }}
+    />,
+  )
+
+  const canvasRoot = container.querySelector('main')
+  expect(canvasRoot).toHaveStyle({ height: '600px' })
+  await waitFor(() => expect(canvas.refresh).toHaveBeenCalled())
+
+  canvas.refresh.mockClear()
+  visualViewport.height = 500
+  visualViewport.dispatchEvent(new Event('resize'))
+
+  await waitFor(() => expect(canvas.refresh).toHaveBeenCalledTimes(1))
+  expect(canvasRoot).toHaveStyle({ height: '500px' })
 })
