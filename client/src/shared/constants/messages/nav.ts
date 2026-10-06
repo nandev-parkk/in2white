@@ -5,6 +5,8 @@ export const NAV_MESSAGES = {
   },
   a11y: {
     sidebar: '워크스페이스 사이드바',
+    openSidebar: '사이드바 열기',
+    closeSidebar: '사이드바 닫기',
     expandSidebar: '사이드바 펼치기',
     collapseSidebar: '사이드바 접기',
     resizeSidebar: '사이드바 크기 조절',

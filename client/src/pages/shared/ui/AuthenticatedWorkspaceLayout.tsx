@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { Menu, X } from 'lucide-react'
 
 import { useSessionStore, type SessionUser } from '@/entities/session'
 import {
@@ -32,6 +33,13 @@ import {
 import { Skeleton, SkeletonListCell } from '@in2white/ui/skeleton'
 import { Sidebar, type SidebarNavKey } from '@/widgets/sidebar'
 import { toast } from '@in2white/ui/toast'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from '@in2white/ui/dialog'
 import { MESSAGES } from '@/shared/constants/messages'
 
 const COMPACT_SIDEBAR_MEDIA_QUERY = '(max-width: 639px)'
@@ -61,7 +69,7 @@ export type AuthenticatedWorkspaceLayoutProps = {
   children: (context: WorkspaceShellContext) => ReactNode
 }
 
-function useCompactSidebar() {
+function useCompactSidebar(onViewportChange: (isCompact: boolean) => void) {
   const getMediaQuery = () => {
     if (typeof window === 'undefined' || !window.matchMedia) return null
     return window.matchMedia(COMPACT_SIDEBAR_MEDIA_QUERY)
@@ -76,11 +84,12 @@ function useCompactSidebar() {
 
     const handleChange = (event: MediaQueryListEvent) => {
       setIsCompact(event.matches)
+      onViewportChange(event.matches)
     }
     mediaQuery.addEventListener('change', handleChange)
 
     return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [])
+  }, [onViewportChange])
 
   return isCompact
 }
@@ -115,9 +124,12 @@ function WorkspaceLayoutContent({
   )
   const inviteTrigger = useRef<HTMLElement | null>(null)
   const createWorkspace = useCreateWorkspace(accessToken)
-  const compactSidebar = useCompactSidebar()
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const closeSidebarOnDesktop = useCallback((isCompact: boolean) => {
+    if (!isCompact) setMobileSidebarOpen(false)
+  }, [])
+  const compactSidebar = useCompactSidebar(closeSidebarOnDesktop)
   const [collapsed, setCollapsed] = useState(false)
-  const isSidebarCollapsed = compactSidebar || collapsed
   const [internalActiveNav, setInternalActiveNav] = useState<SidebarNavKey>(
     activeNav ?? 'projects',
   )
@@ -163,10 +175,13 @@ function WorkspaceLayoutContent({
     resolvedSelectedWorkspaceId,
     { page: 1, limit: 20, search: '' },
   )
+  // MemberAddDialog observes this callback in an effect, so keep its identity stable.
+  /* eslint-disable react-hooks/preserve-manual-memoization */
   const handleAccessLost = useCallback(() => {
     setLostWorkspaceId(resolvedSelectedWorkspaceId)
     void refetch()
   }, [resolvedSelectedWorkspaceId, refetch])
+  /* eslint-enable react-hooks/preserve-manual-memoization */
   const previewAccessLost = isMemberAccessLost(preview.error)
   useEffect(() => {
     if (previewAccessLost) void refetch()
@@ -243,14 +258,20 @@ function WorkspaceLayoutContent({
   }
 
   function handleWorkspaceChange(nextWorkspaceId: string) {
+    // This handler runs after a user action; capture its start time here.
+    // eslint-disable-next-line react-hooks/purity
     setLoadingStartedAt(Date.now())
+    setMobileSidebarOpen(false)
     setInviteWorkspaceId(null)
     setSelectedWorkspaceId(nextWorkspaceId)
     onWorkspaceChange?.(nextWorkspaceId)
   }
 
   function handleNavChange(key: SidebarNavKey) {
+    // This handler runs after a user action; capture its start time here.
+    // eslint-disable-next-line react-hooks/purity
     setLoadingStartedAt(Date.now())
+    setMobileSidebarOpen(false)
     setInternalActiveNav(key)
     if (onNavChange) onNavChange(key, resolvedSelectedWorkspaceId)
     else if (resolvedSelectedWorkspaceId) {
@@ -266,42 +287,90 @@ function WorkspaceLayoutContent({
     }
   }
 
+  const sidebarProps = {
+    workspaceLoading: isLoading,
+    workspace: selectedWorkspace,
+    workspaces,
+    selectedWorkspaceId: resolvedSelectedWorkspaceId,
+    onWorkspaceChange: handleWorkspaceChange,
+    onCreateWorkspace: () => handleCreateDialogOpenChange(true),
+    workspaceDialogOpen: createDialogOpen,
+    workspaceMembers: (preview.data?.members ?? []).map((member) => ({
+      id: member.userId,
+      name: member.name,
+      presenceIndex: 1,
+    })),
+    workspaceMemberCount: preview.data?.pagination.total,
+    onInviteMember:
+      selectedWorkspace?.role === 'owner' && !selectedWorkspace.isDefault
+        ? () => {
+            inviteTrigger.current = document.activeElement as HTMLElement
+            setInviteWorkspaceId(resolvedSelectedWorkspaceId)
+          }
+        : undefined,
+    activeNav: resolvedActiveNav,
+    onNavChange: handleNavChange,
+    onUserClick: () => {
+      setMobileSidebarOpen(false)
+      onUserClick?.(resolvedSelectedWorkspaceId)
+    },
+    onLogout: () => {
+      setMobileSidebarOpen(false)
+      void onLogout()
+    },
+    userName: user.name,
+    userEmail: user.email,
+  }
+
   return (
     <div className="bg-background-default flex min-h-svh">
-      <Sidebar
-        className="min-h-svh shrink-0"
-        collapsed={isSidebarCollapsed}
-        onCollapsedChange={setCollapsed}
-        workspaceLoading={isLoading}
-        workspace={selectedWorkspace}
-        workspaces={workspaces}
-        selectedWorkspaceId={resolvedSelectedWorkspaceId}
-        onWorkspaceChange={handleWorkspaceChange}
-        onCreateWorkspace={() => handleCreateDialogOpenChange(true)}
-        workspaceDialogOpen={createDialogOpen}
-        workspaceMembers={(preview.data?.members ?? []).map((member) => ({
-          id: member.userId,
-          name: member.name,
-          presenceIndex: 1,
-        }))}
-        workspaceMemberCount={preview.data?.pagination.total}
-        onInviteMember={
-          selectedWorkspace?.role === 'owner' && !selectedWorkspace.isDefault
-            ? () => {
-                inviteTrigger.current = document.activeElement as HTMLElement
-                setInviteWorkspaceId(resolvedSelectedWorkspaceId)
-              }
-            : undefined
-        }
-        activeNav={resolvedActiveNav}
-        onNavChange={handleNavChange}
-        onUserClick={() => onUserClick?.(resolvedSelectedWorkspaceId)}
-        onLogout={() => void onLogout()}
-        userName={user.name}
-        userEmail={user.email}
-      />
+      {!compactSidebar && (
+        <Sidebar
+          {...sidebarProps}
+          className="min-h-svh shrink-0"
+          collapsed={collapsed}
+          onCollapsedChange={setCollapsed}
+        />
+      )}
 
       <main className="flex min-w-0 flex-1 flex-col px-5 pt-6 pb-12">
+        {compactSidebar && (
+          <div className="mb-4 flex items-center">
+            <Dialog
+              open={mobileSidebarOpen}
+              onOpenChange={setMobileSidebarOpen}
+            >
+              <DialogTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={MESSAGES.nav.a11y.openSidebar}
+                  className="text-foreground-strong hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring flex size-10 items-center justify-center rounded-md outline-none focus-visible:ring-3"
+                >
+                  <Menu aria-hidden="true" className="size-5" />
+                </button>
+              </DialogTrigger>
+              <DialogContent className="!top-0 !left-0 !h-dvh !max-h-dvh !w-[min(240px,calc(100vw-3rem))] !max-w-none !translate-x-0 !translate-y-0 !rounded-none !rounded-r-lg !p-0">
+                <DialogTitle className="sr-only">
+                  {MESSAGES.nav.a11y.sidebar}
+                </DialogTitle>
+                <DialogClose asChild>
+                  <button
+                    type="button"
+                    aria-label={MESSAGES.nav.a11y.closeSidebar}
+                    className="text-foreground-strong hover:bg-action-secondary-hover focus-visible:ring-action-focus-ring absolute top-3 right-3 z-50 flex size-8 items-center justify-center rounded-md outline-none focus-visible:ring-3"
+                  >
+                    <X aria-hidden="true" className="size-4" />
+                  </button>
+                </DialogClose>
+                <Sidebar
+                  {...sidebarProps}
+                  mobileDrawer
+                  className="!sticky !top-0 !h-dvh !max-h-dvh !min-h-0 !w-[min(240px,calc(100vw-3rem))] shrink-0 !self-stretch"
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
         {!isWorkspaceOptional && isLoading ? (
           loadingFallback ? (
             loadingFallback(loadingStartedAt)
