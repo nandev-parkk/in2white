@@ -72,6 +72,29 @@ describe('ProjectCard', () => {
     expect(onDelete).toHaveBeenCalledWith(projectFixture)
   })
 
+  it('제목 버튼의 클릭 영역을 카드 전체로 늘리고 메뉴를 위에 둔다', () => {
+    render(
+      <ProjectCard
+        project={projectFixture}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    )
+
+    const card = screen.getByRole('article')
+    const titleButton = screen.getByRole('button', {
+      name: projectFixture.name,
+    })
+    const menuButton = screen.getByRole('button', {
+      name: `${projectFixture.name} 메뉴`,
+    })
+
+    expect(card).toHaveClass('relative')
+    expect(titleButton).toHaveClass('after:absolute', 'after:inset-0')
+    expect(menuButton.parentElement).toHaveClass('relative', 'z-10')
+  })
+
   it('hover 강조를 그림자가 아니라 테두리 색으로 표현한다', () => {
     render(
       <ProjectCard
