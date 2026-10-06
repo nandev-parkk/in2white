@@ -855,6 +855,17 @@ describe('Sidebar', () => {
     expect(screen.getByRole('option', { name: /My Workspace/ })).toBeVisible()
   })
 
+  it('모바일 서랍에서는 워크스페이스 목록을 사이드바 폭에 맞춘다', async () => {
+    const user = userEvent.setup()
+    render(<Sidebar {...sidebarFixture} mobileDrawer />)
+
+    await user.click(screen.getByRole('button', { name: 'My Workspace' }))
+
+    const popover = screen.getByRole('listbox').parentElement
+    expect(popover).toHaveClass('w-full')
+    expect(popover).not.toHaveClass('w-68')
+  })
+
   it('폴딩하면 64px 사이드바와 메뉴 툴팁을 사용한다', async () => {
     const user = userEvent.setup()
     render(<Sidebar {...sidebarFixture} />)

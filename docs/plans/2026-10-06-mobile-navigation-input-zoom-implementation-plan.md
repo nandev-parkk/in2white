@@ -14,6 +14,7 @@
 - 내비게이션 선택, 워크스페이스 전환, 계정 이동, 로그아웃에서 모바일 서랍 상태를 닫는다. 워크스페이스 생성·초대 대화상자는 기존 상태 흐름을 유지한다.
 - 앱 전역 CSS에서 639px 이하의 `input`, `textarea`, `select` 글꼴 크기를 16px로 지정했다.
 - 화이트보드 카드와 그리드 호출부는 이미 전체 클릭 링크와 메뉴 우선 순위를 구현하므로 수정하지 않았다.
+- 후속 수정: 모바일 서랍의 워크스페이스 선택 목록은 서랍 내부 폭(`w-full`)을 사용하고, 데스크톱은 기존 `w-68`을 유지한다.
 
 ## 계획과 달라진 점
 
@@ -25,6 +26,8 @@
 - `pnpm --filter in2white-client build` — 통과.
 - `pnpm --filter in2white-client lint` — 기존 `react-hooks/preserve-manual-memoization` 2건과 `react-hooks/purity` (`Date.now()`) 2건을 계약 설명과 함께 필요한 범위에서 억제한 뒤 통과.
 - `pnpm --filter in2white-client exec prettier --write ...`와 `git diff --check` — 통과.
+- 후속 회귀 테스트는 고정 폭에서 실패한 뒤 수정 후 통과했다. `pnpm --filter in2white-client exec vitest run src/widgets/sidebar/ui/Sidebar.test.tsx src/pages/shared/ui/AuthenticatedWorkspaceLayout.test.tsx` — 2개 파일, 49개 테스트 통과.
+- `pnpm --filter in2white-client exec eslint src/widgets/sidebar/ui/Sidebar.tsx src/widgets/sidebar/ui/Sidebar.test.tsx`와 `pnpm --filter in2white-client build` — 통과.
 - 실제 모바일 브라우저·기기에서는 확인하지 않았다.
 
 ## 후속 작업
