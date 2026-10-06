@@ -10,4 +10,10 @@ export const WHITEBOARD_LIMITS = {
   sceneBurst: 40,
   presenceRatePerSecond: 30,
   presenceBurst: 60,
+  joinRatePerSecond: 2,
+  joinBurst: 5,
+  handshakesPerIpPerMinute: 300,
+  authFailuresPerIpPerMinute: 60,
+  connectionsPerSessionPerMinute: 30,
+  socketsPerSession: 5,
 } as const;

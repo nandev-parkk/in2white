@@ -134,6 +134,7 @@ export type WhiteboardInterServerEvents = Record<never, never>;
 export interface WhiteboardSocketData {
   user: AccessTokenPayload;
   authExpiryTimer: ReturnType<typeof setTimeout>;
+  joinBucket: TokenBucket;
   sceneBucket: TokenBucket;
   presenceBucket: TokenBucket;
   currentDocumentId?: string;

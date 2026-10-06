@@ -1,5 +1,6 @@
-import type { Server as HttpServer } from "node:http";
+import type { IncomingMessage, Server as HttpServer } from "node:http";
 import { Server, type Socket } from "socket.io";
+import { ipKeyGenerator } from "express-rate-limit";
 import { ERROR_MESSAGES } from "@/constants/messages";
 import { getEnv } from "@/config/env";
 import { verifyAccessToken } from "@/lib/jwt";
@@ -43,6 +44,54 @@ import { logger } from "@/utils/logger";
 
 const ROOM_PREFIX = "whiteboard:document:";
 const PRESENCE_ERROR_COOLDOWN_MS = 1_000;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const MAX_RATE_LIMIT_KEYS = 10_000;
+
+interface FixedWindowEntry {
+  count: number;
+  resetAt: number;
+}
+
+function consumeFixedWindow(
+  buckets: Map<string, FixedWindowEntry>,
+  key: string,
+  limit: number,
+  now: number,
+): boolean {
+  let bucket = buckets.get(key);
+  if (!bucket) {
+    if (buckets.size >= MAX_RATE_LIMIT_KEYS) {
+      for (const [staleKey, staleBucket] of buckets) {
+        if (staleBucket.resetAt <= now) buckets.delete(staleKey);
+      }
+    }
+    if (buckets.size >= MAX_RATE_LIMIT_KEYS) return false;
+    bucket = { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
+    buckets.set(key, bucket);
+  } else if (bucket.resetAt <= now) {
+    bucket.count = 0;
+    bucket.resetAt = now + RATE_LIMIT_WINDOW_MS;
+  }
+
+  if (bucket.count >= limit) return false;
+  bucket.count += 1;
+  return true;
+}
+
+function socketClientIp(request: IncomingMessage, trustedProxyHops: number): string {
+  const remoteAddress = request.socket.remoteAddress || "unknown";
+  if (trustedProxyHops === 0) return ipKeyGenerator(remoteAddress);
+
+  const forwarded = request.headers["x-forwarded-for"];
+  const forwardedAddresses = (Array.isArray(forwarded) ? forwarded.join(",") : (forwarded ?? ""))
+    .split(",")
+    .map((address) => address.trim())
+    .filter(Boolean);
+  if (forwardedAddresses.length === 0) return ipKeyGenerator(remoteAddress);
+
+  const clientIndex = Math.max(0, forwardedAddresses.length - trustedProxyHops);
+  return ipKeyGenerator(forwardedAddresses[clientIndex] ?? remoteAddress);
+}
 
 type WhiteboardIo = Server<
   WhiteboardClientToServerEvents,
@@ -207,9 +256,24 @@ export function createWhiteboardCollaborationServer(
 ): WhiteboardCollaboration {
   const dependencies = { ...createDefaultDependencies(), ...providedDependencies };
   const lifecycle = new WhiteboardDocumentLifecycle();
+  const trustedProxyHops = getEnv().TRUST_PROXY_HOPS;
+  const handshakeAttempts = new Map<string, FixedWindowEntry>();
+  const authenticationFailures = new Map<string, FixedWindowEntry>();
+  const sessionConnectionAttempts = new Map<string, FixedWindowEntry>();
+  const activeSessionSockets = new Map<string, number>();
   const io: WhiteboardIo = new Server(httpServer, {
     cors: { origin: getEnv().CORS_ORIGIN, credentials: true },
     maxHttpBufferSize: WHITEBOARD_LIMITS.transportPayloadBytes,
+    allowRequest: (request, callback) => {
+      const clientIp = socketClientIp(request, trustedProxyHops);
+      const allowed = consumeFixedWindow(
+        handshakeAttempts,
+        clientIp,
+        WHITEBOARD_LIMITS.handshakesPerIpPerMinute,
+        dependencies.now(),
+      );
+      callback(null, allowed);
+    },
   });
 
   let closePromise: Promise<void> | undefined;
@@ -320,7 +384,21 @@ export function createWhiteboardCollaborationServer(
         ? socket.handshake.auth.accessToken
         : undefined;
     if (!accessToken) {
-      next(socketError("UNAUTHORIZED", ERROR_MESSAGES.MISSING_BEARER_TOKEN));
+      const clientIp = socketClientIp(socket.request, trustedProxyHops);
+      const allowed = consumeFixedWindow(
+        authenticationFailures,
+        clientIp,
+        WHITEBOARD_LIMITS.authFailuresPerIpPerMinute,
+        dependencies.now(),
+      );
+      next(
+        socketError(
+          allowed ? "UNAUTHORIZED" : "RATE_LIMITED",
+          allowed
+            ? ERROR_MESSAGES.MISSING_BEARER_TOKEN
+            : "연결 요청이 너무 많습니다. 잠시 후 다시 시도해주세요",
+        ),
+      );
       return;
     }
 
@@ -331,7 +409,42 @@ export function createWhiteboardCollaborationServer(
           next(socketError("SERVER_DRAINING", "서버가 종료 중입니다"));
           return;
         }
+        const sessionKey = `${user.sub}:${user.sid}`;
+        if (
+          !consumeFixedWindow(
+            sessionConnectionAttempts,
+            sessionKey,
+            WHITEBOARD_LIMITS.connectionsPerSessionPerMinute,
+            dependencies.now(),
+          )
+        ) {
+          next(
+            socketError(
+              "RATE_LIMITED",
+              "세션 연결 요청이 너무 많습니다. 잠시 후 다시 시도해주세요",
+            ),
+          );
+          return;
+        }
+
+        const activeSockets = activeSessionSockets.get(sessionKey) ?? 0;
+        if (activeSockets >= WHITEBOARD_LIMITS.socketsPerSession) {
+          next(socketError("RATE_LIMITED", "이 세션의 동시 연결 수가 최대치에 도달했습니다"));
+          return;
+        }
+        activeSessionSockets.set(sessionKey, activeSockets + 1);
+        socket.once("disconnect", () => {
+          const remaining = activeSessionSockets.get(sessionKey) ?? 0;
+          if (remaining <= 1) activeSessionSockets.delete(sessionKey);
+          else activeSessionSockets.set(sessionKey, remaining - 1);
+        });
+
         socket.data.user = user;
+        socket.data.joinBucket = new TokenBucket({
+          ratePerSecond: WHITEBOARD_LIMITS.joinRatePerSecond,
+          burst: WHITEBOARD_LIMITS.joinBurst,
+          now: dependencies.now,
+        });
         socket.data.sceneBucket = new TokenBucket({
           ratePerSecond: WHITEBOARD_LIMITS.sceneRatePerSecond,
           burst: WHITEBOARD_LIMITS.sceneBurst,
@@ -352,7 +465,23 @@ export function createWhiteboardCollaborationServer(
         );
         next();
       })
-      .catch(() => next(socketError("UNAUTHORIZED", ERROR_MESSAGES.INVALID_ACCESS_TOKEN)));
+      .catch(() => {
+        const clientIp = socketClientIp(socket.request, trustedProxyHops);
+        const allowed = consumeFixedWindow(
+          authenticationFailures,
+          clientIp,
+          WHITEBOARD_LIMITS.authFailuresPerIpPerMinute,
+          dependencies.now(),
+        );
+        next(
+          socketError(
+            allowed ? "UNAUTHORIZED" : "RATE_LIMITED",
+            allowed
+              ? ERROR_MESSAGES.INVALID_ACCESS_TOKEN
+              : "연결 요청이 너무 많습니다. 잠시 후 다시 시도해주세요",
+          ),
+        );
+      });
   });
 
   io.on("connection", (socket) => {
@@ -455,6 +584,11 @@ export function createWhiteboardCollaborationServer(
     };
 
     socket.on("whiteboard:join", (rawPayload, ack) => {
+      if (!socket.data.joinBucket.consume()) {
+        sendAck(ack, protocolError("RATE_LIMITED", "화이트보드 참가 요청이 너무 많습니다"));
+        return;
+      }
+
       const parsed = whiteboardJoinPayloadSchema.safeParse(rawPayload);
       if (!parsed.success) {
         sendAck(
