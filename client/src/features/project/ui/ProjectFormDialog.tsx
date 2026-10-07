@@ -85,7 +85,22 @@ function ProjectFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[440px] overflow-y-auto p-7">
+      <DialogContent
+        className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[440px] overflow-y-auto p-7"
+        onOpenAutoFocus={(event) => {
+          if (initialName) return
+
+          const content = event.currentTarget
+          if (!(content instanceof HTMLElement)) return
+
+          const nameInput =
+            content.querySelector<HTMLInputElement>('#project-name')
+          if (!nameInput) return
+
+          event.preventDefault()
+          nameInput.focus({ preventScroll: true })
+        }}
+      >
         <div>
           <DialogTitle className="text-[20px] leading-7 font-semibold">
             {title}
