@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { useState } from 'react'
 import { FileText } from 'lucide-react'
 
@@ -56,6 +57,8 @@ function restoreDescription(document: AdminWhiteboardDocument) {
 }
 
 function WhiteboardDocumentsPage() {
+  useDocumentTitle('in2white admin | 화이트보드 문서')
+
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<ResourceStatusFilter>('all')
   const [page, setPage] = useState(1)

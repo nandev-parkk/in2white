@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { WorkspaceSettingsContent } from '@/features/workspace/ui/WorkspaceSettingsContent'
 import { WorkspaceAccessDeniedPage } from '@/pages/workspace-access-denied/ui/WorkspaceAccessDeniedPage'
 import { AuthenticatedWorkspaceLayout } from '@/pages/shared/ui/AuthenticatedWorkspaceLayout'
@@ -22,6 +23,8 @@ export function WorkspaceSettingsPage({
   onDeleted,
   onReturn,
 }: WorkspaceSettingsPageProps) {
+  useDocumentTitle('in2white | 설정')
+
   return (
     <AuthenticatedWorkspaceLayout
       workspaceId={workspaceId}

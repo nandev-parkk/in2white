@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Users } from 'lucide-react'
@@ -40,6 +41,8 @@ const STATUS_OPTIONS: { value: UserStatusFilter; label: string }[] = [
 ]
 
 function UsersPage() {
+  useDocumentTitle('in2white admin | 사용자')
+
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<UserStatusFilter>('all')

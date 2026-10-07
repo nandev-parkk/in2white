@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { MemberListContent } from '@/features/member/ui/MemberListContent'
 import { ProjectListContent } from '@/features/project/ui/ProjectListContent'
 import { AuthenticatedWorkspaceLayout } from '@/pages/shared/ui/AuthenticatedWorkspaceLayout'
@@ -19,6 +20,10 @@ export function HomePage({
   onWorkspaceChange?: (workspaceId: string) => void
   onProjectOpen?: (projectId: string) => void
 } = {}) {
+  useDocumentTitle(
+    `in2white | ${activeNav === 'members' ? MESSAGES.member.heading.list : MESSAGES.project.heading.list}`,
+  )
+
   return (
     <AuthenticatedWorkspaceLayout
       workspaceId={workspaceId}

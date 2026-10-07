@@ -1,7 +1,10 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { LoginForm } from '@/features/auth'
 import { MESSAGES } from '@/shared/constants/messages'
 
 export function LoginPage() {
+  useDocumentTitle('in2white admin | 로그인')
+
   return (
     <main className="bg-background-default flex min-h-svh flex-col items-center justify-center">
       <div className="flex w-(--layout-container-auth-shell-max-width) flex-col items-center gap-6">

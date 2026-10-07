@@ -238,3 +238,12 @@ describe('ProjectDetailPage', () => {
     ).toBeInTheDocument()
   })
 })
+
+it('어드민 접두사 뒤에 실제 프로젝트 이름만 표시한다', async () => {
+  vi.mocked(getProjectRequest).mockResolvedValue(detail())
+  renderProjectDetailPage()
+  expect(document.title).toBe('in2white admin | 프로젝트 상세')
+  await waitFor(() =>
+    expect(document.title).toBe(`in2white admin | ${project.name}`),
+  )
+})

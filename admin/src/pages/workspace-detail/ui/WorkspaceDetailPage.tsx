@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 
@@ -188,6 +189,7 @@ function WorkspaceDetailPage({ workspaceId }: WorkspaceDetailPageProps) {
 
   const detail = workspaceQuery.data
   const workspace = detail?.workspace
+  useDocumentTitle(`in2white admin | ${workspace?.name ?? '워크스페이스 상세'}`)
 
   function openWith(dialog: Exclude<OpenDialog, null>, reset: () => void) {
     reset()

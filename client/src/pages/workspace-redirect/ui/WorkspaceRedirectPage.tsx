@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { useEffect } from 'react'
 
 import { selectDefaultWorkspace } from '@/entities/workspace'
@@ -18,6 +19,8 @@ export function WorkspaceRedirectPage({
   user,
   onNavigate,
 }: WorkspaceRedirectPageProps) {
+  useDocumentTitle('in2white | 워크스페이스')
+
   const { data, isError, isLoading, refetch } = useWorkspaces(
     accessToken,
     user.id,

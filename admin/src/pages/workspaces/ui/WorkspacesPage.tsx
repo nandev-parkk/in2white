@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { FolderKanban } from 'lucide-react'
@@ -16,6 +17,8 @@ import { Search } from '@in2white/ui/search'
 const WORKSPACES_PER_PAGE = 20
 
 function WorkspacesPage() {
+  useDocumentTitle('in2white admin | 워크스페이스')
+
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)

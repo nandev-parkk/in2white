@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 
@@ -114,6 +115,7 @@ function UserDetailPage({ userId }: UserDetailPageProps) {
 
   const detail = userQuery.data
   const user = detail?.user
+  useDocumentTitle(`in2white admin | ${user?.name ?? '사용자 상세'}`)
 
   function openWith(dialog: Exclude<OpenDialog, null>, reset: () => void) {
     reset()

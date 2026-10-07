@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { useState } from 'react'
 import { FolderX } from 'lucide-react'
 
@@ -94,6 +95,7 @@ function ProjectDetailContent({
   const deleteProject = useDeleteProject(accessToken, workspaceId)
 
   const project = projectQuery.data
+  useDocumentTitle(`in2white | ${project?.name ?? '프로젝트 상세'}`)
 
   function openEditDialog() {
     updateProject.reset()
