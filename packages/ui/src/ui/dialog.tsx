@@ -55,16 +55,32 @@ function DialogContent({
       const currentViewport = window.visualViewport
       if (!content || !currentViewport) return
 
-      // 주소창 변화는 넘기고, 소프트 키보드가 차지할 만큼 줄면 위쪽 정렬한다.
+      // 주소창 변화는 넘기고, 소프트 키보드가 표시될 만큼 줄었는지 판단한다.
       const keyboardOpen = window.innerHeight - currentViewport.height > 100
-      content.style.top = `${currentViewport.offsetTop + (keyboardOpen ? 16 : currentViewport.height / 2)}px`
       content.style.maxHeight = `calc(${currentViewport.height}px - 2rem)`
 
       if (keyboardOpen) {
-        content.style.setProperty('translate', '-50% 0')
-      } else {
+        // 먼저 기본 중앙 위치로 돌려, 키보드가 실제로 겹치는지 확인한다.
+        content.style.removeProperty('top')
         content.style.removeProperty('translate')
+        const { top, bottom } = content.getBoundingClientRect()
+        const viewportTop = currentViewport.offsetTop
+        const viewportBottom = viewportTop + currentViewport.height
+        const hasNoMeasuredHeight = bottom <= top
+
+        if (
+          hasNoMeasuredHeight ||
+          top < viewportTop ||
+          bottom > viewportBottom
+        ) {
+          content.style.top = `${viewportTop + 16}px`
+          content.style.setProperty('translate', '-50% 0')
+        }
+        return
       }
+
+      content.style.top = `${currentViewport.offsetTop + currentViewport.height / 2}px`
+      content.style.removeProperty('translate')
     }
 
     updateViewport()
