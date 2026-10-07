@@ -39,6 +39,8 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content>) {
   const contentRef = React.useRef<HTMLDivElement>(null)
   const keyboardViewportHeight = React.useRef<number | null>(null)
+  const keyboardWindowHeight = React.useRef<number | null>(null)
+  const keyboardWasOpen = React.useRef(false)
   const hasTouchInput = () =>
     navigator.maxTouchPoints > 0 ||
     window.matchMedia?.('(pointer: coarse)').matches === true
@@ -63,17 +65,21 @@ function DialogContent({
       const hasFocusedTextInput = content.querySelector(
         'input:focus, textarea:focus, [contenteditable="true"]:focus',
       )
+      const touchInputFocused = hasTouchInput() && hasFocusedTextInput !== null
       const viewportShrunkAfterInputFocus =
-        keyboardViewportHeight.current !== null &&
-        keyboardViewportHeight.current - currentViewport.height > 100
+        (keyboardViewportHeight.current !== null &&
+          keyboardViewportHeight.current - currentViewport.height > 100) ||
+        (keyboardWindowHeight.current !== null &&
+          keyboardWindowHeight.current - window.innerHeight > 100)
       const keyboardOpen =
-        (hasTouchInput() &&
-          hasFocusedTextInput !== null &&
-          viewportShrunkAfterInputFocus) ||
-        window.innerHeight - currentViewport.height > 100
+        viewportShrunkAfterInputFocus ||
+        (keyboardWindowHeight.current === null &&
+          window.innerHeight - currentViewport.height > 100)
       content.style.maxHeight = `calc(${currentViewport.height}px - 2rem)`
 
       if (keyboardOpen) {
+        if (touchInputFocused) keyboardWasOpen.current = true
+
         // 현재 위치에서 키보드가 실제로 겹치는지만 확인한다.
         const { top, bottom } = content.getBoundingClientRect()
         const viewportTop = currentViewport.offsetTop
@@ -91,6 +97,18 @@ function DialogContent({
         return
       }
 
+      if (touchInputFocused) {
+        // 자동 포커스 직후와 키보드 표시 중에는 중앙 정렬하지 않는다.
+        if (!keyboardWasOpen.current) return
+        if (
+          keyboardViewportHeight.current !== null &&
+          currentViewport.height < keyboardViewportHeight.current
+        ) {
+          return
+        }
+      }
+
+      keyboardWasOpen.current = false
       content.style.top = `${currentViewport.offsetTop + currentViewport.height / 2}px`
       content.style.removeProperty('translate')
     }
@@ -136,6 +154,7 @@ function DialogContent({
             )
           ) {
             keyboardViewportHeight.current = viewportHeightBeforeFocus ?? null
+            keyboardWindowHeight.current = window.innerHeight
             content.style.top = `${contentTop}px`
             content.style.setProperty('translate', '-50% 0')
           }
