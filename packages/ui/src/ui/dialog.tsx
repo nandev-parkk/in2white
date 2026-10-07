@@ -85,13 +85,19 @@ function DialogContent({
         const viewportTop = currentViewport.offsetTop
         const viewportBottom = viewportTop + currentViewport.height
         const hasNoMeasuredHeight = bottom <= top
+        const minimumTop = viewportTop + 16
+        const maximumTop = viewportBottom - (bottom - top) - 16
 
         if (
           hasNoMeasuredHeight ||
           top < viewportTop ||
           bottom > viewportBottom
         ) {
-          content.style.top = `${viewportTop + 16}px`
+          content.style.top = `${
+            hasNoMeasuredHeight
+              ? minimumTop
+              : Math.min(Math.max(top, minimumTop), maximumTop)
+          }px`
           content.style.setProperty('translate', '-50% 0')
         }
         return

@@ -111,7 +111,7 @@ it('키보드가 열린 동안 모달을 표시 영역 위쪽에 두고 닫히�
   expect(dialog.style.getPropertyValue('translate')).toBe('')
 })
 
-it('터치 입력에 포커스된 모달은 키보드가 나타나는 동안 위치를 유지한다', async () => {
+it('터치 모달은 남은 공간에서 유지하고 겹치면 필요한 만큼만 이동한다', async () => {
   const visualViewport = new EventTarget() as VisualViewport & {
     height: number
   }
@@ -193,6 +193,11 @@ it('터치 입력에 포커스된 모달은 키보드가 나타나는 동안 위
   visualViewport.height = 600
   visualViewport.dispatchEvent(new Event('resize'))
   expect(dialog.style.top).toBe(originalTop)
+  expect(dialog.style.getPropertyValue('translate')).toBe('-50% 0')
+
+  visualViewport.height = 450
+  visualViewport.dispatchEvent(new Event('resize'))
+  expect(dialog.style.top).toBe(`${visualViewport.height - 200 - 16}px`)
   expect(dialog.style.getPropertyValue('translate')).toBe('-50% 0')
 
   visualViewport.height = window.innerHeight
