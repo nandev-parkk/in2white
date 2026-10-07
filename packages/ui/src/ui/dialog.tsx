@@ -38,6 +38,10 @@ function DialogContent({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content>) {
   const contentRef = React.useRef<HTMLDivElement>(null)
+  const keyboardViewportHeight = React.useRef<number | null>(null)
+  const hasTouchInput = () =>
+    navigator.maxTouchPoints > 0 ||
+    window.matchMedia?.('(pointer: coarse)').matches === true
   const [contentElement, setContentElement] =
     React.useState<HTMLDivElement | null>(null)
   const setContentRef = React.useCallback((content: HTMLDivElement | null) => {
@@ -56,13 +60,21 @@ function DialogContent({
       if (!content || !currentViewport) return
 
       // 주소창 변화는 넘기고, 소프트 키보드가 표시될 만큼 줄었는지 판단한다.
-      const keyboardOpen = window.innerHeight - currentViewport.height > 100
+      const hasFocusedTextInput = content.querySelector(
+        'input:focus, textarea:focus, [contenteditable="true"]:focus',
+      )
+      const viewportShrunkAfterInputFocus =
+        keyboardViewportHeight.current !== null &&
+        keyboardViewportHeight.current - currentViewport.height > 100
+      const keyboardOpen =
+        (hasTouchInput() &&
+          hasFocusedTextInput !== null &&
+          viewportShrunkAfterInputFocus) ||
+        window.innerHeight - currentViewport.height > 100
       content.style.maxHeight = `calc(${currentViewport.height}px - 2rem)`
 
       if (keyboardOpen) {
-        // 먼저 기본 중앙 위치로 돌려, 키보드가 실제로 겹치는지 확인한다.
-        content.style.removeProperty('top')
-        content.style.removeProperty('translate')
+        // 현재 위치에서 키보드가 실제로 겹치는지만 확인한다.
         const { top, bottom } = content.getBoundingClientRect()
         const viewportTop = currentViewport.offsetTop
         const viewportBottom = viewportTop + currentViewport.height
@@ -109,12 +121,26 @@ function DialogContent({
           className,
         )}
         onOpenAutoFocus={(event) => {
+          const touchInput = hasTouchInput()
+          const viewportHeightBeforeFocus = window.visualViewport?.height
+          const content = contentRef.current
+          const contentTop = content?.getBoundingClientRect().top
           onOpenAutoFocus?.(event)
-          const hasTouchInput =
-            navigator.maxTouchPoints > 0 ||
-            window.matchMedia?.('(pointer: coarse)').matches === true
 
-          if (event.defaultPrevented || !hasTouchInput) return
+          if (
+            touchInput &&
+            content &&
+            contentTop !== undefined &&
+            content.querySelector(
+              'input:focus, textarea:focus, [contenteditable="true"]:focus',
+            )
+          ) {
+            keyboardViewportHeight.current = viewportHeightBeforeFocus ?? null
+            content.style.top = `${contentTop}px`
+            content.style.setProperty('translate', '-50% 0')
+          }
+
+          if (event.defaultPrevented || !touchInput) return
 
           event.preventDefault()
           contentRef.current?.focus({ preventScroll: true })
