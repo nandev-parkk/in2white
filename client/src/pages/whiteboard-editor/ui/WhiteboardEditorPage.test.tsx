@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, expect, it, vi } from 'vitest'
@@ -100,6 +100,7 @@ it('접근할 수 없는 문서에서 편집기를 열지 않는다', async () =
   show()
   const missing = await screen.findByText('화이트보드를 찾을 수 없어요')
   expect(missing).toBeInTheDocument()
+  expect(document.title).toBe('in2white | 화이트보드')
   expect(
     screen.getByRole('button', { name: '프로젝트로 돌아가기' }),
   ).toBeInTheDocument()
@@ -152,4 +153,29 @@ it('일시 조회 실패에서 재시도를 제공한다', async () => {
   expect(
     screen.getByRole('button', { name: '프로젝트로 돌아가기' }),
   ).toBeInTheDocument()
+})
+
+it('탭에 현재 문서 이름만 표시하고 이름 변경을 반영한다', async () => {
+  const board = {
+    id: 'document',
+    creatorId: 'user',
+    projectId: 'project',
+    name: '서비스 기획',
+    canvasContent: { elements: [] },
+    revision: 0,
+    lastSavedAt: '',
+    createdAt: '',
+    updatedAt: '',
+  }
+  vi.mocked(getWhiteboardDocumentRequest).mockResolvedValue(board)
+  const client = show()
+  expect(document.title).toBe('in2white | 화이트보드')
+  await waitFor(() => expect(document.title).toBe('in2white | 서비스 기획'))
+  act(() =>
+    client.setQueryData(
+      ['whiteboard-document', 'user', 'workspace', 'project', 'document'],
+      { ...board, name: '수정된 문서명' },
+    ),
+  )
+  await waitFor(() => expect(document.title).toBe('in2white | 수정된 문서명'))
 })

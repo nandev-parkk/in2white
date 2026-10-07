@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import type { AdminDependencyStatus } from '@/entities/system'
 import { useSystemStatus } from '@/features/system'
 import { MESSAGES } from '@/shared/constants/messages'
@@ -59,6 +60,8 @@ function RealtimeCard({ label, value }: { label: string; value: number }) {
 }
 
 function SystemPage() {
+  useDocumentTitle('in2white admin | 운영 상태')
+
   const statusQuery = useSystemStatus()
   const status = statusQuery.data
 

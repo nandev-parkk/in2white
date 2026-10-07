@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { useState } from 'react'
 import { ScrollText, X } from 'lucide-react'
 
@@ -47,6 +48,8 @@ const TARGET_TYPE_OPTIONS: { value: TargetTypeFilter; label: string }[] = [
 ]
 
 function AuditLogsPage() {
+  useDocumentTitle('in2white admin | 감사 로그')
+
   const [action, setAction] = useState('')
   const [targetType, setTargetType] = useState<TargetTypeFilter>('all')
   const [from, setFrom] = useState('')

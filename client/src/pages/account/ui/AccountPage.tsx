@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { Search as SearchIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
@@ -279,6 +280,8 @@ export function AccountPage({
   onWorkspaceChange,
   onNavChange,
 }: AccountPageProps = {}) {
+  useDocumentTitle('in2white | 계정')
+
   return (
     <AuthenticatedWorkspaceLayout
       workspaceId={workspaceId}

@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { lazy, Suspense, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { FileX } from 'lucide-react'
@@ -59,7 +60,11 @@ function WhiteboardEditorContent({
     retry: false,
     refetchOnWindowFocus: false,
   })
+  useDocumentTitle(
+    `in2white | ${query.data?.name ?? MESSAGES.whiteboard.heading.fallbackTitle}`,
+  )
   if (!editorUser) return null
+
   const loading = (label: string) => (
     <main className="flex h-dvh flex-col">
       <CanvasTopBar

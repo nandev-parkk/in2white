@@ -100,6 +100,7 @@ it('멤버 경로에서 실제 멤버를 표시하고 워크스페이스 전환 
 it('프로젝트와 멤버 사이드바가 실제 경로로 이동한다', async () => {
   const router = await mount('/workspaces/ws/projects')
   await screen.findByRole('heading', { name: '프로젝트' })
+  expect(document.title).toBe('in2white | 프로젝트')
   await userEvent.click(
     within(screen.getByRole('complementary')).getByRole('button', {
       name: '멤버',
@@ -108,6 +109,7 @@ it('프로젝트와 멤버 사이드바가 실제 경로로 이동한다', async
   await waitFor(() =>
     expect(router.state.location.pathname).toBe('/workspaces/ws/members'),
   )
+  await waitFor(() => expect(document.title).toBe('in2white | 멤버'))
   await userEvent.click(
     within(screen.getByRole('complementary')).getByRole('button', {
       name: '프로젝트',
@@ -116,6 +118,9 @@ it('프로젝트와 멤버 사이드바가 실제 경로로 이동한다', async
   await waitFor(() =>
     expect(router.state.location.pathname).toBe('/workspaces/ws/projects'),
   )
+  await waitFor(() => expect(document.title).toBe('in2white | 프로젝트'))
+  router.history.back()
+  await waitFor(() => expect(document.title).toBe('in2white | 멤버'))
 })
 it('멤버 화면의 설정 메뉴는 현재 workspace 설정 경로로 이동한다', async () => {
   const router = await mount()

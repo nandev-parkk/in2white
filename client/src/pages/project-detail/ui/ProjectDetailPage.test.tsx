@@ -158,5 +158,6 @@ describe('ProjectDetailPage', () => {
       screen.getByRole('heading', { name: '2026 브랜드 리뉴얼' }),
     ).toBeInTheDocument()
     expect(screen.getByTestId('document-list')).toBeInTheDocument()
+    expect(document.title).toBe('in2white | 2026 브랜드 리뉴얼')
   })
 })

@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 
@@ -195,6 +196,7 @@ function ProjectDetailPage({ projectId }: ProjectDetailPageProps) {
 
   const detail = projectQuery.data
   const project = detail?.project
+  useDocumentTitle(`in2white admin | ${project?.name ?? '프로젝트 상세'}`)
 
   function mutationFor(target: ConfirmTarget) {
     if (target.kind === 'project') {

@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { FolderKanban } from 'lucide-react'
@@ -45,6 +46,8 @@ type ConfirmTarget = {
 }
 
 function ProjectsPage() {
+  useDocumentTitle('in2white admin | 프로젝트')
+
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<ResourceStatusFilter>('all')

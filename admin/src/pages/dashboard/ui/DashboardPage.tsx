@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '@in2white/ui/lib/use-document-title'
 import {
   MetricCard,
   TrendChart,
@@ -10,6 +11,8 @@ import { LoadingState } from '@in2white/ui/loading-state'
 import { PageHeader } from '@in2white/ui/page-header'
 
 function DashboardPage() {
+  useDocumentTitle('in2white admin | 대시보드')
+
   const metricsQuery = useDashboardMetrics()
   const metrics = metricsQuery.data
 
