@@ -28,7 +28,7 @@ Visual Viewport가 제공되는 브라우저에서 키보드 표시 영역을 �
 
 ## 2026-10-07 태블릿에서 입력 모달이 불필요하게 이동하는 경우
 
-- 원인: 일부 태블릿 브라우저는 소프트 키보드가 열릴 때 `window.innerHeight`와 `visualViewport.height`를 함께 줄인다. 두 값의 차이만으로 키보드를 판별하면 입력란에 포커스된 상태를 놓치고, 모달을 Visual Viewport 중앙으로 다시 배치해 불필요하게 위로 움직일 수 있다.
-- 해결: 터치 기기에서 텍스트 입력란에 포커스하기 직전 모달 위치와 Visual Viewport 높이를 저장한다. 높이 변화로 키보드 표시를 감지하고, 모달이 실제로 Visual Viewport를 벗어나는 경우에만 위로 이동한다.
+- 원인: 입력란 자동 포커스 직후 공통 Dialog의 첫 Visual Viewport 갱신이 키보드 표시 전 상태로 판단해 모달을 다시 중앙 정렬하고, 저장한 위치 변환을 제거했다. 키보드 애니메이션 중 임계값 미만의 높이 변화도 같은 경로를 실행해 공간이 남아도 모달이 위로 움직였다.
+- 해결: 포커스 직전 Visual Viewport와 window 높이 및 모달 위치를 저장한다. 터치 입력에 포커스된 동안은 초기 갱신과 키보드 애니메이션 중 위치를 유지하고, 실제 높이 변화가 감지되면 Visual Viewport와 겹칠 때만 모달을 이동한다. 키보드가 닫혀 높이가 복원된 뒤에 중앙으로 돌아간다.
 - 관련 경로: `packages/ui/src/ui/dialog.tsx`, `client/src/features/project/ui/ProjectFormDialog.tsx`.
-- 검증: `pnpm --filter @in2white/ui build`, 변경 파일 ESLint·Prettier, `git diff --check` 통과. 자동 테스트와 실제 태블릿 검증은 수행하지 않았다.
+- 검증: `packages/ui/src/ui/dialog.test.tsx`에서 포커스 직후, 키보드 표시 중 충분한 공간이 남는 경우, 키보드가 닫힌 뒤 중앙 복귀를 검증한다. 실제 태블릿 검증은 별도 수행하지 않았다.

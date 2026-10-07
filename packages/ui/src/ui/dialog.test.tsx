@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from './dialog'
 
 function DialogExample() {
@@ -18,6 +18,7 @@ function DialogExample() {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks()
   Object.defineProperty(window, 'visualViewport', {
     configurable: true,
     value: undefined,
@@ -107,5 +108,95 @@ it('키보드가 열린 동안 모달을 표시 영역 위쪽에 두고 닫히�
   await waitFor(() =>
     expect(dialog.style.top).toBe(`${window.innerHeight / 2}px`),
   )
+  expect(dialog.style.getPropertyValue('translate')).toBe('')
+})
+
+it('터치 입력에 포커스된 모달은 키보드가 나타나는 동안 위치를 유지한다', async () => {
+  const visualViewport = new EventTarget() as VisualViewport & {
+    height: number
+  }
+  Object.defineProperties(visualViewport, {
+    height: { configurable: true, writable: true, value: window.innerHeight },
+    offsetTop: { configurable: true, writable: true, value: 0 },
+  })
+  Object.defineProperty(window, 'visualViewport', {
+    configurable: true,
+    value: visualViewport,
+  })
+  Object.defineProperty(navigator, 'maxTouchPoints', {
+    configurable: true,
+    value: 1,
+  })
+  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: HTMLElement) {
+      if (this.getAttribute('data-slot') === 'dialog-content') {
+        const inlineTop = Number.parseFloat(this.style.top)
+        const top =
+          this.style.translate === '-50% 0'
+            ? inlineTop
+            : (inlineTop || window.innerHeight / 2) - 100
+
+        return {
+          x: 0,
+          y: top,
+          top,
+          right: 400,
+          bottom: top + 200,
+          left: 0,
+          width: 400,
+          height: 200,
+          toJSON: () => ({}),
+        } as DOMRect
+      }
+
+      return getBoundingClientRect.call(this)
+    },
+  )
+
+  function TouchAutofocusDialog() {
+    const [open, setOpen] = useState(false)
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger>대화상자 열기</DialogTrigger>
+        <DialogContent
+          onOpenAutoFocus={(event) => {
+            const content = event.currentTarget
+            if (!(content instanceof HTMLElement)) return
+
+            event.preventDefault()
+            content.querySelector('input')?.focus({ preventScroll: true })
+          }}
+        >
+          <DialogTitle>설정</DialogTitle>
+          <input aria-label="이름" />
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  const user = userEvent.setup()
+  render(<TouchAutofocusDialog />)
+  await user.click(screen.getByRole('button', { name: '대화상자 열기' }))
+
+  const dialog = await screen.findByRole('dialog', { name: '설정' })
+  const originalTop = dialog.style.top
+  expect(originalTop).not.toBe('')
+  expect(screen.getByRole('textbox', { name: '이름' })).toHaveFocus()
+  expect(dialog.style.getPropertyValue('translate')).toBe('-50% 0')
+
+  visualViewport.height = window.innerHeight - 68
+  visualViewport.dispatchEvent(new Event('resize'))
+  expect(dialog.style.top).toBe(originalTop)
+  expect(dialog.style.getPropertyValue('translate')).toBe('-50% 0')
+
+  visualViewport.height = 600
+  visualViewport.dispatchEvent(new Event('resize'))
+  expect(dialog.style.top).toBe(originalTop)
+  expect(dialog.style.getPropertyValue('translate')).toBe('-50% 0')
+
+  visualViewport.height = window.innerHeight
+  visualViewport.dispatchEvent(new Event('resize'))
+  expect(dialog.style.top).toBe(`${window.innerHeight / 2}px`)
   expect(dialog.style.getPropertyValue('translate')).toBe('')
 })
